@@ -11,14 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('etudiants', function (Blueprint $table) {
+        Schema::create('semestre_publications', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('groupe_id')->constrained('groupes')->onDelete('cascade');
             $table->foreignId('annee_academique_id')->constrained('annees_academiques')->onDelete('cascade');
-            $table->string('nom_prenom');
-            $table->string('cin')->unique();
-            $table->string('numero_inscription')->unique();
+            $table->integer('semestre');          // 1 or 2
+            $table->boolean('is_published')->default(false);
+            $table->timestamp('published_at')->nullable();
             $table->timestamps();
         });
     }
@@ -28,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('etudiants');
+        Schema::dropIfExists('semestre_publications');
     }
 };

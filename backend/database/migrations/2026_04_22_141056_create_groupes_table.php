@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('groupes', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('niveau_id')->constrained('niveaux')->onDelete('cascade');
+            $table->foreignId('annee_academique_id')->constrained('annees_academiques')->onDelete('cascade');
+            $table->string('nom');                // Groupe A
+            $table->string('promotion');          // 2025/2026
             $table->timestamps();
         });
     }

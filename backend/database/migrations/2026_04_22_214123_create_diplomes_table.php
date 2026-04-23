@@ -11,14 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('etudiants', function (Blueprint $table) {
+        Schema::create('diplomes', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('groupe_id')->constrained('groupes')->onDelete('cascade');
+            $table->foreignId('etudiant_id')->constrained('etudiants')->onDelete('cascade');
             $table->foreignId('annee_academique_id')->constrained('annees_academiques')->onDelete('cascade');
-            $table->string('nom_prenom');
-            $table->string('cin')->unique();
-            $table->string('numero_inscription')->unique();
+            $table->float('moyenne_generale');
+            $table->enum('mention', ['Passable', 'Assez Bien', 'Bien', 'Très Bien']);
+            $table->boolean('is_printed')->default(false);
+            $table->timestamp('printed_at')->nullable();
             $table->timestamps();
         });
     }
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('etudiants');
+        Schema::dropIfExists('diplomes');
     }
 };

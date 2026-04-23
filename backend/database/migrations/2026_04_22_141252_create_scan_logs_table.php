@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('scan_logs', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('formateur_id')->constrained('formateurs')->onDelete('cascade');
+            $table->string('chemin_image');
+            $table->text('texte_brut')->nullable();
+            $table->enum('statut', ['succes', 'echec', 'en_attente'])->default('en_attente');
             $table->timestamps();
         });
     }

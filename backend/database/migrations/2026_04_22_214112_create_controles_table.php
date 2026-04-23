@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('sequences', function (Blueprint $table) {
+        Schema::create('controles', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('sequence_id')->constrained('sequences')->onDelete('cascade');
+            $table->integer('numero');            // 1, 2, 3
+            $table->date('date')->nullable();
+            $table->integer('note_max')->default(20);
             $table->timestamps();
         });
     }
@@ -22,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('sequences');
+        Schema::dropIfExists('controles');
     }
 };

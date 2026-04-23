@@ -13,7 +13,11 @@ return new class extends Migration
     {
         Schema::create('filieres', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+$table->string('nom');                // Aide-Soignant
+$table->string('code');               // AS
+$table->string('section');            // Qualification
+$table->integer('nombre_annees');     // 1, 2, 3
+$table->timestamps();
         });
     }
 

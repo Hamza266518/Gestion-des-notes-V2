@@ -13,8 +13,10 @@ return new class extends Migration
     {
         Schema::create('annees_academiques', function (Blueprint $table) {
             $table->id();
+            $table->string('label');              // 2025/2026
+            $table->boolean('is_current')->default(false);
             $table->timestamps();
-        });
+                    });
     }
 
     /**

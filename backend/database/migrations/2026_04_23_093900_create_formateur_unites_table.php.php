@@ -11,16 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('sequences', function (Blueprint $table) {
+        Schema::create('formateur_unites', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('formateur_id')->constrained('formateurs')->onDelete('cascade');
             $table->foreignId('unite_id')->constrained('unites')->onDelete('cascade');
-            $table->string('nom');
-            $table->integer('coefficient');
-            $table->integer('nombre_controles');  // 1, 2, 3
-            $table->integer('ordre')->default(0);
-            $table->boolean('is_active')->default(true);
             $table->timestamps();
-        });
+});
     }
 
     /**
@@ -28,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('sequences');
+        //
     }
 };

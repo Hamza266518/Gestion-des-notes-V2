@@ -1,0 +1,127 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Admin\FormateurController;
+use App\Http\Controllers\Admin\AnneeAcademiqueController;
+use App\Http\Controllers\Admin\FiliereController;
+use App\Http\Controllers\Admin\ImportController;
+use App\Http\Controllers\Admin\NiveauController;
+use App\Http\Controllers\Admin\GroupeController;
+use App\Http\Controllers\Admin\EtudiantController;
+use App\Http\Controllers\Admin\UniteController;
+use App\Http\Controllers\Admin\SequenceController;
+use App\Http\Controllers\Admin\ControleController;
+use App\Http\Controllers\Admin\NoteAdminController;
+use App\Http\Controllers\Admin\PublicationController;
+use App\Http\Controllers\Admin\DiplomeController;
+use App\Http\Controllers\Admin\ScanCinController;
+use App\Http\Controllers\Formateur\ScanController;
+use App\Http\Controllers\Formateur\NoteController;
+use App\Http\Controllers\Etudiant\PortalController;
+
+// Auth - public
+Route::post('/auth/login', [AuthController::class, 'login']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::get('/auth/me',      [AuthController::class, 'me']);
+
+    // ── ADMIN ──────────────────────────────────────────────
+    Route::prefix('admin')->middleware('isAdmin')->group(function () {
+
+        // Annees academiques
+        Route::get('/annees-academiques',                        [AnneeAcademiqueController::class, 'index']);
+        Route::post('/annees-academiques',                       [AnneeAcademiqueController::class, 'store']);
+        Route::post('/annees-academiques/{id}/set-current',      [AnneeAcademiqueController::class, 'setCurrent']);
+        Route::delete('/annees-academiques/{id}',                [AnneeAcademiqueController::class, 'destroy']);
+
+        // Filieres
+        Route::get('/filieres',          [FiliereController::class, 'index']);
+        Route::post('/filieres',         [FiliereController::class, 'store']);
+        Route::put('/filieres/{id}',     [FiliereController::class, 'update']);
+        Route::delete('/filieres/{id}',  [FiliereController::class, 'destroy']);
+
+        // Niveaux
+        Route::get('/niveaux',           [NiveauController::class, 'index']);
+        Route::post('/niveaux',          [NiveauController::class, 'store']);
+        Route::delete('/niveaux/{id}',   [NiveauController::class, 'destroy']);
+
+        // Groupes
+        Route::get('/groupes',           [GroupeController::class, 'index']);
+        Route::post('/groupes',          [GroupeController::class, 'store']);
+        Route::put('/groupes/{id}',      [GroupeController::class, 'update']);
+        Route::delete('/groupes/{id}',   [GroupeController::class, 'destroy']);
+
+        // Etudiants
+        Route::get('/etudiants',         [EtudiantController::class, 'index']);
+        Route::delete('/etudiants/{id}', [EtudiantController::class, 'destroy']);
+
+        // Import Excel etudiants
+        Route::post('/import',           [ImportController::class, 'import']);
+        Route::post('/preview',          [ImportController::class, 'preview']);
+
+        // Scan CIN
+        Route::post('/scan-cin',         [ScanCinController::class, 'scan']);
+        Route::post('/scan-cin/confirm', [ScanCinController::class, 'confirm']);
+
+        // Formateurs
+        Route::get('/formateurs',                      [FormateurController::class, 'index']);
+        Route::post('/formateurs',                     [FormateurController::class, 'store']);
+        Route::delete('/formateurs/{id}',              [FormateurController::class, 'destroy']);
+        Route::get('/formateurs/{id}/unites',          [FormateurController::class, 'unites']);
+        Route::post('/formateurs/{id}/import-unites',  [FormateurController::class, 'importUnites']);
+        Route::post('/formateurs/{id}/scan-unites',    [FormateurController::class, 'scanUnites']);
+        Route::delete('/formateurs/{id}/remove-unite', [FormateurController::class, 'removeUnite']);
+        Route::post('/formateurs/import',              [FormateurController::class, 'import']);
+        Route::post('/formateurs/preview',             [FormateurController::class, 'preview']);
+
+        // Unites
+        Route::get('/unites',                        [UniteController::class, 'index']);
+        Route::post('/unites',                       [UniteController::class, 'store']);
+        Route::put('/unites/{id}',                   [UniteController::class, 'update']);
+        Route::delete('/unites/{id}',                [UniteController::class, 'destroy']);
+        Route::post('/unites/{id}/toggle-active',    [UniteController::class, 'toggleActive']);
+        Route::post('/unites/import',                [UniteController::class, 'import']);
+        Route::post('/unites/preview',               [UniteController::class, 'preview']);
+
+        // Sequences
+        Route::get('/sequences',                      [SequenceController::class, 'index']);
+        Route::post('/sequences',                     [SequenceController::class, 'store']);
+        Route::put('/sequences/{id}',                 [SequenceController::class, 'update']);
+        Route::delete('/sequences/{id}',              [SequenceController::class, 'destroy']);
+        Route::post('/sequences/{id}/toggle-active',  [SequenceController::class, 'toggleActive']);
+
+        // Controles
+        Route::get('/controles',                          [ControleController::class, 'index']);
+        Route::post('/controles',                         [ControleController::class, 'store']);
+        Route::delete('/controles/{id}',                  [ControleController::class, 'destroy']);
+        Route::post('/controles/generate/{sequenceId}',   [ControleController::class, 'generateForSequence']);
+
+        // Notes admin
+        Route::get('/notes',       [NoteAdminController::class, 'index']);
+        Route::put('/notes/{id}',  [NoteAdminController::class, 'update']);
+
+        // Publications
+        Route::get('/publications',                  [PublicationController::class, 'index']);
+        Route::post('/publications/publish',         [PublicationController::class, 'publish']);
+        Route::put('/publications/{id}/unpublish',   [PublicationController::class, 'unpublish']);
+
+        // Diplomes
+        Route::get('/diplomes',              [DiplomeController::class, 'index']);
+        Route::post('/diplomes/generate',    [DiplomeController::class, 'generate']);
+        Route::put('/diplomes/{id}/printed', [DiplomeController::class, 'markPrinted']);
+    });
+
+    // ── FORMATEUR ──────────────────────────────────────────
+    Route::prefix('formateur')->middleware('isFormateur')->group(function () {
+        Route::post('/scan',    [ScanController::class, 'scan']);
+        Route::post('/confirm', [ScanController::class, 'confirm']);
+        Route::get('/notes',    [NoteController::class, 'index']);
+    });
+
+    // ── ETUDIANT ───────────────────────────────────────────
+    Route::prefix('etudiant')->middleware('isEtudiant')->group(function () {
+        Route::get('/bulletin', [PortalController::class, 'monBulletin']);
+    });
+});
