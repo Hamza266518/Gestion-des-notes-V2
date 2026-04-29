@@ -11,11 +11,17 @@ class Controle extends Model
         'numero',
         'date',
         'note_max',
+        'formateur_id',
     ];
 
     public function sequence()
     {
         return $this->belongsTo(Sequence::class);
+    }
+
+    public function formateur()
+    {
+        return $this->belongsTo(User::class, 'formateur_id');
     }
 
     public function notes()

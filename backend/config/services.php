@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'gemini' => [
+        'key_formateur' => env('VITE_GEMINI_KEY_FORMATEURS'),  // Scanner.jsx (formateur notes)
+        'key_students'  => env('VITE_GEMINI_KEY_STUDENTS'),   // ScanCin.jsx (admin CIN)
+        'key_unites'    => env('VITE_GEMINI_KEY_UNITES'),    // Unites.jsx (admin unites)
+        'key_notes'     => env('VITE_GEMINI_KEY_NOTES_TWO', ''), // Notes scan (API to come)
+    ],
+
 ];

@@ -13,6 +13,7 @@ class Etudiant extends Model
         'nom_prenom',
         'cin',
         'numero_inscription',
+        'date_naissance',
     ];
 
     public function user()

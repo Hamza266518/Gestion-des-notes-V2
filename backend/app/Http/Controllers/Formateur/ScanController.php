@@ -37,18 +37,33 @@ class ScanController extends Controller
                 'message' => 'Vous n\'êtes pas assigné à cette unité',
             ], 403);
         }
-        $request->validate([
-            'images'      => 'required|array',
-            'images.*'    => 'required|image',
+        // Handle both 'images' array and single 'image'
+        $validateRules = [
             'controle_id' => 'required|exists:controles,id',
-        ]);
+        ];
+        
+        if ($request->hasFile('images')) {
+            $validateRules['images'] = 'required|array';
+            $validateRules['images.*'] = 'required|image';
+        } else {
+            $validateRules['image'] = 'required|image';
+        }
+        
+        $request->validate($validateRules);
 
         $controle  = Controle::findOrFail($request->controle_id);
         $results   = [];
         $errors    = [];
         $formateur = auth()->user()->formateur;
 
-        foreach ($request->file('images') as $image) {
+        // Handle both 'images' array and single 'image'
+        if ($request->hasFile('images')) {
+            $images = $request->file('images');
+        } else {
+            $images = [$request->file('image')];
+        }
+
+        foreach ($images as $image) {
             $base64    = base64_encode(file_get_contents($image->getRealPath()));
             $imagePath = $image->store('scans', 'public');
             $rawText   = $this->gemini->scanNotes($base64);

@@ -60,6 +60,8 @@ class EtudiantsImport implements ToCollection, WithHeadingRow
                 $this->created++;
             }
 
+            $dateNaissance = !empty($row['date_de_naissance']) ? \Carbon\Carbon::parse($row['date_de_naissance'])->format('Y-m-d') : null;
+
             Etudiant::updateOrCreate(
                 ['cin' => $cin],
                 [
@@ -69,6 +71,7 @@ class EtudiantsImport implements ToCollection, WithHeadingRow
                     'nom_prenom'          => $nom,
                     'cin'                 => $cin,
                     'numero_inscription'  => $numero,
+                    'date_naissance'      => $dateNaissance,
                 ]
             );
         }

@@ -693,28 +693,26 @@ export default function Unites() {
         )}
 
         {scanResults.length > 0 && (
-          <div style={{ overflowX: 'auto', marginTop: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <table style={{ fontSize: '15px', minWidth: '600px', width: '100%' }}>
+          <div className="table-wrap" style={{ maxHeight: 400, overflowY: 'auto', marginTop: 16, fontSize: '15px' }}>
+            <table>
               <thead>
-                <tr style={{ backgroundColor: '#f9fafb' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '200px' }}>Unité</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '120px' }}>Année</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Semestre</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '250px' }}>Séquences</th>
+                <tr>
+                  <th>Unité</th>
+                  <th>Année</th>
+                  <th>Semestre</th>
+                  <th>Séquences</th>
                 </tr>
               </thead>
               <tbody>
                 {scanResults.map((u, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '12px 16px' }}>
-                      <strong>{u.nom}</strong>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>{u.numero_annee == 1 ? '1ère' : u.numero_annee + 'ème'} année</td>
-                    <td style={{ padding: '12px 16px' }}>S{u.semestre}</td>
-                    <td style={{ padding: '12px 16px' }}>
+                  <tr key={idx}>
+                    <td><strong>{u.nom}</strong></td>
+                    <td>{u.numero_annee == 1 ? '1ère' : u.numero_annee + 'ème'} année</td>
+                    <td>S{u.semestre}</td>
+                    <td>
                       {u.sequences?.map((s, i) => (
-                        <div key={i} style={{ fontSize: 14, marginBottom: 6, padding: '4px 0' }}>
-                          <strong>{s.nom}</strong> (Coeff {s.coefficient}, {s.nombre_controles} contrôle(s))
+                        <div key={i} style={{ fontSize: 13, marginBottom: 4 }}>
+                          {s.nom} (Coeff {s.coefficient}, {s.nombre_controles} contrôle(s))
                         </div>
                       ))}
                     </td>
@@ -725,16 +723,16 @@ export default function Unites() {
           </div>
         )}
 
-      <div className="modal-footer" style={{ marginTop: 16 }}>
-        <button className="btn btn-outline" onClick={() => { setScanOpen(false); setScanImage(null); setScanResults([]); }}>Annuler</button>
-        <button className="btn btn-primary" onClick={handleConfirmScan} disabled={scanSaving || scanResults.length === 0}>
-          {scanSaving ? (
-            <>
-              <Spinner /> Enregistrement...
-            </>
-          ) : `Confirmer ${scanResults.length} unité(s)`}
-        </button>
-      </div>
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={() => { setScanOpen(false); setScanImage(null); setScanResults([]); }}>Annuler</button>
+          <button className="btn btn-primary" onClick={handleConfirmScan} disabled={scanSaving || scanResults.length === 0}>
+            {scanSaving ? (
+              <>
+                <Spinner /> Enregistrement...
+              </>
+            ) : `Confirmer ${scanResults.length} unité(s)`}
+          </button>
+        </div>
       </Modal>
     </div>
   );

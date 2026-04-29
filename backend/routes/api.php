@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\NoteAdminController;
 use App\Http\Controllers\Admin\PublicationController;
 use App\Http\Controllers\Admin\DiplomeController;
 use App\Http\Controllers\Admin\ScanCinController;
+use App\Http\Controllers\Admin\ScanUnitesController;
 use App\Http\Controllers\Formateur\ScanController;
 use App\Http\Controllers\Formateur\NoteController;
 use App\Http\Controllers\Etudiant\PortalController;
@@ -55,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Etudiants
         Route::get('/etudiants',         [EtudiantController::class, 'index']);
+        Route::put('/etudiants/{id}',    [EtudiantController::class, 'update']);
         Route::delete('/etudiants/{id}', [EtudiantController::class, 'destroy']);
 
         // Import Excel etudiants
@@ -73,6 +75,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/formateurs/{id}/import-unites',  [FormateurController::class, 'importUnites']);
         Route::post('/formateurs/{id}/scan-unites',    [FormateurController::class, 'scanUnites']);
         Route::delete('/formateurs/{id}/remove-unite', [FormateurController::class, 'removeUnite']);
+        Route::post('/controles',                         [ControleController::class, 'store']);
+        Route::delete('/controles/{id}',                  [ControleController::class, 'destroy']);
         Route::post('/formateurs/import',              [FormateurController::class, 'import']);
         Route::post('/formateurs/preview',             [FormateurController::class, 'preview']);
 
@@ -84,6 +88,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/unites/{id}/toggle-active',    [UniteController::class, 'toggleActive']);
         Route::post('/unites/import',                [UniteController::class, 'import']);
         Route::post('/unites/preview',               [UniteController::class, 'preview']);
+
+        // Scan Unites Document
+        Route::post('/scan-unites',                  [ScanUnitesController::class, 'scan']);
+        Route::post('/scan-unites/confirm',        [ScanUnitesController::class, 'confirm']);
 
         // Sequences
         Route::get('/sequences',                      [SequenceController::class, 'index']);

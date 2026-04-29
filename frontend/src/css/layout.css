@@ -1,0 +1,26 @@
+.admin-layout {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.admin-content {
+  margin-left: var(--sidebar-width);
+  padding-top: var(--navbar-height);
+}
+
+.page {
+  padding: 24px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--gray-800);
+}

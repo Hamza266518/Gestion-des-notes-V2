@@ -11,7 +11,7 @@ class ControleController extends Controller
 {
     public function index(Request $request)
     {
-        $controles = Controle::with('sequence')
+        $controles = Controle::with(['sequence', 'formateur'])
             ->when($request->sequence_id, fn($q) => $q->where('sequence_id', $request->sequence_id))
             ->get();
         return response()->json(['success' => true, 'data' => $controles]);

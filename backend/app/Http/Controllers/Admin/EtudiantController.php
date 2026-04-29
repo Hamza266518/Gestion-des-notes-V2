@@ -19,6 +19,36 @@ class EtudiantController extends Controller
         return response()->json(['success' => true, 'data' => $etudiants]);
     }
 
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'nom_prenom'     => 'required|string',
+            'cin'            => 'required|string',
+            'date_naissance' => 'nullable|date',
+            'groupe_id'      => 'required|exists:groupes,id',
+        ]);
+
+        $etudiant = Etudiant::with('user')->findOrFail($id);
+
+        $newEmail = strtolower($request->cin) . '@ifp.ma';
+
+        $etudiant->update([
+            'nom_prenom'     => $request->nom_prenom,
+            'cin'            => strtoupper($request->cin),
+            'date_naissance' => $request->date_naissance,
+            'groupe_id'      => $request->groupe_id,
+        ]);
+
+        if ($etudiant->user) {
+            $etudiant->user->update([
+                'name'  => $request->nom_prenom,
+                'email' => $newEmail,
+            ]);
+        }
+
+        return response()->json(['success' => true, 'data' => $etudiant->load('groupe.niveau.filiere'), 'message' => 'Étudiant modifié']);
+    }
+
     public function destroy($id)
     {
         $etudiant = Etudiant::findOrFail($id);

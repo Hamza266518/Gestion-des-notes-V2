@@ -27,38 +27,67 @@ class ScanCinController extends Controller
     public function scan(Request $request)
     {
         $request->validate([
-            'images'              => 'required|array',
-            'images.*'            => 'required|image',
             'groupe_id'           => 'required|exists:groupes,id',
             'annee_academique_id' => 'required|exists:annees_academiques,id',
             'filiere_code'        => 'required|string',
         ]);
 
+        // Check if images is sent as array or single file
+        if ($request->hasFile('images')) {
+            $images = $request->file('images');
+        } else if ($request->hasFile('image')) {
+            $images = [$request->file('image')];
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'No image found in request',
+                'debug' => [
+                    'has_images' => $request->hasFile('images'),
+                    'has_image' => $request->hasFile('image'),
+                    'all_files' => array_keys($request->allFiles()),
+                    'request_data' => $request->except(['images', 'image'])
+                ]
+            ], 422);
+        }
+        
+        if (!is_array($images)) {
+            $images = [$images];
+        }
+
         $results = [];
         $errors  = [];
 
-        foreach ($request->file('images') as $image) {
+        foreach ($images as $image) {
             $base64 = base64_encode(file_get_contents($image->getRealPath()));
             $rawText = $this->gemini->scanCin($base64);
-            $data    = $this->parser->parseCin($rawText);
+            $students = $this->parser->parseCin($rawText);
 
-            if (empty($data) || empty($data['cin'])) {
+            if (empty($students)) {
                 $errors[] = ['message' => 'CIN illisible'];
+                \Log::warning('ScanCin: no students parsed', ['raw' => $rawText]);
                 continue;
             }
 
-            $numero = $this->numeroService->generate(
-                $request->filiere_code,
-                $request->annee_academique_id
-            );
+            foreach ($students as $student) {
+                if (empty($student['cin'])) {
+                    $errors[] = ['message' => 'CIN manquant pour un étudiant'];
+                    continue;
+                }
 
-            $results[] = [
-                'nom_prenom'         => $data['nom'] ?? '',
-                'cin'                => strtoupper($data['cin']),
-                'numero_inscription' => $numero,
-                'groupe_id'          => $request->groupe_id,
-                'annee_academique_id'=> $request->annee_academique_id,
-            ];
+                $numero = $this->numeroService->generate(
+                    $request->filiere_code,
+                    $request->annee_academique_id
+                );
+
+                $results[] = [
+                    'nom_prenom'         => $student['nom_prenom'] ?? '',
+                    'cin'                => strtoupper($student['cin']),
+                    'date_naissance'     => $student['date_naissance'] ?? '',
+                    'numero_inscription' => $numero,
+                    'groupe_id'          => $request->groupe_id,
+                    'annee_academique_id'=> $request->annee_academique_id,
+                ];
+            }
         }
 
         return response()->json([
@@ -73,6 +102,7 @@ class ScanCinController extends Controller
             'stagiaires'                       => 'required|array',
             'stagiaires.*.nom_prenom'          => 'required|string',
             'stagiaires.*.cin'                 => 'required|string',
+            'stagiaires.*.date_naissance'      => 'nullable|date',
             'stagiaires.*.numero_inscription'  => 'required|string',
             'stagiaires.*.groupe_id'           => 'required|exists:groupes,id',
             'stagiaires.*.annee_academique_id' => 'required|exists:annees_academiques,id',
@@ -84,7 +114,7 @@ class ScanCinController extends Controller
         foreach ($request->stagiaires as $item) {
             $cin      = strtoupper($item['cin']);
             $email    = strtolower($cin) . '@ifp.ma';
-            $password = $item['numero_inscription'] . substr($cin, 0, 2);
+            $password = str_replace(' ', '', $item['numero_inscription']) . substr($cin, 0, 2);
 
             $user = User::where('email', $email)->first();
 
@@ -109,6 +139,7 @@ class ScanCinController extends Controller
                     'annee_academique_id' => $item['annee_academique_id'],
                     'nom_prenom'          => $item['nom_prenom'],
                     'cin'                 => $cin,
+                    'date_naissance'      => $item['date_naissance'] ?? null,
                     'numero_inscription'  => $item['numero_inscription'],
                 ]
             );
