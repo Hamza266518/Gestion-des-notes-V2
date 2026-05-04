@@ -1,6 +1,5 @@
 import { useAuth } from '../../context/AuthContext';
-import { adminApi } from '../../api/admin';
-import { useEffect, useState } from 'react';
+import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import '../../css/navbar.css';
 
 const roleLabels = {
@@ -11,20 +10,13 @@ const roleLabels = {
 
 export default function Navbar({ title }) {
   const { user, role } = useAuth();
-  const [annee, setAnnee] = useState(null);
-
-  useEffect(() => {
-    adminApi.getAnnees().then(res => {
-      const current = res.data.data.find(a => a.is_current);
-      setAnnee(current);
-    });
-  }, []);
+  const { currentAnnee } = useAnneeAcademique();
 
   return (
     <div className="navbar">
       <span className="navbar-title">{title}</span>
       <div className="navbar-right">
-        {annee && <span className="navbar-year">{annee.label}</span>}
+        {currentAnnee && <span className="navbar-year">{currentAnnee.label}</span>}
         <span className="navbar-user">{user?.name}</span>
         <span className="navbar-role">{roleLabels[role] ?? role}</span>
       </div>

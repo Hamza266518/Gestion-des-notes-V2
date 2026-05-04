@@ -9,7 +9,7 @@ class SemestrePublication extends Model
     protected $fillable = [
         'groupe_id',
         'annee_academique_id',
-        'semestre',
+        'type',
         'is_published',
         'published_at',
     ];

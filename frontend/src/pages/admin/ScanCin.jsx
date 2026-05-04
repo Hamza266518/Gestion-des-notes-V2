@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '../../api/admin';
 import { scanStudentList } from '../../api/gemini';
 import { useToast } from '../../context/ToastContext';
+import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Spinner from '../../components/common/Spinner';
+import { formatNiveau } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -11,31 +13,32 @@ export default function ScanCin() {
   const [filieres, setFilieres] = useState([]);
   const [niveaux, setNiveaux]   = useState([]);
   const [groupes, setGroupes]   = useState([]);
-  const [annees, setAnnees]     = useState([]);
   const [selFiliere, setSelFiliere] = useState('');
   const [selNiveau, setSelNiveau]   = useState('');
   const [selGroupe, setSelGroupe]   = useState('');
-  const [selAnnee, setSelAnnee]     = useState('');
   const [filiereCode, setFiliereCode] = useState('');
   const [images, setImages]     = useState([]);
   const [results, setResults]   = useState([]);
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving]     = useState(false);
   const toast = useToast();
+  const { currentAnnee } = useAnneeAcademique();
 
   useEffect(() => {
-    Promise.all([adminApi.getFilieres(), adminApi.getAnnees()])
-      .then(([f, a]) => {
-        setFilieres(f.data.data);
-        setAnnees(a.data.data);
-      });
+    adminApi.getFilieres()
+      .then(res => setFilieres(res.data.data))
+      .catch(() => setFilieres([]));
   }, []);
 
   useEffect(() => {
     if (selFiliere) {
       adminApi.getNiveaux(selFiliere)
         .then(res => setNiveaux(res.data.data));
+    } else {
+      setNiveaux([]);
     }
+    setSelNiveau('');
+    setGroupes([]);
   }, [selFiliere]);
 
   useEffect(() => {
@@ -46,11 +49,14 @@ export default function ScanCin() {
   }, [selFiliere, filieres]);
 
   useEffect(() => {
-    if (selNiveau && selAnnee) {
-      adminApi.getGroupes({ niveau_id: selNiveau, annee_academique_id: selAnnee })
-        .then(res => setGroupes(res.data.data));
+    if (selNiveau && currentAnnee?.id) {
+      adminApi.getGroupes({ niveau_id: selNiveau, annee_academique_id: currentAnnee.id })
+        .then(res => setGroupes(res.data.data))
+        .catch(() => setGroupes([]));
+    } else {
+      setGroupes([]);
     }
-  }, [selNiveau, selAnnee]);
+  }, [selNiveau, currentAnnee]);
 
   const handleImages = (e) => {
     const files = Array.from(e.target.files);
@@ -58,7 +64,7 @@ export default function ScanCin() {
   };
 
   const handleScan = async () => {
-    if (images.length === 0) return;
+    if (images.length === 0 || !currentAnnee?.id) return;
     setScanning(true);
     const scanned = [];
     try {
@@ -72,7 +78,7 @@ export default function ScanCin() {
                 cin: student.cin ?? '',
                 numero_inscription: '',
                 groupe_id: selGroupe,
-                annee_academique_id: selAnnee,
+                annee_academique_id: currentAnnee.id,
               });
             }
           }
@@ -80,15 +86,16 @@ export default function ScanCin() {
       }
       if (scanned.length === 0) {
         toast.error('Aucun CIN trouvé. Vérifiez que les images sont lisibles.');
+      } else {
+        setResults(scanned);
+        setStep(3);
       }
     } catch (error) {
-      console.error('Scan error:', error);
-      toast.error(`Erreur de lecture: ${error.message}`);
-      setResults([]); // Reset to empty array on error
+      toast.error(`Erreur de lecture: ${error.message || 'Erreur inconnue'}`);
+      setResults([]);
+    } finally {
+      setScanning(false);
     }
-    setResults(scanned);
-    setScanning(false);
-    setStep(3);
   };
 
   const handleConfirm = async () => {
@@ -150,7 +157,7 @@ export default function ScanCin() {
         <div className="card card-body" style={{ maxWidth: 500 }}>
           <div className="form-group">
             <label className="form-label">Filière</label>
-            <select className="form-select" value={selFiliere} onChange={e => setSelFiliere(e.target.value)}>
+            <select className="form-select" value={selFiliere} onChange={e => { setSelFiliere(e.target.value); setSelNiveau(''); setSelGroupe(''); }}>
               <option value="">Sélectionner</option>
               {filieres.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
             </select>
@@ -159,19 +166,18 @@ export default function ScanCin() {
             <label className="form-label">Niveau</label>
             <select className="form-select" value={selNiveau} onChange={e => setSelNiveau(e.target.value)} disabled={!selFiliere}>
               <option value="">Sélectionner</option>
-              {niveaux.map(n => <option key={n.id} value={n.id}>{n.numero}ère année</option>)}
+              {niveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Année académique</label>
-            <select className="form-select" value={selAnnee} onChange={e => setSelAnnee(e.target.value)}>
-              <option value="">Sélectionner</option>
-              {annees.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+            <select className="form-select" value={currentAnnee?.id || ''} disabled>
+              <option value="">{currentAnnee?.label || 'Chargement...'}</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Groupe</label>
-            <select className="form-select" value={selGroupe} onChange={e => setSelGroupe(e.target.value)} disabled={!selNiveau || !selAnnee}>
+            <select className="form-select" value={selGroupe} onChange={e => setSelGroupe(e.target.value)} disabled={!selNiveau || !currentAnnee}>
               <option value="">Sélectionner</option>
               {groupes.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
             </select>

@@ -11,45 +11,61 @@ class ControleController extends Controller
 {
     public function index(Request $request)
     {
-        $controles = Controle::with(['sequence', 'formateur'])
-            ->when($request->sequence_id, fn($q) => $q->where('sequence_id', $request->sequence_id))
-            ->get();
-        return response()->json(['success' => true, 'data' => $controles]);
+        try {
+            $controles = Controle::with(['sequence', 'formateur'])
+                ->when($request->sequence_id, fn($q) => $q->where('sequence_id', $request->sequence_id))
+                ->get();
+            return response()->json(['success' => true, 'data' => $controles]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors du chargement des contrôles'], 500);
+        }
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'sequence_id' => 'required|exists:sequences,id',
-            'numero'      => 'required|integer',
-            'note_max'    => 'integer',
-        ]);
-        $controle = Controle::create($request->all());
-        return response()->json(['success' => true, 'data' => $controle, 'message' => 'Contrôle créé']);
+        try {
+            $request->validate([
+                'sequence_id' => 'required|exists:sequences,id',
+                'numero'      => 'required|integer',
+                'note_max'    => 'integer',
+            ]);
+            $controle = Controle::create($request->all());
+            return response()->json(['success' => true, 'data' => $controle, 'message' => 'Contrôle créé']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la création du contrôle'], 500);
+        }
     }
 
     public function destroy($id)
     {
-        Controle::findOrFail($id)->delete();
-        return response()->json(['success' => true, 'message' => 'Contrôle supprimé']);
+        try {
+            Controle::findOrFail($id)->delete();
+            return response()->json(['success' => true, 'message' => 'Contrôle supprimé']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la suppression du contrôle'], 500);
+        }
     }
 
     public function generateForSequence($sequenceId)
     {
-        $sequence = Sequence::findOrFail($sequenceId);
-        $created  = [];
+        try {
+            $sequence = Sequence::findOrFail($sequenceId);
+            $created  = [];
 
-        for ($i = 1; $i <= $sequence->nombre_controles; $i++) {
-            $exists = Controle::where('sequence_id', $sequenceId)->where('numero', $i)->exists();
-            if (!$exists) {
-                $created[] = Controle::create([
-                    'sequence_id' => $sequenceId,
-                    'numero'      => $i,
-                    'note_max'    => 20,
-                ]);
+            for ($i = 1; $i <= $sequence->nombre_controles; $i++) {
+                $exists = Controle::where('sequence_id', $sequenceId)->where('numero', $i)->exists();
+                if (!$exists) {
+                    $created[] = Controle::create([
+                        'sequence_id' => $sequenceId,
+                        'numero'      => $i,
+                        'note_max'    => 20,
+                    ]);
+                }
             }
-        }
 
-        return response()->json(['success' => true, 'data' => $created, 'message' => count($created) . ' contrôles créés']);
+            return response()->json(['success' => true, 'data' => $created, 'message' => count($created) . ' contrôles créés']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la génération des contrôles'], 500);
+        }
     }
 }

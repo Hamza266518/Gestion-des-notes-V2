@@ -25,7 +25,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.clear();
+      const url = error.config?.url || '';
+      const skipEndpoints = ['/auth/login', '/auth/me', '/annee-academique/current'];
+      const shouldSkip = skipEndpoints.some(ep => url.includes(ep));
+      if (shouldSkip) {
+        return Promise.reject(error);
+      }
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
       window.location.href = '/login';
     }
     return Promise.reject(error);

@@ -2,17 +2,11 @@ const GEMINI_URL = (key) =>
   `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${key}`;
 
 const KEYS = {
-  formateur: import.meta.env.VITE_GEMINI_KEY_FORMATEURS,  // Scanner.jsx (formateur notes)
-  students:  import.meta.env.VITE_GEMINI_KEY_STUDENTS,     // ScanCin.jsx (admin CIN)
-  unites:    import.meta.env.VITE_GEMINI_KEY_UNITES,       // Unites.jsx (admin unites)
-  notes:     '',                                         // Notes scan (API to be provided later)
+  formateur: import.meta.env.VITE_GEMINI_KEY_FORMATEURS,
+  students:  import.meta.env.VITE_GEMINI_KEY_STUDENTS,
+  unites:    import.meta.env.VITE_GEMINI_KEY_UNITES,
+  notes:     '',
 };
-
-// Debug: verify keys are loaded
-console.log('KEY_FORMATEUR:', import.meta.env.VITE_GEMINI_KEY_FORMATEURS ? '✓ Loaded' : '✗ Missing');
-console.log('KEY_STUDENTS:', import.meta.env.VITE_GEMINI_KEY_STUDENTS ? '✓ Loaded' : '✗ Missing');
-console.log('KEY_UNITES:', import.meta.env.VITE_GEMINI_KEY_UNITES ? '✓ Loaded' : '✗ Missing');
-console.log('KEY_NOTES_TWO:', import.meta.env.VITE_GEMINI_KEY_NOTES_TWO ? '✓ Loaded' : '✗ Missing (to be provided)');
 
 const toBase64 = (file) =>
   new Promise((resolve, reject) => {
@@ -26,8 +20,6 @@ const callGemini = async (key, base64Image, prompt) => {
   if (!key) {
     throw new Error('Missing Gemini API key');
   }
-
-  console.log('Calling Gemini API...');
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -49,21 +41,19 @@ const callGemini = async (key, base64Image, prompt) => {
 
     clearTimeout(timeoutId);
 
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
     const data = await response.json();
-    console.log('Gemini response:', data);
 
     if (data.error) {
       throw new Error(data.error.message || 'Gemini API error');
     }
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
     return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
   } catch (error) {
     clearTimeout(timeoutId);
-    console.error('Gemini call failed:', error);
     throw error;
   }
 };
@@ -173,4 +163,65 @@ Rules:
   const raw = await callGemini(KEYS.students, base64, prompt);
   const result = parseJson(raw);
   return Array.isArray(result) ? result.filter(r => r.nom) : [];
+};
+
+export const scanFormateurUnitesDocument = async (file) => {
+  const base64 = await toBase64(file);
+  const prompt = `This is a curriculum document from a Moroccan nursing school listing teaching units (unités) and sequences with coefficients.
+Extract all units with their details.
+Return ONLY a valid JSON array:
+[
+  {
+    "nom": "Hygiène et confort",
+    "numero_annee": 1,
+    "semestre": 1,
+    "coefficient": 4,
+    "sequences": [
+      {"nom": "Hygiène individuelle", "coefficient": 2, "nombre_controles": 2}
+    ]
+  }
+]
+Rules:
+- nom: exact unit name as written
+- numero_annee: year 1 2 or 3
+- semestre: 1 or 2
+- coefficient: number for the unit
+- sequences: list of sequences within the unit
+- If a field is unclear use reasonable defaults
+- Return ONLY the JSON array, nothing else`;
+
+  const raw = await callGemini(KEYS.formateur, base64, prompt);
+  const result = parseJson(raw);
+  return Array.isArray(result) ? result.filter(r => r.nom) : [];
+};
+
+export const scanFormateursList = async (file) => {
+  const base64 = await toBase64(file);
+  const prompt = `This is a document or screenshot listing teachers/formateurs from a Moroccan nursing school.
+Extract every formateur name and email if available.
+Return ONLY a valid JSON array: [{"name":"Mohammed Alami","email":"m.alami@example.com"}]
+Rules:
+- name: full name exactly as written
+- email: email if visible, otherwise use empty string ""
+- Skip rows with no readable name
+- Return ONLY the JSON array, nothing else`;
+
+  const raw = await callGemini(KEYS.formateur, base64, prompt);
+  const result = parseJson(raw);
+  return Array.isArray(result) ? result.filter(r => r.name) : [];
+};
+
+export const scanFormateurSequencesDocument = async (file) => {
+  const base64 = await toBase64(file);
+  // The prompt will be passed dynamically from the backend
+  const prompt = `This is the official pedagogical tracking document (Cahier de Suivi Pedagogique) from a Moroccan nursing school. It shows a table with formateur names and the sequences or modules they teach.
+Extract ALL sequence names exactly as written in the document.
+Return ONLY a JSON array: ["Sequence 1", "Sequence 2"]
+Rules:
+- Extract sequence/module names exactly as written
+- Return ONLY the JSON array, nothing else, no markdown, no explanation`;
+
+  const raw = await callGemini(KEYS.unites, base64, prompt);
+  const result = parseJson(raw);
+  return Array.isArray(result) ? result : [];
 };

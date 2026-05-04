@@ -4,45 +4,110 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\SemestrePublication;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 
 class PublicationController extends Controller
 {
     public function index(Request $request)
     {
-        $publications = SemestrePublication::with(['groupe.niveau.filiere', 'anneeAcademique'])
-            ->when($request->groupe_id, fn($q) => $q->where('groupe_id', $request->groupe_id))
-            ->get();
-        return response()->json(['success' => true, 'data' => $publications]);
+        try {
+            $publications = SemestrePublication::with(['groupe.niveau.filiere', 'anneeAcademique'])
+                ->when($request->annee_academique_id, fn($q) => $q->where('annee_academique_id', $request->annee_academique_id))
+                ->when($request->groupe_id, fn($q) => $q->where('groupe_id', $request->groupe_id))
+                ->get();
+            return response()->json(['success' => true, 'data' => $publications]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors du chargement des publications'], 500);
+        }
     }
 
     public function publish(Request $request)
     {
-        $request->validate([
-            'groupe_id'           => 'required|exists:groupes,id',
-            'annee_academique_id' => 'required|exists:annees_academiques,id',
-            'semestre'            => 'required|integer|in:1,2',
-        ]);
+        try {
+            $request->validate([
+                'groupe_id'           => 'required|exists:groupes,id',
+                'annee_academique_id' => 'required|exists:annees_academiques,id',
+                'type'                => 'required|in:notes_s1,notes_s2,bulletin',
+            ]);
 
-        $publication = SemestrePublication::updateOrCreate(
-            [
-                'groupe_id'           => $request->groupe_id,
-                'annee_academique_id' => $request->annee_academique_id,
-                'semestre'            => $request->semestre,
-            ],
-            [
-                'is_published' => true,
-                'published_at' => now(),
-            ]
-        );
+            $publication = SemestrePublication::updateOrCreate(
+                [
+                    'groupe_id'           => $request->groupe_id,
+                    'annee_academique_id' => $request->annee_academique_id,
+                    'type'                => $request->type,
+                ],
+                [
+                    'is_published' => true,
+                    'published_at' => now(),
+                ]
+            );
 
-        return response()->json(['success' => true, 'data' => $publication, 'message' => 'Semestre publié']);
+            // Log activity
+            $typeLabels = [
+                'notes_s1' => 'Notes S1',
+                'notes_s2' => 'Notes S2',
+                'bulletin' => 'Bulletin',
+            ];
+            $groupe = \App\Models\Groupe::find($request->groupe_id);
+            $user = auth()->user();
+            ActivityLog::create([
+                'admin_id' => $user->id,
+                'admin_name' => $user->name,
+                'action_type' => 'publish',
+                'description' => 'Admin IFP a publié ' . ($typeLabels[$request->type] ?? $request->type) . ' pour ' . ($groupe->nom ?? 'Groupe'),
+                'model_type' => 'publication',
+                'model_id' => $publication->id,
+            ]);
+
+            $typeMessages = [
+                'notes_s1' => 'Notes S1 publiées',
+                'notes_s2' => 'Notes S2 publiées',
+                'bulletin' => 'Bulletin publié',
+            ];
+
+            return response()->json(['success' => true, 'data' => $publication, 'message' => $typeMessages[$request->type] ?? 'Publication mise à jour']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la publication'], 500);
+        }
     }
 
-    public function unpublish($id)
+    public function unpublish(Request $request)
     {
-        $publication = SemestrePublication::findOrFail($id);
-        $publication->update(['is_published' => false, 'published_at' => null]);
-        return response()->json(['success' => true, 'message' => 'Publication annulée']);
+        try {
+            $request->validate([
+                'groupe_id'           => 'required|exists:groupes,id',
+                'annee_academique_id' => 'required|exists:annees_academiques,id',
+                'type'                => 'required|in:notes_s1,notes_s2,bulletin',
+            ]);
+
+            $publication = SemestrePublication::where([
+                'groupe_id'           => $request->groupe_id,
+                'annee_academique_id' => $request->annee_academique_id,
+                'type'                => $request->type,
+            ])->firstOrFail();
+
+            $publication->update(['is_published' => false, 'published_at' => null]);
+
+            // Log activity
+            $typeLabels = [
+                'notes_s1' => 'Notes S1',
+                'notes_s2' => 'Notes S2',
+                'bulletin' => 'Bulletin',
+            ];
+            $user = auth()->user();
+            ActivityLog::create([
+                'admin_id' => $user->id,
+                'admin_name' => $user->name,
+                'action_type' => 'unpublish',
+                'description' => 'Admin IFP a dépublié ' . ($typeLabels[$request->type] ?? $request->type),
+                'model_type' => 'publication',
+                'model_id' => $publication->id,
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Publication annulée']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la dépublication'], 500);
+        }
     }
 }

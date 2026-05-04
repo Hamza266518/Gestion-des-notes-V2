@@ -30,12 +30,14 @@ const adminLinks = [
 ];
 
 const formateurLinks = [
-  { to: '/formateur/scanner', label: 'Scanner Notes',   icon: FiCamera },
-  { to: '/formateur/notes',   label: 'Liste des Notes', icon: FiEdit },
+  { to: '/formateur/scanner', label: 'Scanner Notes',         icon: FiCamera },
+  { to: '/formateur/notes',   label: 'Mes Unites et Sequences', icon: FiBookOpen },
+  { to: '/formateur/liste-notes', label: 'Liste des Notes',   icon: FiEdit },
 ];
 
 const etudiantLinks = [
-  { to: '/etudiant/bulletin', label: 'Mon Bulletin', icon: FiFileText },
+  { to: '/etudiant/bulletin', label: 'Mes Notes', icon: FiFileText },
+  { to: '/etudiant/mon-bulletin', label: 'Mon Bulletin', icon: FiAward },
 ];
 
 export default function Sidebar() {

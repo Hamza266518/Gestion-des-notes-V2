@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { adminApi } from '../../api/admin';
 import { useToast } from '../../context/ToastContext';
+import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Modal from '../../components/common/Modal';
 import Badge from '../../components/common/Badge';
 import Spinner from '../../components/common/Spinner';
@@ -8,25 +9,13 @@ import '../../css/components.css';
 import '../../css/layout.css';
 
 export default function AnneesAcademiques() {
-  const [annees, setAnnees]   = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { annees, loading, refreshAnnees } = useAnneeAcademique();
   const [open, setOpen]       = useState(false);
   const [label, setLabel]     = useState('');
   const [saving, setSaving]   = useState(false);
   const [archiveId, setArchiveId] = useState(null);
+  const [deleteId, setDeleteId] = useState(null);
   const toast                 = useToast();
-
-  const load = useCallback(() => {
-    setLoading(true);
-    adminApi.getAnnees()
-      .then(res => setAnnees(res.data.data))
-      .catch(() => toast.error('Erreur de chargement'))
-      .finally(() => setLoading(false));
-  }, [toast]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const handleCreate = async () => {
     if (!label.trim()) return;
@@ -36,8 +25,9 @@ export default function AnneesAcademiques() {
       toast.success('Année créée avec succès');
       setOpen(false);
       setLabel('');
-      load();
+      refreshAnnees();
     } catch (e) {
+      console.error('Failed to create academic year:', e);
       toast.error(e.response?.data?.message ?? 'Erreur');
     } finally {
       setSaving(false);
@@ -48,19 +38,25 @@ export default function AnneesAcademiques() {
     try {
       await adminApi.setCurrentAnnee(id);
       toast.success('Année courante mise à jour');
-      load();
-    } catch {
+      refreshAnnees();
+    } catch (e) {
+      console.error('Failed to set current year:', e);
       toast.error('Erreur');
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Supprimer cette année académique ?')) return;
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
     try {
-      await adminApi.deleteAnnee(id);
+      await adminApi.deleteAnnee(deleteId);
       toast.success('Année supprimée');
-      load();
+      setDeleteId(null);
+      refreshAnnees();
     } catch (e) {
+      console.error('Failed to delete academic year:', e);
       toast.error(e.response?.data?.message ?? 'Erreur');
     }
   };
@@ -75,8 +71,9 @@ export default function AnneesAcademiques() {
       await adminApi.archiveAnnee(archiveId);
       toast.success('Année archivée');
       setArchiveId(null);
-      load();
+      refreshAnnees();
     } catch (e) {
+      console.error('Failed to archive year:', e);
       toast.error(e.response?.data?.message ?? 'Erreur');
     } finally {
       setSaving(false);
@@ -115,7 +112,7 @@ export default function AnneesAcademiques() {
                   <td><strong>{a.label}</strong></td>
                   <td>
                     <Badge
-                      label={a.is_current ? 'En cours' : 'Archivée'}
+                      label={a.is_current ? 'En cours' : 'Inactive'}
                       color={a.is_current ? 'green' : 'gray'}
                     />
                   </td>
@@ -183,6 +180,14 @@ export default function AnneesAcademiques() {
           <button className="btn btn-primary" onClick={confirmArchive} disabled={saving}>
             {saving ? 'Archivage...' : 'Archiver'}
           </button>
+        </div>
+      </Modal>
+
+      <Modal open={deleteId !== null} onClose={() => setDeleteId(null)} title="Supprimer l'année">
+        <p>Supprimer cette année académique ? Cette action est irréversible.</p>
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={() => setDeleteId(null)}>Annuler</button>
+          <button className="btn btn-danger" onClick={confirmDelete}>Supprimer</button>
         </div>
       </Modal>
     </div>

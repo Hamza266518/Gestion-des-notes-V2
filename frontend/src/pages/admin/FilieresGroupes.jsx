@@ -1,9 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { adminApi } from '../../api/admin';
 import { useToast } from '../../context/ToastContext';
+import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Modal from '../../components/common/Modal';
 import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
+import { formatNiveau } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -13,45 +15,43 @@ export default function FilieresGroupes() {
   const [filieres, setFilieres]   = useState([]);
   const [groupes, setGroupes]     = useState([]);
   const [niveaux, setNiveaux]     = useState([]);
-  const [annees, setAnnees]       = useState([]);
   const [loading, setLoading]     = useState(true);
   const [selFiliere, setSelFiliere] = useState('');
+  const { annees } = useAnneeAcademique();
 
-  // Filiere modals
   const [openF, setOpenF]         = useState(false);
   const [openN, setOpenN]         = useState(false);
   const [selectedFiliere, setSelectedFiliere] = useState(null);
   const [expanded, setExpanded]   = useState({});
 
-  // Groupe modals
   const [openG, setOpenG]         = useState(false);
 
-  // Shared
   const [saving, setSaving]       = useState(false);
   const [errors, setErrors]       = useState({});
 
-  // Forms
-  const [formF, setFormF] = useState({ nom: '', code: '', section: '', nombre_annees: 1 });
+  const [formF, setFormF] = useState({ nom: '', nom_ar: '', code: '', section: '', type_formation: '', nombre_annees: 1 });
   const [formN, setFormN] = useState({ numero: 1 });
   const [formG, setFormG] = useState({ niveau_id: '', annee_academique_id: '', nom: '', promotion: '' });
 
+  const [deleteConfirm, setDeleteConfirm] = useState({ type: null, id: null });
   const toast = useToast();
 
   const load = useCallback(() => {
     setLoading(true);
     Promise.all([
       adminApi.getFilieres(),
-      adminApi.getGroupes({}),
-      adminApi.getAnnees()
+      adminApi.getGroupes({})
     ])
-      .then(([fRes, gRes, aRes]) => {
+      .then(([fRes, gRes]) => {
         setFilieres(fRes.data.data);
         setGroupes(gRes.data.data);
-        setAnnees(aRes.data.data);
       })
-      .catch(() => toast.error('Erreur de chargement'))
+      .catch((err) => {
+        console.error('Failed to load filieres/groupes:', err);
+        toast.error('Erreur de chargement');
+      })
       .finally(() => setLoading(false));
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     load();
@@ -60,7 +60,8 @@ export default function FilieresGroupes() {
   useEffect(() => {
     if (selFiliere) {
       adminApi.getNiveaux(selFiliere)
-        .then(res => setNiveaux(res.data.data || []));
+        .then(res => setNiveaux(res.data.data || []))
+        .catch((err) => console.error('Failed to load niveaux:', err));
     }
   }, [selFiliere]);
 
@@ -68,17 +69,26 @@ export default function FilieresGroupes() {
     setExpanded(p => ({ ...p, [id]: !p[id] }));
 
   // Auto-generate group name
-  const generateGroupName = () => {
-    const existingNames = groupes
-      .filter(g => g.niveau_id == formG.niveau_id && g.annee_academique_id == formG.annee_academique_id)
-      .map(g => g.nom);
-    
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    for (let i = 0; i < letters.length; i++) {
-      const name = `Groupe ${letters[i]}`;
-      if (!existingNames.includes(name)) {
-        return name;
+  const generateGroupName = async () => {
+    if (!formG.niveau_id || !formG.annee_academique_id) return '';
+
+    try {
+      const res = await adminApi.getGroupes({
+        niveau_id: formG.niveau_id,
+        annee_academique_id: formG.annee_academique_id
+      });
+      const existingNames = (res.data.data || [])
+        .map(g => g.nom);
+      
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      for (let i = 0; i < letters.length; i++) {
+        const name = `Groupe ${letters[i]}`;
+        if (!existingNames.includes(name)) {
+          return name;
+        }
       }
+    } catch (error) {
+      console.error('Failed to load groups for name generation:', error);
     }
     return '';
   };
@@ -88,6 +98,7 @@ export default function FilieresGroupes() {
     if (!formF.nom.trim()) newErrors.nom = 'Le nom est requis';
     if (!formF.code.trim()) newErrors.code = 'Le code est requis';
     if (!formF.section) newErrors.section = 'La section est requise';
+    if (!formF.type_formation) newErrors.type_formation = 'Le type est requis';
     if (!formF.nombre_annees || formF.nombre_annees < 1) newErrors.nombre_annees = 'Nombre d\'années invalide';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -98,14 +109,14 @@ export default function FilieresGroupes() {
     if (!formG.niveau_id) newErrors.niveau_id = 'Le niveau est requis';
     if (!formG.annee_academique_id) newErrors.annee_academique_id = 'L\'année académique est requise';
     if (!formG.nom.trim()) newErrors.nom = 'Le nom du groupe est requis';
-    
-    const exists = groupes.some(g => 
-      g.niveau_id == formG.niveau_id && 
-      g.annee_academique_id == formG.annee_academique_id && 
+
+    const exists = groupes.some(g =>
+      g.niveau_id == formG.niveau_id &&
+      g.annee_academique_id == formG.annee_academique_id &&
       g.nom.toLowerCase() === formG.nom.trim().toLowerCase()
     );
     if (exists) newErrors.nom = 'Ce groupe existe déjà pour ce niveau et cette année';
-    
+
     if (!formG.promotion.trim()) newErrors.promotion = 'La promotion est requise';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -119,10 +130,11 @@ export default function FilieresGroupes() {
       await adminApi.createFiliere(formF);
       toast.success('Filière créée');
       setOpenF(false);
-      setFormF({ nom: '', code: '', section: '', nombre_annees: 1 });
+      setFormF({ nom: '', nom_ar: '', code: '', section: '', type_formation: '', nombre_annees: 1 });
       setErrors({});
       load();
     } catch (e) {
+      console.error('Failed to create filiere:', e);
       toast.error(e.response?.data?.message ?? 'Erreur');
     } finally {
       setSaving(false);
@@ -140,37 +152,45 @@ export default function FilieresGroupes() {
       setOpenN(false);
       load();
     } catch (e) {
+      console.error('Failed to create niveau:', e);
       toast.error(e.response?.data?.message ?? 'Erreur');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeleteNiveau = async (id) => {
-    if (!confirm('Supprimer ce niveau ?')) return;
-    try {
-      await adminApi.deleteNiveau(id);
-      toast.success('Niveau supprimé');
-      load();
-    } catch {
-      toast.error('Erreur');
-    }
+  const handleDeleteNiveau = (id) => {
+    setDeleteConfirm({ type: 'niveau', id });
   };
 
-  const handleDeleteFiliere = async (id) => {
-    if (!confirm('Supprimer cette filière et toutes ses données ?')) return;
+  const handleDeleteFiliere = (id) => {
+    setDeleteConfirm({ type: 'filiere', id });
+  };
+
+  const confirmDelete = async () => {
+    const { type, id } = deleteConfirm;
     try {
-      await adminApi.deleteFiliere(id);
-      toast.success('Filière supprimée');
+      if (type === 'niveau') {
+        await adminApi.deleteNiveau(id);
+        toast.success('Niveau supprimé');
+      } else if (type === 'filiere') {
+        await adminApi.deleteFiliere(id);
+        toast.success('Filière supprimée');
+      } else if (type === 'groupe') {
+        await adminApi.deleteGroupe(id);
+        toast.success('Groupe supprimé');
+      }
+      setDeleteConfirm({ type: null, id: null });
       load();
-    } catch {
-      toast.error('Erreur');
+    } catch (e) {
+      console.error('Failed to delete:', e);
+      toast.error(e.response?.data?.message ?? 'Erreur');
     }
   };
 
   // Groupe handlers
-  const handleOpenGroupeModal = () => {
-    const autoName = generateGroupName();
+  const handleOpenGroupeModal = async () => {
+    const autoName = await generateGroupName();
     setFormG({ ...formG, nom: autoName });
     setErrors({});
     setOpenG(true);
@@ -188,21 +208,15 @@ export default function FilieresGroupes() {
       setErrors({});
       load();
     } catch (e) {
+      console.error('Failed to create groupe:', e);
       toast.error(e.response?.data?.message ?? 'Erreur');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeleteGroupe = async (id) => {
-    if (!confirm('Supprimer ce groupe ?')) return;
-    try {
-      await adminApi.deleteGroupe(id);
-      toast.success('Groupe supprimé');
-      load();
-    } catch {
-      toast.error('Erreur');
-    }
+  const handleDeleteGroupe = (id) => {
+    setDeleteConfirm({ type: 'groupe', id });
   };
 
   if (loading) return <Spinner />;
@@ -232,7 +246,8 @@ export default function FilieresGroupes() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{f.nom}</div>
-                    <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>{f.section}</div>
+                    {f.nom_ar && <div style={{ fontSize: 13, color: 'var(--gray-500)', direction: 'rtl', marginBottom: 2 }}>{f.nom_ar}</div>}
+                    <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>{f.section} — {f.type_formation}</div>
                   </div>
                   <Badge label={f.code} color="blue" />
                 </div>
@@ -252,7 +267,7 @@ export default function FilieresGroupes() {
                         <div style={{ fontSize: 12, color: 'var(--gray-400)', marginBottom: 8 }}>Aucun niveau</div>
                       ) : f.niveaux?.map(n => (
                         <div key={n.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', fontSize: 13 }}>
-                          <span>{n.numero}ère année</span>
+                          <span>{formatNiveau(n.numero)}</span>
                           <button className="btn btn-sm btn-danger" onClick={() => handleDeleteNiveau(n.id)}>Supprimer</button>
                         </div>
                       ))}
@@ -297,7 +312,7 @@ export default function FilieresGroupes() {
               <tr key={g.id}>
                 <td><strong>{g.nom}</strong></td>
                 <td>{g.niveau?.filiere?.nom ?? '—'}</td>
-                <td>{g.niveau?.numero}ère année</td>
+                <td>{formatNiveau(g.niveau?.numero)}</td>
                 <td>{g.promotion}</td>
                 <td>{g.annee_academique?.label ?? '—'}</td>
                 <td>
@@ -317,6 +332,10 @@ export default function FilieresGroupes() {
           {errors.nom && <div className="form-error">{errors.nom}</div>}
         </div>
         <div className="form-group">
+          <label className="form-label">Nom (عربي)</label>
+          <input className="form-input" placeholder="مساعد معالج" value={formF.nom_ar} onChange={e => setFormF(p => ({ ...p, nom_ar: e.target.value }))} style={{ direction: 'rtl' }} />
+        </div>
+        <div className="form-group">
           <label className="form-label">Code</label>
           <input className="form-input" placeholder="AS" value={formF.code} onChange={e => { setFormF(p => ({ ...p, code: e.target.value })); setErrors(p => ({ ...p, code: undefined })); }} />
           {errors.code && <div className="form-error">{errors.code}</div>}
@@ -328,6 +347,16 @@ export default function FilieresGroupes() {
             {SECTIONS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           {errors.section && <div className="form-error">{errors.section}</div>}
+        </div>
+        <div className="form-group">
+          <label className="form-label">Type de formation</label>
+          <select className="form-select" value={formF.type_formation} onChange={e => { setFormF(p => ({ ...p, type_formation: e.target.value })); setErrors(p => ({ ...p, type_formation: undefined })); }}>
+            <option value="">Sélectionner</option>
+            <option value="Qualification">Qualification</option>
+            <option value="Technicien">Technicien</option>
+            <option value="Specialisation">Spécialisation</option>
+          </select>
+          {errors.type_formation && <div className="form-error">{errors.type_formation}</div>}
         </div>
         <div className="form-group">
           <label className="form-label">Nombre d'années</label>
@@ -366,7 +395,7 @@ export default function FilieresGroupes() {
           <label className="form-label">Niveau</label>
           <select className="form-select" value={formG.niveau_id} onChange={e => { setFormG(p => ({ ...p, niveau_id: e.target.value })); setErrors(p => ({ ...p, niveau_id: undefined })); }} disabled={!selFiliere}>
             <option value="">Sélectionner</option>
-            {niveaux.map(n => <option key={n.id} value={n.id}>{n.numero}ère année</option>)}
+            {niveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
           </select>
         </div>
         <div className="form-group">
@@ -390,6 +419,18 @@ export default function FilieresGroupes() {
         <div className="modal-footer">
           <button className="btn btn-outline" onClick={() => { setOpenG(false); setErrors({}); }}>Annuler</button>
           <button className="btn btn-primary" onClick={handleCreateGroupe} disabled={saving}>{saving ? 'Création...' : 'Créer'}</button>
+        </div>
+      </Modal>
+
+      <Modal open={deleteConfirm.type !== null} onClose={() => setDeleteConfirm({ type: null, id: null })} title="Confirmer la suppression">
+        <p>
+          {deleteConfirm.type === 'niveau' && 'Supprimer ce niveau ?'}
+          {deleteConfirm.type === 'filiere' && 'Supprimer cette filière et toutes ses données ? Cette action est irréversible.'}
+          {deleteConfirm.type === 'groupe' && 'Supprimer ce groupe ?'}
+        </p>
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={() => setDeleteConfirm({ type: null, id: null })}>Annuler</button>
+          <button className="btn btn-danger" onClick={confirmDelete}>Supprimer</button>
         </div>
       </Modal>
     </div>

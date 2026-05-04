@@ -480,3 +480,400 @@
     color: #1d4ed8;
     border: 1px solid #bfdbfe;
   }
+
+  /* TAB BAR */
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+  }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: flex;
+    gap: 16px;
+    margin: 16px 0;
+    padding: 12px;
+    background-color: #f9fafb;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  /* NOTE INPUT */
+  .note-input {
+    width: 80px;
+    padding: 4px 8px;
+    font-size: 14px;
+  }
+
+  /* BULK SAVE BAR */
+  .bulk-save-bar {
+    margin-top: 16px;
+  }
+
+  /* ACTIVITY LOG */
+  .activity-log {
+    margin-top: 16px;
+  }
+
+  .activity-log-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  .activity-log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .activity-log-entry {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .activity-log-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+  }
+
+  .activity-log-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .activity-log-desc {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .activity-log-desc-text {
+    color: #374151;
+  }
+
+  .activity-log-time {
+    font-size: 12px;
+    color: #999;
+    margin-top: 2px;
+  }
+
+  .activity-log-empty {
+    text-align: center;
+    padding: 24px;
+    color: #999;
+    font-size: 14px;
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+  }
+
+  .empty-state-message {
+    color: #999;
+    font-size: 16px;
+    margin-bottom: 24px;
+  }
+
+  .empty-state-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  /* DASHBOARD */
+  .dashboard-title {
+    margin-bottom: 24px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .stat-card-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .stat-card-label {
+    margin: 0;
+    font-size: 13px;
+    color: #666;
+    font-weight: 500;
+  }
+
+  .stat-card-value {
+    margin: 8px 0 0;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .dashboard-error {
+    text-align: center;
+    max-width: 500px;
+    margin: 100px auto;
+  }
+
+  .dashboard-error-icon {
+    font-size: 48px;
+    color: #dc2626;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .dashboard-error-title {
+    color: #dc2626;
+    margin-bottom: 12px;
+  }
+
+  .dashboard-error-msg {
+    color: #666;
+    margin-bottom: 24px;
+  }
+
+  .dashboard-quick-actions {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    padding: 20px;
+  }
+
+  .dashboard-quick-title {
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .dashboard-quick-btns {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .dashboard-activity {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    padding: 20px;
+    margin-top: 24px;
+  }
+
+  /* BULLETIN */
+  .bulletin-card {
+    margin-top: 24px;
+    margin-bottom: 16px;
+  }
+
+  .bulletin-header {
+    text-align: center;
+    margin-bottom: 24px;
+    border-bottom: 2px solid #1e40af;
+    padding-bottom: 16px;
+  }
+
+  .bulletin-header h2 {
+    color: #1e40af;
+    margin: 0;
+    font-size: 22px;
+  }
+
+  .bulletin-header p {
+    color: #666;
+    margin: 4px 0;
+    font-size: 14px;
+  }
+
+  .bulletin-header h3 {
+    margin: 16px 0 8px;
+    font-size: 18px;
+  }
+
+  .bulletin-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  .bulletin-table-wrap {
+    overflow-x: auto;
+  }
+
+  .bulletin-table {
+    width: 100%;
+    font-size: 13px;
+    border-collapse: collapse;
+  }
+
+  .bulletin-table th {
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #e5e7eb;
+    font-size: 12px;
+    background-color: #f0f9ff;
+  }
+
+  .bulletin-table td {
+    padding: 6px 12px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .bulletin-unite-row {
+    background-color: #f0f9ff;
+  }
+
+  .bulletin-unite-row td {
+    font-weight: 700;
+  }
+
+  .bulletin-seq-name {
+    padding-left: 28px;
+  }
+
+  .bulletin-seq-arrow {
+    color: #999;
+    margin-right: 4px;
+  }
+
+  .bulletin-summary {
+    margin-top: 24px;
+    padding: 16px;
+    background-color: #f9fafb;
+    border-radius: 8px;
+  }
+
+  .bulletin-summary-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  .bulletin-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    font-size: 14px;
+  }
+
+  .bulletin-summary-label {
+    color: #666;
+  }
+
+  .bulletin-footer {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .bulletin-footer-label {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .bulletin-footer-score {
+    font-size: 24px;
+    font-weight: 800;
+  }
+
+  .bulletin-print-bar {
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  /* PUBLICATIONS */
+  .pub-select {
+    margin-bottom: 20px;
+    width: 250px;
+  }
+
+  .pub-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pub-date {
+    font-size: 12px;
+    color: #999;
+  }
+
+  .pub-unpublish-btn {
+    border-color: #ef4444;
+    color: #ef4444;
+  }
+
+  /* FORM ERROR */
+  .form-input-error {
+    border-color: #ef4444;
+  }
+
+  .form-error-msg {
+    color: #ef4444;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  /* TOAST POSITIONING */
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .toast-item {
+    background-color: #10b981;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 300px;
+    max-width: 450px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .toast-close {
+    margin-left: 12px;
+    font-size: 18px;
+  }
+
+  /* FILTER BAR INPUTS */
+  .filter-bar .form-select:disabled {
+    opacity: 0.5;
+  }

@@ -1,8 +1,6 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
-import Toast from './Toast';
-import { useLocation } from 'react-router-dom';
 import '../../css/layout.css';
 import '../../css/variables.css';
 
@@ -33,7 +31,6 @@ export default function AdminLayout() {
           <Outlet />
         </div>
       </div>
-      <Toast />
     </div>
   );
 }

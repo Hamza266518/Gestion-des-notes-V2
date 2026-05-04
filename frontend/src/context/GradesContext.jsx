@@ -57,4 +57,10 @@ export const GradesProvider = ({ children }) => {
   );
 };
 
-export const useGrades = () => useContext(GradesContext);
+export const useGrades = () => {
+  const context = useContext(GradesContext);
+  if (!context) {
+    throw new Error('useGrades must be used inside a GradesProvider');
+  }
+  return context;
+};

@@ -1,13 +1,13 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
-import Toast from './Toast';
 import { useLocation } from 'react-router-dom';
 import '../../css/layout.css';
 
 const pageTitles = {
   '/formateur/scanner': 'Scanner de Notes',
-  '/formateur/notes': 'Liste des Notes',
+  '/formateur/notes': 'Mes Unites et Sequences',
+  '/formateur/liste-notes': 'Liste des Notes',
 };
 
 export default function FormateurLayout() {
@@ -23,7 +23,6 @@ export default function FormateurLayout() {
           <Outlet />
         </div>
       </div>
-      <Toast />
     </div>
   );
 }

@@ -1,168 +1,216 @@
 import { useEffect, useState, useCallback } from 'react';
-import { adminApi } from '../../api/admin';
 import { publicationsApi } from '../../api/publications';
+import { adminApi } from '../../api/admin';
 import { useToast } from '../../context/ToastContext';
-import Spinner from '../../components/common/Spinner';
+import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
+import { handleApiError, showSuccess } from '../../utils/errorHandler';
+import { formatNiveau } from '../../utils/helpers';
 import Badge from '../../components/common/Badge';
+import Spinner from '../../components/common/Spinner';
+import Modal from '../../components/common/Modal';
 import '../../css/components.css';
 import '../../css/layout.css';
+import '../../css/pages.css';
+
+const TYPE_LABELS = {
+  notes_s1: 'Notes S1',
+  notes_s2: 'Notes S2',
+  bulletin: 'Bulletin',
+};
+
+const TYPE_COLORS = {
+  notes_s1: 'blue',
+  notes_s2: 'purple',
+  bulletin: 'green',
+};
 
 export default function Publications() {
-  const [groupes, setGroupes]       = useState([]);
-  const [annees, setAnnees]         = useState([]);
+  const [groupes, setGroupes] = useState([]);
   const [publications, setPublications] = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [selAnnee, setSelAnnee]     = useState('');
-  const [saving, setSaving]         = useState('');
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null);
+  const { currentAnnee } = useAnneeAcademique();
+
   const toast = useToast();
 
-  const load = useCallback(() => {
-    adminApi.getGroupes({})
-      .then(res => setGroupes(res.data.data));
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    load()
-      .finally(() => setLoading(false));
-  }, [load]);
-
-  useEffect(() => {
-    adminApi.getAnnees().then(r => {
-      setAnnees(r.data.data);
-      const current = r.data.data.find(a => a.is_current);
-      if (current) setSelAnnee(current.id);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (selAnnee) {
-      publicationsApi.getPublications({ annee_academique_id: selAnnee })
-        .then(r => setPublications(r.data.data));
+  const loadData = useCallback(() => {
+    if (!currentAnnee) {
+      setGroupes([]);
+      setPublications([]);
+      setLoading(false);
+      return;
     }
-  }, [selAnnee]);
+    setLoading(true);
+    Promise.all([
+      adminApi.getGroupes({ annee_academique_id: currentAnnee.id }),
+      publicationsApi.getPublications({ annee_academique_id: currentAnnee.id }),
+    ])
+      .then(([groupesRes, pubsRes]) => {
+        setGroupes(groupesRes.data.data || []);
+        setPublications(pubsRes.data.data || []);
+      })
+      .catch(() => { setGroupes([]); setPublications([]); })
+      .finally(() => setLoading(false));
+  }, [currentAnnee]);
 
-  const isPublished = (groupeId, semestre) => {
-    return publications.find(p =>
-      p.groupe_id === groupeId &&
-      p.semestre === semestre &&
-      p.is_published
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const getPublication = (groupeId, type) => {
+    return publications.find(p => p.groupe_id == groupeId && p.type === type);
+  };
+
+  const handlePublish = async (groupe, type) => {
+    setProcessing(`${groupe.id}-${type}`);
+    try {
+      await publicationsApi.publish({ groupe_id: groupe.id, annee_academique_id: currentAnnee.id, type });
+      showSuccess(toast, `${TYPE_LABELS[type]} publié pour ${groupe.nom}`);
+      loadData();
+    } catch (error) {
+      handleApiError(error, toast);
+    } finally {
+      setProcessing(null);
+      setConfirmModal(null);
+    }
+  };
+
+  const handleUnpublish = async (pub) => {
+    setProcessing(pub.id);
+    try {
+      await publicationsApi.unpublish({ groupe_id: pub.groupe_id, annee_academique_id: currentAnnee.id, type: pub.type });
+      showSuccess(toast, `${TYPE_LABELS[pub.type]} dépublié`);
+      loadData();
+    } catch (error) {
+      handleApiError(error, toast);
+    } finally {
+      setProcessing(null);
+      setConfirmModal(null);
+    }
+  };
+
+  const PublicationCell = ({ pub, type, groupe }) => {
+    const isProcessing = processing === `${groupe.id}-${type}` || processing === pub?.id;
+
+    if (pub?.is_published) {
+      const date = pub.published_at
+        ? new Date(pub.published_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+        : '';
+      return (
+        <div className="pub-cell">
+          <Badge label="Publié" color={TYPE_COLORS[type] || 'green'} />
+          <span className="pub-date">{date}</span>
+          <button
+            className="btn btn-sm btn-outline pub-unpublish-btn"
+            onClick={() => setConfirmModal({ type: 'unpublish', pub, groupe })}
+            disabled={isProcessing}
+          >
+            {isProcessing ? '...' : 'Dépublier'}
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <button
+        className="btn btn-sm btn-accent"
+        onClick={() => setConfirmModal({ type: 'publish', groupe, publicationType: type })}
+        disabled={isProcessing}
+      >
+        {isProcessing ? '...' : `Publier ${TYPE_LABELS[type]}`}
+      </button>
     );
   };
 
-  const getPublicationId = (groupeId, semestre) => {
-    return publications.find(p =>
-      p.groupe_id === groupeId &&
-      p.semestre === semestre
-    )?.id;
-  };
-
-  const handlePublish = async (groupeId, semestre) => {
-    const key = `${groupeId}_${semestre}`;
-    setSaving(key);
-    try {
-      await publicationsApi.publish({
-        groupe_id: groupeId,
-        annee_academique_id: selAnnee,
-        semestre,
-      });
-      toast.success(`Semestre ${semestre} publié`);
-      publicationsApi.getPublications({ annee_academique_id: selAnnee })
-        .then(r => setPublications(r.data.data));
-    } catch {
-      toast.error('Erreur de publication');
-    } finally {
-      setSaving('');
-    }
-  };
-
-  const handleUnpublish = async (groupeId, semestre) => {
-    const id = getPublicationId(groupeId, semestre);
-    if (!id) return;
-    setSaving(`${groupeId}_${semestre}`);
-    try {
-      await publicationsApi.unpublish(id);
-      toast.success('Publication annulée');
-      publicationsApi.getPublications({ annee_academique_id: selAnnee })
-        .then(r => setPublications(r.data.data));
-    } catch {
-      toast.error('Erreur');
-    } finally {
-      setSaving('');
-    }
-  };
-
-  if (loading) return <Spinner />;
+  if (loading) {
+    return (
+      <div className="text-center mt-5">
+        <Spinner />
+        <p className="mt-2 text-muted">Chargement des publications...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="page">
+    <div className="page-container">
       <div className="page-header">
-        <h2 className="page-title">Publications des Bulletins</h2>
-        <select
-          className="form-select"
-          value={selAnnee}
-          onChange={e => setSelAnnee(e.target.value)}
-          style={{ width: 'auto' }}
-        >
-          {annees.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
-        </select>
+        <h1>Publications</h1>
+        {currentAnnee && (
+          <Badge label={`Année: ${currentAnnee.label}`} color="blue" />
+        )}
       </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Groupe</th>
-              <th>Filière</th>
-              <th>Niveau</th>
-              <th>Semestre 1</th>
-              <th>Semestre 2</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groupes.length === 0 ? (
-              <tr><td colSpan={5} className="table-empty">Aucun groupe</td></tr>
-            ) : groupes.map(g => (
-              <tr key={g.id}>
-                <td><strong>{g.nom}</strong></td>
-                <td>{g.niveau?.filiere?.nom ?? '—'}</td>
-                <td>{g.niveau?.numero}ère année</td>
-                {[1, 2].map(s => {
-                  const pub = isPublished(g.id, s);
-                  const key = `${g.id}_${s}`;
-                  return (
-                    <td key={s}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Badge
-                          label={pub ? 'Publié' : 'Non publié'}
-                          color={pub ? 'green' : 'red'}
-                        />
-                        {pub ? (
-                          <button
-                            className="btn btn-sm btn-danger"
-                            disabled={saving === key}
-                            onClick={() => handleUnpublish(g.id, s)}
-                          >
-                            Dépublier
-                          </button>
-                        ) : (
-                          <button
-                            className="btn btn-sm btn-accent"
-                            disabled={saving === key}
-                            onClick={() => handlePublish(g.id, s)}
-                          >
-                            Publier S{s}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  );
-                })}
+      {groupes.length === 0 ? (
+        <div className="pub-empty-state">
+          <h4 className="pub-empty-title">Aucun groupe trouvé</h4>
+          <p className="pub-empty-text">Sélectionnez une année académique.</p>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Groupe</th>
+                <th>Filière</th>
+                <th>Niveau</th>
+                <th>Notes S1</th>
+                <th>Notes S2</th>
+                <th>Bulletin</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {groupes.map(g => {
+                const pubS1 = getPublication(g.id, 'notes_s1');
+                const pubS2 = getPublication(g.id, 'notes_s2');
+                const pubBulletin = getPublication(g.id, 'bulletin');
+                return (
+                  <tr key={g.id}>
+                    <td><strong>{g.nom}</strong></td>
+                    <td>{g.niveau?.filiere?.nom || '—'}</td>
+                    <td>{g.niveau ? formatNiveau(g.niveau?.numero) : '—'}</td>
+                    <td>
+                      <PublicationCell pub={pubS1} type="notes_s1" groupe={g} />
+                    </td>
+                    <td>
+                      <PublicationCell pub={pubS2} type="notes_s2" groupe={g} />
+                    </td>
+                    <td>
+                      <PublicationCell pub={pubBulletin} type="bulletin" groupe={g} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Modal
+        open={!!confirmModal}
+        onClose={() => setConfirmModal(null)}
+        title={confirmModal?.type === 'publish' ? 'Confirmer la publication' : 'Confirmer la dépublication'}
+      >
+        <p className="pub-confirm-text">
+          {confirmModal?.type === 'publish'
+            ? `Cette action publiera ${TYPE_LABELS[confirmModal?.publicationType]} pour le groupe "${confirmModal?.groupe?.nom}". Les étudiants pourront voir ces informations. Continuer ?`
+            : `Cette action dépubliera ${TYPE_LABELS[confirmModal?.pub?.type]} pour le groupe "${confirmModal?.pub?.groupe?.nom || confirmModal?.groupe?.nom}". Les étudiants ne pourront plus voir ces informations. Continuer ?`
+          }
+        </p>
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={() => setConfirmModal(null)}>Annuler</button>
+          <button
+            className={`btn ${confirmModal?.type === 'publish' ? 'btn-accent' : 'btn-danger'}`}
+            onClick={() => {
+              if (confirmModal.type === 'publish') handlePublish(confirmModal.groupe, confirmModal.publicationType);
+              else handleUnpublish(confirmModal.pub);
+            }}
+            disabled={processing !== null}
+          >
+            {confirmModal?.type === 'publish' ? 'Publier' : 'Dépublier'}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

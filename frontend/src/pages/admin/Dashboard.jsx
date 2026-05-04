@@ -1,65 +1,92 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../../api/admin';
 import { etudiantsApi } from '../../api/etudiants';
+import ActivityLog from '../../components/common/ActivityLog';
 import { useToast } from '../../context/ToastContext';
+import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import handleApiError from '../../utils/errorHandler';
 import '../../css/components.css';
 import '../../css/layout.css';
+
+const STAT_CONFIGS = [
+  { title: 'Etudiants', key: 'totalStudents', color: '#3b82f6', bg: '#eff6ff', link: '/admin/etudiants' },
+  { title: 'Filieres', key: 'totalFilieres', color: '#10b981', bg: '#ecfdf5', link: '/admin/filieres-groupes' },
+  { title: 'Formateurs', key: 'totalFormateurs', color: '#f59e0b', bg: '#fffbeb', link: '/admin/formateurs' },
+  { title: 'Annee en cours', key: 'currentAcademicYear', color: '#8b5cf6', bg: '#f5f3ff', link: '/admin/annees' },
+];
+
+const QUICK_ACTIONS = [
+  { label: 'Saisir des notes', link: '/admin/notes', primary: true },
+  { label: 'Gerer les publications', link: '/admin/publications', primary: false },
+  { label: 'Consulter bulletins', link: '/admin/bulletins', primary: false },
+  { label: 'Gerer etudiants', link: '/admin/etudiants', primary: false },
+];
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
     totalStudents: 0,
     totalFilieres: 0,
-    currentAcademicYear: '',
+    currentAcademicYear: '\u2014',
     totalFormateurs: 0,
-    totalGroupes: 0,
-    totalUnites: 0,
   });
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const toast = useToast();
-
-  const loadStats = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const results = await Promise.allSettled([
-        etudiantsApi.getEtudiants(),
-        adminApi.getFilieres(),
-        adminApi.getAnnees(),
-        adminApi.getFormateurs(),
-      ]);
-
-      const studentsRes = results[0];
-      const filieresRes = results[1];
-      const anneesRes = results[2];
-      const formateursRes = results[3];
-
-      const currentYear = anneesRes.status === 'fulfilled'
-        ? anneesRes.value.data.data.find(year => year.is_current === true)
-        : null;
-
-      setStats({
-        totalStudents: studentsRes.status === 'fulfilled' ? studentsRes.value.data.data.length : 0,
-        totalFilieres: filieresRes.status === 'fulfilled' ? filieresRes.value.data.data.length : 0,
-        currentAcademicYear: currentYear ? currentYear.label : '—',
-        totalFormateurs: formateursRes.status === 'fulfilled' ? formateursRes.value.data.data.length : 0,
-        totalGroupes: 0,
-        totalUnites: 0,
-      });
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      const errorInfo = handleApiError(err, toast, { showToast: false });
-      setError(errorInfo.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+  const navigate = useNavigate();
+  const { currentAnnee, loading: anneeLoading } = useAnneeAcademique();
 
   useEffect(() => {
-    loadStats();
-  }, [loadStats]);
+    let cancelled = false;
+
+    const load = async () => {
+      if (anneeLoading) return;
+      if (!currentAnnee) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const results = await Promise.allSettled([
+          etudiantsApi.getEtudiants({ annee_academique_id: currentAnnee.id }),
+          adminApi.getFilieres(),
+          adminApi.getFormateurs(),
+          adminApi.getActivityLogs(),
+        ]);
+
+        if (cancelled) return;
+
+        setStats({
+          totalStudents: results[0].status === 'fulfilled' ? results[0].value.data.data.length : 0,
+          totalFilieres: results[1].status === 'fulfilled' ? results[1].value.data.data.length : 0,
+          currentAcademicYear: currentAnnee ? currentAnnee.label : '\u2014',
+          totalFormateurs: results[2].status === 'fulfilled' ? results[2].value.data.data.length : 0,
+        });
+
+        if (results[3].status === 'fulfilled') {
+          setActivities(results[3].value.data.data || []);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        const errorInfo = handleApiError(err, toast, { showToast: false });
+        setError(errorInfo.message);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentAnnee, anneeLoading]);
 
   if (loading) {
     return (
@@ -71,101 +98,57 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="text-center mt-5" style={{ maxWidth: 500, margin: '100px auto' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
-        <h4 style={{ color: '#dc2626', marginBottom: 12 }}>Erreur de chargement</h4>
-        <p style={{ color: '#666', marginBottom: 24 }}>{error}</p>
-        <button className="btn btn-primary" onClick={loadStats}>Réessayer</button>
+      <div className="dashboard-error">
+        <div className="dashboard-error-icon">!</div>
+        <h4 className="dashboard-error-title">Erreur de chargement</h4>
+        <p className="dashboard-error-msg">{error}</p>
+        <button className="btn btn-primary" onClick={() => {
+          setError(null);
+          setLoading(true);
+        }}>Réessayer</button>
       </div>
     );
   }
 
-  const statCards = [
-    {
-      title: 'Étudiants',
-      value: stats.totalStudents,
-      color: '#3b82f6',
-      bg: '#eff6ff',
-      icon: '🎓',
-      link: '/etudiants'
-    },
-    {
-      title: 'Filières',
-      value: stats.totalFilieres,
-      color: '#10b981',
-      bg: '#ecfdf5',
-      icon: '📚',
-      link: '/filieres'
-    },
-    {
-      title: 'Formateurs',
-      value: stats.totalFormateurs,
-      color: '#f59e0b',
-      bg: '#fffbeb',
-      icon: '👨‍🏫',
-      link: '/formateurs'
-    },
-    {
-      title: 'Année en cours',
-      value: stats.currentAcademicYear,
-      color: '#8b5cf6',
-      bg: '#f5f3ff',
-      icon: '📅',
-      link: '/annees-academiques'
-    },
-  ];
-
   return (
     <div>
-      <h2 className="page-title" style={{ marginBottom: 24 }}>Tableau de bord</h2>
+      <h2 className="page-title dashboard-title">Tableau de bord</h2>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: 16,
-        marginBottom: 32
-      }}>
-        {statCards.map((stat, i) => (
+      <div className="stats-grid">
+        {STAT_CONFIGS.map((stat, i) => (
           <div
             key={i}
-            style={{
-              background: stat.bg,
-              borderRadius: 12,
-              padding: 20,
-              cursor: stat.link ? 'pointer' : 'default',
-              border: `1px solid ${stat.color}20`,
-            }}
-            onClick={() => { if (stat.link) window.location.href = stat.link; }}
+            className="stat-card"
+            style={{ background: stat.bg, border: `1px solid ${stat.color}20` }}
+            onClick={() => navigate(stat.link)}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div className="stat-card-header">
               <div>
-                <p style={{ margin: 0, fontSize: 13, color: '#666', fontWeight: 500 }}>{stat.title}</p>
-                <h3 style={{ margin: '8px 0 0', fontSize: 28, color: stat.color, fontWeight: 700 }}>{stat.value}</h3>
+                <p className="stat-card-label">{stat.title}</p>
+                <h3 className="stat-card-value" style={{ color: stat.color }}>{stats[stat.key]}</h3>
               </div>
-              <span style={{ fontSize: 32 }}>{stat.icon}</span>
             </div>
           </div>
         ))}
       </div>
 
-      <div style={{
-        background: '#fff',
-        borderRadius: 12,
-        border: '1px solid #e5e7eb',
-        padding: 20
-      }}>
-        <h5 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600 }}>Actions rapides</h5>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <button className="btn btn-primary" onClick={() => window.location.href = '/etudiants'}>
-            Scanner des CIN
-          </button>
-          <button className="btn btn-outline" onClick={() => window.location.href = '/unites'}>
-            Gérer les unités
-          </button>
-          <button className="btn btn-outline" onClick={() => window.location.href = '/notes'}>
-            Saisir des notes
-          </button>
+      <div className="card dashboard-quick-actions">
+        <h5 className="dashboard-quick-title">Actions rapides</h5>
+        <div className="dashboard-quick-buttons">
+          {QUICK_ACTIONS.map((action, i) => (
+            <button
+              key={i}
+              className={action.primary ? 'btn btn-primary' : 'btn btn-outline'}
+              onClick={() => navigate(action.link)}
+            >
+              {action.label}
+            </button>
+          ))}
         </div>
+      </div>
+
+      <div className="card dashboard-activity">
+        <ActivityLog entries={activities} limit={8} />
       </div>
     </div>
   );

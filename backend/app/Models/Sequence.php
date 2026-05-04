@@ -24,4 +24,11 @@ class Sequence extends Model
     {
         return $this->hasMany(Controle::class)->orderBy('numero');
     }
+
+    public function formateurs()
+    {
+        return $this->belongsToMany(Formateur::class, 'formateur_sequences')
+                    ->withPivot('masse_horaire')
+                    ->withTimestamps();
+    }
 }

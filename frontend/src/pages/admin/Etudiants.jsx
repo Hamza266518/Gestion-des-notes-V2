@@ -1,12 +1,15 @@
 import { useEffect, useState, useCallback } from 'react';
+import { FiClipboard, FiSearch } from 'react-icons/fi';
 import { adminApi } from '../../api/admin';
 import { etudiantsApi } from '../../api/etudiants';
 import { scanApi } from '../../api/scan';
 import { useToast } from '../../context/ToastContext';
+import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Modal from '../../components/common/Modal';
 import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
 import handleApiError, { showSuccess, getFieldErrors } from '../../utils/errorHandler';
+import { formatNiveau } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -15,13 +18,10 @@ export default function Etudiants() {
   const [filieres, setFilieres]   = useState([]);
   const [niveaux, setNiveaux]     = useState([]);
   const [groupes, setGroupes]     = useState([]);
-  const [annees, setAnnees]       = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
   const [search, setSearch]       = useState('');
   const [filters, setFilters]     = useState({ groupe_id: '', filiere_id: '', niveau_id: '' });
-  const [selFiliere, setSelFiliere] = useState('');
-  const [selNiveau, setSelNiveau]   = useState('');
   const [scanOpen, setScanOpen]     = useState(false);
   const [scanResults, setScanResults] = useState([]);
   const [scanSaving, setScanSaving]   = useState(false);
@@ -31,56 +31,59 @@ export default function Etudiants() {
   const [editData, setEditData]     = useState(null);
   const [editSaving, setEditSaving] = useState(false);
   const toast = useToast();
-
-  const currentAnnee = annees.find(a => a.is_current);
+  const { currentAnnee } = useAnneeAcademique();
 
   const load = useCallback(() => {
+    if (!currentAnnee) {
+      setEtudiants([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
-    etudiantsApi.getEtudiants({ ...filters, search })
+    etudiantsApi.getEtudiants({ ...filters, search, annee_academique_id: currentAnnee.id })
       .then(res => setEtudiants(res.data.data))
       .catch((error) => {
         const errorInfo = handleApiError(error, toast, { showToast: false });
         setError(errorInfo.message);
       })
       .finally(() => setLoading(false));
-  }, [filters, search, toast]);
+  }, [filters, search, currentAnnee]);
 
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    Promise.all([
-      adminApi.getFilieres(),
-      adminApi.getAnnees()
-    ])
-      .then(([f, a]) => {
-        setFilieres(f.data.data);
-        setAnnees(a.data.data);
-      })
+    adminApi.getFilieres()
+      .then(r => setFilieres(r.data.data))
       .catch((error) => {
         handleApiError(error, toast);
       });
   }, []);
 
   useEffect(() => {
-    if (selFiliere) {
-      adminApi.getNiveaux(selFiliere)
+    if (filters.filiere_id) {
+      adminApi.getNiveaux(filters.filiere_id)
         .then(res => setNiveaux(res.data.data))
         .catch((error) => handleApiError(error, toast));
     } else {
       setNiveaux([]);
     }
-  }, [selFiliere]);
+  }, [filters.filiere_id]);
 
   useEffect(() => {
-    if (selNiveau) {
-      adminApi.getGroupes({ niveau_id: selNiveau })
-        .then(res => setGroupes(res.data.data))
-        .catch((error) => handleApiError(error, toast));
+    if (filters.niveau_id && currentAnnee?.id) {
+      adminApi.getGroupes({ niveau_id: filters.niveau_id, annee_academique_id: currentAnnee.id })
+        .then(res => {
+          setGroupes(res.data.data);
+        })
+        .catch((error) => {
+          console.error('Erreur groupes:', error);
+          handleApiError(error, toast);
+        });
     } else {
       setGroupes([]);
     }
-  }, [selNiveau]);
+  }, [filters.niveau_id, currentAnnee]);
 
   const handleDelete = async (id, nomPrenom) => {
     if (!window.confirm(`Supprimer l'étudiant ${nomPrenom} ? Cette action est irréversible.`)) return;
@@ -91,10 +94,11 @@ export default function Etudiants() {
       showSuccess(toast, 'Étudiant supprimé');
       load();
     } catch (error) {
-      const errorInfo = handleApiError(error, toast);
-      // Show more specific message for foreign key constraints
+      const errorInfo = handleApiError(error, toast, { showToast: false });
       if (error.response?.data?.message?.includes('constraint')) {
         toast.error('Impossible de supprimer. Cet étudiant a peut-être des notes associées.');
+      } else {
+        toast.error(errorInfo.message);
       }
     } finally {
       setDeleting(null);
@@ -107,6 +111,9 @@ export default function Etudiants() {
       nom_prenom: etudiant.nom_prenom,
       cin: etudiant.cin,
       date_naissance: etudiant.date_naissance || '',
+      lieu_naissance: etudiant.lieu_naissance || '',
+      nationalite: etudiant.nationalite || 'Marocaine',
+      date_inscription: etudiant.date_inscription || '',
       groupe_id: etudiant.groupe_id,
     });
     setEditOpen(true);
@@ -120,6 +127,9 @@ export default function Etudiants() {
         nom_prenom: editData.nom_prenom,
         cin: editData.cin,
         date_naissance: editData.date_naissance || null,
+        lieu_naissance: editData.lieu_naissance || null,
+        nationalite: editData.nationalite || 'Marocaine',
+        date_inscription: editData.date_inscription || null,
         groupe_id: editData.groupe_id,
       });
       showSuccess(toast, 'Étudiant modifié avec succès');
@@ -249,8 +259,6 @@ export default function Etudiants() {
           value={filters.filiere_id}
           onChange={e => {
             setFilters(p => ({ ...p, filiere_id: e.target.value, niveau_id: '', groupe_id: '' }));
-            setSelFiliere(e.target.value);
-            setSelNiveau('');
           }}
         >
           <option value="">Toutes les filières</option>
@@ -260,13 +268,15 @@ export default function Etudiants() {
           className="form-select"
           value={filters.niveau_id}
           onChange={e => {
-            setFilters(p => ({ ...p, niveau_id: e.target.value, groupe_id: '' }));
-            setSelNiveau(e.target.value);
+            setFilters(p => {
+              const next = { ...p, niveau_id: e.target.value, groupe_id: '' };
+              return next;
+            });
           }}
           disabled={!filters.filiere_id}
         >
           <option value="">Tous les niveaux</option>
-          {niveaux.map(n => <option key={n.id} value={n.id}>{n.numero}ère année</option>)}
+          {niveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
         </select>
         <select
           className="form-select"
@@ -288,7 +298,7 @@ export default function Etudiants() {
         <>
           {etudiants.length === 0 && !error ? (
             <div className="text-center mt-5" style={{ padding: 40 }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>📋</div>
+              <FiClipboard size={48} style={{ marginBottom: 16, color: 'var(--color-muted)' }} />
               <h4 style={{ color: '#666', marginBottom: 12 }}>Aucun étudiant trouvé</h4>
               <p style={{ color: '#999', marginBottom: 24 }}>
                 {search || filters.filiere_id || filters.niveau_id || filters.groupe_id
@@ -355,7 +365,6 @@ export default function Etudiants() {
         open={scanOpen}
         onClose={() => { setScanOpen(false); setScanResults([]); }}
         filieres={filieres}
-        annees={annees}
         scanResults={scanResults}
         extracting={extracting}
         scanSaving={scanSaving}
@@ -382,7 +391,7 @@ export default function Etudiants() {
   );
 }
 
-function ScanModal({ open, onClose, filieres, annees, scanResults, extracting, scanSaving, onScan, onConfirm, onUpdateResult, onRemoveResult, style }) {
+function ScanModal({ open, onClose, filieres, scanResults, extracting, scanSaving, onScan, onConfirm, onUpdateResult, onRemoveResult, style }) {
   const [scanFiliere, setScanFiliere] = useState('');
   const [scanNiveau, setScanNiveau]   = useState('');
   const [scanGroupe, setScanGroupe]   = useState('');
@@ -391,7 +400,7 @@ function ScanModal({ open, onClose, filieres, annees, scanResults, extracting, s
   const [modalGroupes, setModalGroupes] = useState([]);
   const [scanAttempted, setScanAttempted] = useState(false);
 
-  const currentAnnee = annees.find(a => a.is_current);
+  const { currentAnnee } = useAnneeAcademique();
 
   useEffect(() => {
     if (scanFiliere) {
@@ -408,16 +417,16 @@ function ScanModal({ open, onClose, filieres, annees, scanResults, extracting, s
   }, [scanFiliere]);
 
   useEffect(() => {
-    if (scanNiveau) {
+    if (scanNiveau && currentAnnee?.id) {
       import('../../api/admin').then(module => {
-        module.adminApi.getGroupes({ niveau_id: scanNiveau })
+        module.adminApi.getGroupes({ niveau_id: scanNiveau, annee_academique_id: currentAnnee.id })
           .then(res => setModalGroupes(res.data.data));
       });
     } else {
       setModalGroupes([]);
     }
     setScanGroupe('');
-  }, [scanNiveau]);
+  }, [scanNiveau, currentAnnee]);
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
@@ -461,7 +470,7 @@ function ScanModal({ open, onClose, filieres, annees, scanResults, extracting, s
           <label className="form-label">Niveau *</label>
           <select className="form-select" value={scanNiveau} onChange={e => setScanNiveau(e.target.value)} disabled={!scanFiliere}>
             <option value="">Sélectionner</option>
-            {modalNiveaux.map(n => <option key={n.id} value={n.id}>{n.numero}ème année</option>)}
+            {modalNiveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
           </select>
         </div>
         <div className="form-group">
@@ -489,7 +498,7 @@ function ScanModal({ open, onClose, filieres, annees, scanResults, extracting, s
 
       {!extracting && scanAttempted && scanResults.length === 0 && (
         <div style={{ textAlign: 'center', padding: 32, border: '1px solid #e5e7eb', borderRadius: 8, marginTop: 16 }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
+          <FiSearch size={36} style={{ marginBottom: 12, color: 'var(--color-muted)' }} />
           <h4 style={{ color: '#666', marginBottom: 8 }}>Aucun étudiant détecté</h4>
           <p style={{ color: '#999', marginBottom: 16, fontSize: 14 }}>
             Vérifiez la qualité de la photo et réessayez.
@@ -591,6 +600,16 @@ function EditModal({ open, onClose, editData, groupes, filieres, niveaux, onSave
           </div>
 
           <div className="form-group">
+            <label className="form-label">الاسم واللقب (Arabic Name)</label>
+            <input
+              className="form-input"
+              value={editData.nom_ar || ''}
+              onChange={e => onUpdate({ ...editData, nom_ar: e.target.value })}
+              style={{ direction: 'rtl' }}
+            />
+          </div>
+
+          <div className="form-group">
             <label className="form-label">CIN *</label>
             <input
               className="form-input"
@@ -606,6 +625,34 @@ function EditModal({ open, onClose, editData, groupes, filieres, niveaux, onSave
               type="date"
               value={editData.date_naissance}
               onChange={e => onUpdate({ ...editData, date_naissance: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Lieu de naissance</label>
+            <input
+              className="form-input"
+              value={editData.lieu_naissance || ''}
+              onChange={e => onUpdate({ ...editData, lieu_naissance: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Nationalité</label>
+            <input
+              className="form-input"
+              value={editData.nationalite || 'Marocaine'}
+              onChange={e => onUpdate({ ...editData, nationalite: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Date d'inscription</label>
+            <input
+              className="form-input"
+              type="date"
+              value={editData.date_inscription || ''}
+              onChange={e => onUpdate({ ...editData, date_inscription: e.target.value })}
             />
           </div>
 

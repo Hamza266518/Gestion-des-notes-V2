@@ -3,47 +3,51 @@ import { adminApi } from '../../api/admin';
 import { sequencesApi } from '../../api/sequences';
 import { unitesApi } from '../../api/unites';
 import { useToast } from '../../context/ToastContext';
+import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Modal from '../../components/common/Modal';
 import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
+import { formatNiveau } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
 export default function Sequences() {
   const [sequences, setSequences] = useState([]);
-  const [filieres, setFilieres]   = useState([]);
-  const [niveaux, setNiveaux]     = useState([]);
-  const [groupes, setGroupes]     = useState([]);
-  const [unites, setUnites]       = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [open, setOpen]           = useState(false);
-  const [saving, setSaving]       = useState(false);
+  const [filieres, setFilieres] = useState([]);
+  const [niveaux, setNiveaux] = useState([]);
+  const [groupes, setGroupes] = useState([]);
+  const [unites, setUnites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [selFiliere, setSelFiliere] = useState('');
-  const [selNiveau, setSelNiveau]   = useState('');
-  const [selUnite, setSelUnite]   = useState('');
-  const [filters, setFilters]     = useState({ groupe_id: '', filiere_id: '', niveau_id: '' });
+  const [selNiveau, setSelNiveau] = useState('');
+  const [selUnite, setSelUnite] = useState('');
+  const [filters, setFilters] = useState({ groupe_id: '', filiere_id: '', niveau_id: '' });
   const [form, setForm] = useState({
     unite_id: '', nom: '', coefficient: '', nombre_controles: 2
   });
+  const [deleteId, setDeleteId] = useState(null);
   const toast = useToast();
+  const { currentAnnee } = useAnneeAcademique();
 
   const load = useCallback(() => {
     if (!selUnite) {
       setSequences([]);
-      setLoading(false);
-      return;
+      return Promise.resolve();
     }
     setLoading(true);
-    sequencesApi.getSequences(selUnite)
+    return sequencesApi.getSequences(selUnite)
       .then(res => setSequences(res.data.data))
-      .catch(() => toast.error('Erreur'))
+      .catch((err) => {
+        console.error('Failed to load sequences:', err);
+        toast.error('Erreur');
+      })
       .finally(() => setLoading(false));
-  }, [selUnite, toast]);
+  }, [selUnite]);
 
   useEffect(() => {
-    setLoading(true);
-    load()
-      .finally(() => setLoading(false));
+    load();
   }, [load]);
 
   useEffect(() => {
@@ -63,8 +67,8 @@ export default function Sequences() {
   }, [selFiliere]);
 
   useEffect(() => {
-    if (selNiveau) {
-      adminApi.getGroupes({ niveau_id: selNiveau }).then(r => setGroupes(r.data.data));
+    if (selNiveau && currentAnnee?.id) {
+      adminApi.getGroupes({ niveau_id: selNiveau, annee_academique_id: currentAnnee.id }).then(r => setGroupes(r.data.data));
       unitesApi.getUnites({ niveau_id: selNiveau }).then(r => setUnites(r.data.data));
     } else {
       setGroupes([]);
@@ -72,7 +76,7 @@ export default function Sequences() {
     }
     setSelUnite('');
     setFilters(p => ({ ...p, groupe_id: '' }));
-  }, [selNiveau]);
+  }, [selNiveau, currentAnnee]);
 
   const handleCreate = async () => {
     setSaving(true);
@@ -89,13 +93,18 @@ export default function Sequences() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Supprimer cette séquence ?')) return;
+  const handleDelete = (id) => {
+    setDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
     try {
-      await sequencesApi.deleteSequence(id);
+      await sequencesApi.deleteSequence(deleteId);
       toast.success('Séquence supprimée');
+      setDeleteId(null);
       load();
-    } catch {
+    } catch (err) {
+      console.error('Failed to delete sequence:', err);
       toast.error('Erreur');
     }
   };
@@ -147,10 +156,7 @@ export default function Sequences() {
           disabled={!filters.filiere_id}
         >
           <option value="">Tous les niveaux</option>
-          {niveaux.map(n => {
-            const suffix = n.numero == 1 ? 'ère' : 'ème';
-            return <option key={n.id} value={n.id}>{n.numero}{suffix} année</option>;
-          })}
+          {niveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
         </select>
         <select
           className="form-select"
@@ -264,7 +270,15 @@ export default function Sequences() {
             {saving ? 'Création...' : 'Créer'}
           </button>
         </div>
-      </Modal>
+        </Modal>
+
+        <Modal open={deleteId !== null} onClose={() => setDeleteId(null)} title="Confirmer la suppression">
+          <p>Supprimer cette séquence ?</p>
+          <div className="modal-footer">
+            <button className="btn btn-outline" onClick={() => setDeleteId(null)}>Annuler</button>
+            <button className="btn btn-danger" onClick={confirmDelete}>Supprimer</button>
+          </div>
+        </Modal>
     </div>
   );
 }

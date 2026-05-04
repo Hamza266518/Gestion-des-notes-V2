@@ -1,12 +1,12 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
-import Toast from './Toast';
 import { useLocation } from 'react-router-dom';
 import '../../css/layout.css';
 
 const pageTitles = {
   '/etudiant/bulletin': 'Mes Notes',
+  '/etudiant/mon-bulletin': 'Mon Bulletin',
 };
 
 export default function EtudiantLayout() {
@@ -22,7 +22,6 @@ export default function EtudiantLayout() {
           <Outlet />
         </div>
       </div>
-      <Toast />
     </div>
   );
 }

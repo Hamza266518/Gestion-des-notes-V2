@@ -245,4 +245,41 @@ Rules:
 
         return $data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
     }
+
+    public function scanFormateurSequences(string $base64Image, string $prompt): string
+    {
+        if (empty($this->apiKeyUnites)) {
+            \Log::error('Gemini API key for sequences is missing');
+            return '[]';
+        }
+
+        \Log::info('Calling Gemini API for formateur sequences scan...');
+
+        $response = Http::timeout(30)->post($this->baseUrl . '?key=' . $this->apiKeyUnites, [
+            'contents' => [[
+                'parts' => [
+                    [
+                        'text' => $prompt
+                    ],
+                    [
+                        'inline_data' => [
+                            'mime_type' => 'image/jpeg',
+                            'data'      => $base64Image
+                        ]
+                    ]
+                ]
+            ]]
+        ]);
+
+        $data = $response->json();
+
+        if (isset($data['error'])) {
+            \Log::error('Gemini API error (formateur sequences): ' . json_encode($data['error']));
+            return '[]';
+        }
+
+        $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
+        \Log::info('Gemini formateur sequences raw response', ['text' => $text]);
+        return $text;
+    }
 }

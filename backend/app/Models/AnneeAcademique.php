@@ -11,6 +11,7 @@ class AnneeAcademique extends Model
     protected $fillable = [
         'label',
         'is_current',
+        'is_archived',
     ];
 
     public function groupes()

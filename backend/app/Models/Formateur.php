@@ -13,9 +13,20 @@ class Formateur extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function unites()
+    public function sequences()
     {
-        return $this->belongsToMany(Unite::class, 'formateur_unites');
+        return $this->belongsToMany(Sequence::class, 'formateur_sequences')
+                    ->withPivot('masse_horaire')
+                    ->withTimestamps();
+    }
+
+    public function unitesViaSequences()
+    {
+        return $this->belongsToMany(Unite::class, 'formateur_sequences', 'formateur_id', 'sequence_id')
+                    ->join('sequences', 'sequences.id', '=', 'formateur_sequences.sequence_id')
+                    ->join('unites', 'unites.id', '=', 'sequences.unite_id')
+                    ->select('unites.*')
+                    ->distinct();
     }
 
     public function scanLogs()

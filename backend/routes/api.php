@@ -13,10 +13,12 @@ use App\Http\Controllers\Admin\UniteController;
 use App\Http\Controllers\Admin\SequenceController;
 use App\Http\Controllers\Admin\ControleController;
 use App\Http\Controllers\Admin\NoteAdminController;
+use App\Http\Controllers\Admin\ExamController;
 use App\Http\Controllers\Admin\PublicationController;
 use App\Http\Controllers\Admin\DiplomeController;
 use App\Http\Controllers\Admin\ScanCinController;
 use App\Http\Controllers\Admin\ScanUnitesController;
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Formateur\ScanController;
 use App\Http\Controllers\Formateur\NoteController;
 use App\Http\Controllers\Etudiant\PortalController;
@@ -27,6 +29,7 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me',      [AuthController::class, 'me']);
+    Route::get('/annee-academique/current', [AnneeAcademiqueController::class, 'current']);
 
     // ── ADMIN ──────────────────────────────────────────────
     Route::prefix('admin')->middleware('isAdmin')->group(function () {
@@ -36,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/annees-academiques',                       [AnneeAcademiqueController::class, 'store']);
         Route::post('/annees-academiques/{id}/set-current',      [AnneeAcademiqueController::class, 'setCurrent']);
         Route::delete('/annees-academiques/{id}',                [AnneeAcademiqueController::class, 'destroy']);
+        Route::post('/annees-academiques/{id}/archive',          [AnneeAcademiqueController::class, 'archive']);
 
         // Filieres
         Route::get('/filieres',          [FiliereController::class, 'index']);
@@ -68,17 +72,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/scan-cin/confirm', [ScanCinController::class, 'confirm']);
 
         // Formateurs
-        Route::get('/formateurs',                      [FormateurController::class, 'index']);
-        Route::post('/formateurs',                     [FormateurController::class, 'store']);
-        Route::delete('/formateurs/{id}',              [FormateurController::class, 'destroy']);
-        Route::get('/formateurs/{id}/unites',          [FormateurController::class, 'unites']);
-        Route::post('/formateurs/{id}/import-unites',  [FormateurController::class, 'importUnites']);
-        Route::post('/formateurs/{id}/scan-unites',    [FormateurController::class, 'scanUnites']);
-        Route::delete('/formateurs/{id}/remove-unite', [FormateurController::class, 'removeUnite']);
-        Route::post('/controles',                         [ControleController::class, 'store']);
-        Route::delete('/controles/{id}',                  [ControleController::class, 'destroy']);
-        Route::post('/formateurs/import',              [FormateurController::class, 'import']);
-        Route::post('/formateurs/preview',             [FormateurController::class, 'preview']);
+        Route::get('/formateurs',                          [FormateurController::class, 'index']);
+        Route::post('/formateurs',                         [FormateurController::class, 'store']);
+        Route::delete('/formateurs/{id}',                  [FormateurController::class, 'destroy']);
+        Route::get('/formateurs/{id}/sequences',          [FormateurController::class, 'getSequences']);
+        Route::post('/formateurs/{id}/assign-sequence',    [FormateurController::class, 'assignSequence']);
+        Route::delete('/formateurs/{id}/remove-sequence', [FormateurController::class, 'removeSequence']);
+        Route::post('/formateurs/{id}/import-sequences',  [FormateurController::class, 'importSequences']);
+        Route::post('/formateurs/{id}/scan-sequences',    [FormateurController::class, 'scanSequences']);
+        Route::post('/formateurs/import',                  [FormateurController::class, 'import']);
+        Route::post('/formateurs/preview',                 [FormateurController::class, 'preview']);
+        Route::post('/formateurs/{id}/update-password',   [FormateurController::class, 'updatePassword']);
 
         // Unites
         Route::get('/unites',                        [UniteController::class, 'index']);
@@ -109,16 +113,23 @@ Route::middleware('auth:sanctum')->group(function () {
         // Notes admin
         Route::get('/notes',       [NoteAdminController::class, 'index']);
         Route::put('/notes/{id}',  [NoteAdminController::class, 'update']);
+        Route::get('/examens',     [ExamController::class, 'index']);
+        Route::post('/examens/bulk', [ExamController::class, 'bulkStore']);
 
         // Publications
         Route::get('/publications',                  [PublicationController::class, 'index']);
         Route::post('/publications/publish',         [PublicationController::class, 'publish']);
-        Route::put('/publications/{id}/unpublish',   [PublicationController::class, 'unpublish']);
+        Route::post('/publications/unpublish',  [PublicationController::class, 'unpublish']);
 
         // Diplomes
         Route::get('/diplomes',              [DiplomeController::class, 'index']);
         Route::post('/diplomes/generate',    [DiplomeController::class, 'generate']);
+        Route::post('/diplomes/generate-all', [DiplomeController::class, 'generateAll']);
         Route::put('/diplomes/{id}/printed', [DiplomeController::class, 'markPrinted']);
+        Route::get('/diplomes/{id}/download', [DiplomeController::class, 'download']);
+
+        // Activity logs
+        Route::get('/activity-logs', [ActivityLogController::class, 'index']);
     });
 
     // ── FORMATEUR ──────────────────────────────────────────
@@ -126,6 +137,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/scan',    [ScanController::class, 'scan']);
         Route::post('/confirm', [ScanController::class, 'confirm']);
         Route::get('/notes',    [NoteController::class, 'index']);
+        Route::get('/sequences', [NoteController::class, 'mySequences']);
+        Route::get('/scan-data', [NoteController::class, 'scanData']);
     });
 
     // ── ETUDIANT ───────────────────────────────────────────

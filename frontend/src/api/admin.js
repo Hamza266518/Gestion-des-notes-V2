@@ -1,7 +1,6 @@
 import apiClient from './apiClient';
 
 export const adminApi = {
-    // Annees academiques
     getAnnees: () =>
         apiClient.get('/admin/annees-academiques'),
     createAnnee: (label) =>
@@ -13,7 +12,6 @@ export const adminApi = {
     deleteAnnee: (id) =>
         apiClient.delete(`/admin/annees-academiques/${id}`),
 
-    // Filieres
     getFilieres: () =>
         apiClient.get('/admin/filieres'),
     createFiliere: (data) =>
@@ -23,7 +21,6 @@ export const adminApi = {
     deleteFiliere: (id) =>
         apiClient.delete(`/admin/filieres/${id}`),
 
-    // Niveaux
     getNiveaux: (filiere_id) =>
         apiClient.get('/admin/niveaux', { params: { filiere_id } }),
     createNiveau: (data) =>
@@ -31,7 +28,6 @@ export const adminApi = {
     deleteNiveau: (id) =>
         apiClient.delete(`/admin/niveaux/${id}`),
 
-    // Groupes
     getGroupes: (params) =>
         apiClient.get('/admin/groupes', { params }),
     createGroupe: (data) =>
@@ -41,25 +37,29 @@ export const adminApi = {
     deleteGroupe: (id) =>
         apiClient.delete(`/admin/groupes/${id}`),
 
-    // Formateurs
     getFormateurs: () =>
         apiClient.get('/admin/formateurs'),
     createFormateur: (data) =>
         apiClient.post('/admin/formateurs', data),
     deleteFormateur: (id) =>
         apiClient.delete(`/admin/formateurs/${id}`),
-    getFormateurUnites: (id) =>
-        apiClient.get(`/admin/formateurs/${id}/unites`),
-    importFormateurUnites: (id, formData) =>
-        apiClient.post(`/admin/formateurs/${id}/import-unites`, formData, {
+    getFormateurSequences: (id) =>
+        apiClient.get(`/admin/formateurs/${id}/sequences`),
+    assignFormateurSequence: (id, data) =>
+        apiClient.post(`/admin/formateurs/${id}/assign-sequence`, data),
+    removeFormateurSequence: (id, sequence_id) =>
+        apiClient.delete(`/admin/formateurs/${id}/remove-sequence`, {
+            data: { sequence_id },
+        }),
+    importFormateurSequences: (id, formData) =>
+        apiClient.post(`/admin/formateurs/${id}/import-sequences`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         }),
-    scanFormateurUnites: (id, formData) =>
-        apiClient.post(`/admin/formateurs/${id}/scan-unites`, formData, {
+    scanFormateurSequences: (id, formData) =>
+        apiClient.post(`/admin/formateurs/${id}/scan-sequences`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         }),
-    removeFormateurUnite: (id, unite_id) =>
-        apiClient.delete(`/admin/formateurs/${id}/remove-unite`, {
-            data: { unite_id },
-        }),
+
+    getActivityLogs: (params) =>
+        apiClient.get('/admin/activity-logs', { params }),
 };

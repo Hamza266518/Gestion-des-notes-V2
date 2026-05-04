@@ -1,189 +1,407 @@
-import { useEffect, useState } from 'react';
-import { adminApi } from '../../api/admin';
+import { useEffect, useState, useCallback } from 'react';
 import { notesApi } from '../../api/notes';
-import { unitesApi } from '../../api/unites';
-import { sequencesApi } from '../../api/sequences';
 import { controlesApi } from '../../api/controles';
+import { sequencesApi } from '../../api/sequences';
+import { unitesApi } from '../../api/unites';
+import { adminApi } from '../../api/admin';
 import { useToast } from '../../context/ToastContext';
-import Spinner from '../../components/common/Spinner';
+import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
+import { handleApiError, showSuccess } from '../../utils/errorHandler';
+import { formatNiveau } from '../../utils/helpers';
 import Badge from '../../components/common/Badge';
+import Spinner from '../../components/common/Spinner';
 import '../../css/components.css';
 import '../../css/layout.css';
 
-const mention = (v) => {
-  if (v >= 16) return { label: 'Très Bien', color: 'green' };
-  if (v >= 14) return { label: 'Bien', color: 'teal' };
-  if (v >= 12) return { label: 'Assez Bien', color: 'yellow' };
-  if (v >= 10) return { label: 'Passable', color: 'orange' };
-  return { label: 'Insuffisant', color: 'red' };
-};
-
 export default function Notes() {
-  const [notes, setNotes]       = useState([]);
+  const [tab, setTab] = useState('controles');
+
   const [filieres, setFilieres] = useState([]);
-  const [niveaux, setNiveaux]   = useState([]);
-  const [groupes, setGroupes]   = useState([]);
-  const [annees, setAnnees]     = useState([]);
-  const [unites, setUnites]     = useState([]);
+  const [niveaux, setNiveaux] = useState([]);
+  const [groupes, setGroupes] = useState([]);
+  const [unites, setUnites] = useState([]);
+
+  const [filiereId, setFiliereId] = useState('');
+  const [niveauId, setNiveauId] = useState('');
+  const [groupeId, setGroupeId] = useState('');
+  const [uniteId, setUniteId] = useState('');
+
   const [sequences, setSequences] = useState([]);
   const [controles, setControles] = useState([]);
-  const [loading, setLoading]   = useState(false);
-  const [editing, setEditing]   = useState({});
-  const [sel, setSel] = useState({
-    filiere_id: '', niveau_id: '', annee_id: '',
-    groupe_id: '', unite_id: '', sequence_id: '', controle_id: ''
-  });
+  const [sequenceId, setSequenceId] = useState('');
+  const [controleId, setControleId] = useState('');
+  const [notes, setNotes] = useState([]);
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [savingNote, setSavingNote] = useState(null);
+
+  const [bloc, setBloc] = useState('');
+  const [type, setType] = useState('');
+  const [examenNotes, setExamenNotes] = useState([]);
+  const [loadingExamens, setLoadingExamens] = useState(false);
+  const [savingExamens, setSavingExamens] = useState(false);
+
   const toast = useToast();
+  const { currentAnnee } = useAnneeAcademique();
 
   useEffect(() => {
-    Promise.all([adminApi.getFilieres(), adminApi.getAnnees()])
-      .then(([f, a]) => { setFilieres(f.data.data); setAnnees(a.data.data); });
+    adminApi.getFilieres()
+      .then(res => setFilieres(res.data.data || []))
+      .catch(() => setFilieres([]));
   }, []);
 
   useEffect(() => {
-    if (sel.filiere_id) adminApi.getNiveaux(sel.filiere_id).then(r => setNiveaux(r.data.data));
-  }, [sel.filiere_id]);
-
-  useEffect(() => {
-    if (sel.niveau_id && sel.annee_id) {
-      adminApi.getGroupes({ niveau_id: sel.niveau_id, annee_academique_id: sel.annee_id })
-        .then(r => setGroupes(r.data.data));
+    if (filiereId) {
+      adminApi.getNiveaux(filiereId)
+        .then(res => {
+          setNiveaux(res.data.data || []);
+          setNiveauId('');
+          setGroupeId('');
+          setGroupes([]);
+        })
+        .catch(() => { setNiveaux([]); setNiveauId(''); });
+    } else {
+      setNiveaux([]);
+      setNiveauId('');
+      setGroupeId('');
+      setGroupes([]);
     }
-  }, [sel.niveau_id, sel.annee_id]);
+  }, [filiereId]);
 
   useEffect(() => {
-    if (sel.filiere_id) unitesApi.getUnites({ filiere_id: sel.filiere_id }).then(r => setUnites(r.data.data));
-  }, [sel.filiere_id]);
-
-  useEffect(() => {
-    if (sel.unite_id) sequencesApi.getSequences(sel.unite_id).then(r => setSequences(r.data.data));
-  }, [sel.unite_id]);
-
-  useEffect(() => {
-    if (sel.sequence_id) controlesApi.getControles(sel.sequence_id).then(r => setControles(r.data.data));
-  }, [sel.sequence_id]);
-
-  useEffect(() => {
-    if (sel.controle_id && sel.groupe_id) {
-      setLoading(true);
-      notesApi.getNotes({ controle_id: sel.controle_id, groupe_id: sel.groupe_id })
-        .then(r => setNotes(r.data.data))
-        .finally(() => setLoading(false));
+    if (niveauId && currentAnnee) {
+      adminApi.getGroupes({ niveau_id: niveauId, annee_academique_id: currentAnnee.id })
+        .then(res => {
+          setGroupes(res.data.data || []);
+          setGroupeId('');
+        })
+        .catch(() => { setGroupes([]); setGroupeId(''); });
+    } else {
+      setGroupes([]);
+      setGroupeId('');
     }
-  }, [sel.controle_id, sel.groupe_id]);
+  }, [niveauId, currentAnnee]);
 
-  const handleSave = async (id) => {
+  useEffect(() => {
+    if (filiereId && currentAnnee) {
+      unitesApi.getUnites({ filiere_id: filiereId, annee_academique_id: currentAnnee.id })
+        .then(res => {
+          setUnites(res.data.data || []);
+          setUniteId('');
+        })
+        .catch(() => { setUnites([]); setUniteId(''); });
+    } else {
+      setUnites([]);
+      setUniteId('');
+    }
+  }, [filiereId, currentAnnee]);
+
+  useEffect(() => {
+    if (uniteId) {
+      sequencesApi.getSequences(uniteId)
+        .then(res => {
+          setSequences(res.data.data || []);
+          setSequenceId('');
+          setControleId('');
+        })
+        .catch(() => { setSequences([]); setSequenceId(''); });
+    } else {
+      setSequences([]);
+      setSequenceId('');
+      setControleId('');
+    }
+  }, [uniteId]);
+
+  useEffect(() => {
+    if (sequenceId) {
+      controlesApi.getControles(sequenceId)
+        .then(res => {
+          setControles(res.data.data || []);
+          setControleId('');
+        })
+        .catch(() => { setControles([]); setControleId(''); });
+    } else {
+      setControles([]);
+      setControleId('');
+    }
+  }, [sequenceId]);
+
+  const loadNotes = useCallback(() => {
+    if (!controleId || !groupeId) return;
+    setLoadingNotes(true);
+    notesApi.getNotes({ controle_id: controleId, groupe_id: groupeId })
+      .then(res => {
+        const data = res.data.data || [];
+        setNotes(data.map(n => ({ ...n, _original: n.valeur })));
+      })
+      .catch(() => setNotes([]))
+      .finally(() => setLoadingNotes(false));
+  }, [controleId, groupeId]);
+
+  useEffect(() => {
+    loadNotes();
+  }, [loadNotes]);
+
+  const loadExamens = useCallback(() => {
+    if (!groupeId || !uniteId || !bloc || !type) return;
+    setLoadingExamens(true);
+    notesApi.getExamens({ groupe_id: groupeId, unite_id: uniteId, bloc, type })
+      .then(res => {
+        const data = res.data.data || [];
+        setExamenNotes(data.map(n => ({ ...n, _original: n.valeur })));
+      })
+      .catch(() => setExamenNotes([]))
+      .finally(() => setLoadingExamens(false));
+  }, [groupeId, uniteId, bloc, type]);
+
+  useEffect(() => {
+    loadExamens();
+  }, [loadExamens]);
+
+  const handleNoteChange = (index, value) => {
+    setNotes(prev => prev.map((n, i) =>
+      i === index ? { ...n, valeur: value === '' ? null : parseFloat(value) } : n
+    ));
+  };
+
+  const handleSaveNote = async (index) => {
+    const note = notes[index];
+    if (!note) return;
+
+    setSavingNote(note.id);
     try {
-      await notesApi.updateNote(id, editing[id]);
-      toast.success('Note mise à jour');
-      setEditing(p => { const n = { ...p }; delete n[id]; return n; });
-    } catch {
-      toast.error('Erreur');
+      await notesApi.updateNote(note.id, note.valeur);
+      showSuccess(toast, `Note de ${note.etudiant?.nom || note.etudiant?.nom_prenom} modifiee`);
+      loadNotes();
+    } catch (error) {
+      handleApiError(error, toast);
+    } finally {
+      setSavingNote(null);
     }
   };
 
+  const handleExamenNoteChange = (index, value) => {
+    setExamenNotes(prev => prev.map((n, i) =>
+      i === index ? { ...n, valeur: value === '' ? null : parseFloat(value) } : n
+    ));
+  };
+
+  const handleSaveBulkExamens = async () => {
+    setSavingExamens(true);
+    try {
+        await notesApi.saveBulkExamens({
+          examens: examenNotes.map(n => ({
+            etudiant_id: n.etudiant_id,
+            valeur: n.valeur,
+          })),
+          unite_id: uniteId,
+          bloc: parseInt(bloc),
+          type,
+          semestre: parseInt(bloc) === 1 ? 1 : parseInt(bloc) === 2 ? 2 : 1,
+          annee_academique_id: currentAnnee?.id,
+        });
+      showSuccess(toast, 'Notes d\'examen enregistrees');
+      loadExamens();
+    } catch (error) {
+      handleApiError(error, toast);
+    } finally {
+      setSavingExamens(false);
+    }
+  };
+
+  const handleResetControleFilters = () => {
+    setUniteId('');
+    setSequenceId('');
+    setControleId('');
+  };
+
+  const handleResetExamenFilters = () => {
+    setUniteId('');
+    setSequenceId('');
+    setControleId('');
+  };
+
   return (
-    <div className="page">
+    <div className="page-container">
       <div className="page-header">
-        <h2 className="page-title">Gestion des Notes</h2>
+        <h1>Gestion des Notes</h1>
       </div>
 
-      <div className="filter-bar" style={{ flexWrap: 'wrap', gap: 10 }}>
-        <select className="form-select" value={sel.filiere_id} onChange={e => setSel(p => ({ ...p, filiere_id: e.target.value, niveau_id: '', groupe_id: '', unite_id: '', sequence_id: '', controle_id: '' }))}>
-          <option value="">Filière</option>
+      <div className="tab-bar">
+        <button
+          className={`btn ${tab === 'controles' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setTab('controles')}
+        >
+          Controles
+        </button>
+        <button
+          className={`btn ${tab === 'examens' ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => setTab('examens')}
+        >
+          Examens
+        </button>
+      </div>
+
+      <div className="filter-bar">
+        <select className="form-select" value={filiereId} onChange={e => { setFiliereId(e.target.value); setNiveauId(''); setGroupeId(''); handleResetControleFilters(); }}>
+          <option value="">Filiere</option>
           {filieres.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
         </select>
-
-        <select className="form-select" value={sel.annee_id} onChange={e => setSel(p => ({ ...p, annee_id: e.target.value }))} disabled={!sel.filiere_id}>
-          <option value="">Année académique</option>
-          {annees.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
-        </select>
-
-        <select className="form-select" value={sel.niveau_id} onChange={e => setSel(p => ({ ...p, niveau_id: e.target.value, groupe_id: '' }))} disabled={!sel.filiere_id}>
+        <select className="form-select" value={niveauId} onChange={e => { setNiveauId(e.target.value); setGroupeId(''); }} disabled={!filiereId}>
           <option value="">Niveau</option>
-          {niveaux.map(n => <option key={n.id} value={n.id}>{n.numero}ère année</option>)}
+          {niveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
         </select>
-
-        <select className="form-select" value={sel.groupe_id} onChange={e => setSel(p => ({ ...p, groupe_id: e.target.value }))} disabled={!sel.niveau_id}>
+        <select className="form-select" value={groupeId} onChange={e => setGroupeId(e.target.value)} disabled={!niveauId}>
           <option value="">Groupe</option>
           {groupes.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
         </select>
-
-        <select className="form-select" value={sel.unite_id} onChange={e => setSel(p => ({ ...p, unite_id: e.target.value, sequence_id: '', controle_id: '' }))} disabled={!sel.filiere_id}>
-          <option value="">Unité</option>
+        <select className="form-select" value={uniteId} onChange={e => { setUniteId(e.target.value); setSequenceId(''); setControleId(''); }} disabled={!filiereId || !currentAnnee}>
+          <option value="">Unite</option>
           {unites.map(u => <option key={u.id} value={u.id}>{u.nom}</option>)}
         </select>
-
-        <select className="form-select" value={sel.sequence_id} onChange={e => setSel(p => ({ ...p, sequence_id: e.target.value, controle_id: '' }))} disabled={!sel.unite_id}>
-          <option value="">Séquence</option>
-          {sequences.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
-        </select>
-
-        <select className="form-select" value={sel.controle_id} onChange={e => setSel(p => ({ ...p, controle_id: e.target.value }))} disabled={!sel.sequence_id}>
-          <option value="">Contrôle</option>
-          {controles.map(c => <option key={c.id} value={c.id}>Contrôle {c.numero}</option>)}
-        </select>
+        {tab === 'controles' && (
+          <>
+            <select className="form-select" value={sequenceId} onChange={e => { setSequenceId(e.target.value); setControleId(''); }} disabled={!uniteId}>
+              <option value="">Sequence</option>
+              {sequences.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
+            </select>
+            <select className="form-select" value={controleId} onChange={e => setControleId(e.target.value)} disabled={!sequenceId}>
+              <option value="">Controle</option>
+              {controles.map(c => <option key={c.id} value={c.id}>C{c.numero} — {c.date || 'Sans date'}</option>)}
+            </select>
+          </>
+        )}
+        {tab === 'examens' && (
+          <>
+            <select className="form-select" value={bloc} onChange={e => setBloc(e.target.value)} disabled={!uniteId}>
+              <option value="">Bloc</option>
+              <option value="1">Bloc 1</option>
+              <option value="2">Bloc 2</option>
+            </select>
+            <select className="form-select" value={type} onChange={e => setType(e.target.value)} disabled={!bloc}>
+              <option value="">Type</option>
+              <option value="theorique">Theorique</option>
+              <option value="pratique">Pratique</option>
+            </select>
+          </>
+        )}
       </div>
 
-      {!sel.controle_id ? (
-        <div className="card card-body" style={{ textAlign: 'center', color: 'var(--gray-400)' }}>
-          Sélectionnez une filière, groupe, unité, séquence et contrôle pour voir les notes
-        </div>
-      ) : loading ? <Spinner /> : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Stagiaire</th>
-                <th>N° Inscription</th>
-                <th>Note /20</th>
-                <th>Mention</th>
-                <th>Statut</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {notes.length === 0 ? (
-                <tr><td colSpan={7} className="table-empty">Aucune note pour ce contrôle</td></tr>
-              ) : notes.map((n, i) => {
-                const m = n.valeur !== null ? mention(n.valeur) : null;
-                return (
-                  <tr key={n.id}>
-                    <td>{i + 1}</td>
-                    <td><strong>{n.etudiant?.nom_prenom}</strong></td>
-                    <td>{n.etudiant?.numero_inscription}</td>
-                    <td>
-                      <input
-                        type="number"
-                        min={0} max={20}
-                        step={0.5}
-                        className="form-input"
-                        style={{ width: 70 }}
-                        value={editing[n.id] ?? n.valeur ?? ''}
-                        onChange={e => setEditing(p => ({ ...p, [n.id]: e.target.value }))}
-                      />
-                    </td>
-                    <td>{m && <Badge label={m.label} color={m.color} />}</td>
-                    <td>
-                      <Badge
-                        label={n.is_confirmed ? 'Confirmée' : 'En attente'}
-                        color={n.is_confirmed ? 'green' : 'gray'}
-                      />
-                    </td>
-                    <td>
-                      {editing[n.id] !== undefined && (
-                        <button className="btn btn-sm btn-primary" onClick={() => handleSave(n.id)}>
-                          Sauvegarder
-                        </button>
-                      )}
-                    </td>
+      {tab === 'controles' && (
+        <>
+          {loadingNotes ? (
+            <div className="spinner-wrap"><Spinner /></div>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Nom complet</th>
+                    <th>N° Inscription</th>
+                    <th>Note /20</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {notes.map((n, i) => {
+                    return (
+                      <tr key={n.id}>
+                        <td>{i + 1}</td>
+                        <td><strong>{n.etudiant?.nom || n.etudiant?.nom_prenom}</strong></td>
+                        <td>{n.etudiant?.numero_inscription || '—'}</td>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            max="20"
+                            step="0.25"
+                            className="form-input note-input"
+                            value={n.valeur ?? ''}
+                            onChange={e => handleNoteChange(i, e.target.value)}
+                          />
+                        </td>
+                        <td>
+                          {n.confirme ? (
+                            <Badge label="Confirmee" color="teal" />
+                          ) : (
+                            <Badge label="En attente" color="orange" />
+                          )}
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => handleSaveNote(i)}
+                            disabled={savingNote === n.id}
+                          >
+                            {savingNote === n.id ? '...' : 'Sauvegarder'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === 'examens' && (
+        <>
+          {loadingExamens ? (
+            <div className="spinner-wrap"><Spinner /></div>
+          ) : (
+            <>
+              {examenNotes.length > 0 && (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Nom complet</th>
+                        <th>N° Inscription</th>
+                        <th>Note /20</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {examenNotes.map((n, i) => (
+                        <tr key={n.id || i}>
+                          <td>{i + 1}</td>
+                          <td><strong>{n.etudiant?.nom || n.etudiant?.nom_prenom}</strong></td>
+                          <td>{n.etudiant?.numero_inscription || '—'}</td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              max="20"
+                              step="0.25"
+                              className="form-input note-input"
+                              value={n.valeur ?? ''}
+                              onChange={e => handleExamenNoteChange(i, e.target.value)}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {examenNotes.length > 0 && (
+                <div className="bulk-save-bar">
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleSaveBulkExamens}
+                    disabled={savingExamens}
+                  >
+                    {savingExamens ? 'Enregistrement...' : 'Sauvegarder tout'}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </>
       )}
     </div>
   );

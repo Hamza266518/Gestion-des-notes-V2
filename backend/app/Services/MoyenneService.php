@@ -41,13 +41,13 @@ class MoyenneService
         return round($totalNote / $totalPoids, 2);
     }
 
-    public function moyenneGenerale(int $etudiantId, int $semestre, int $anneeAcademiqueId): ?float
+    public function moyenneGenerale(int $etudiantId, ?int $semestre, int $anneeAcademiqueId): ?float
     {
         $etudiant = Etudiant::findOrFail($etudiantId);
         $filiereId = $etudiant->groupe->niveau->filiere_id;
 
         $unites = Unite::where('filiere_id', $filiereId)
-            ->where('semestre', $semestre)
+            ->when($semestre !== null, fn($q) => $q->where('semestre', $semestre))
             ->where('is_active', true)
             ->get();
 
@@ -66,7 +66,7 @@ class MoyenneService
         return round($totalNote / $totalPoids, 2);
     }
 
-    public function mention(float $moyenne): string
+    public function getMention(float $moyenne): string
     {
         if ($moyenne >= 16) return 'Très Bien';
         if ($moyenne >= 14) return 'Bien';

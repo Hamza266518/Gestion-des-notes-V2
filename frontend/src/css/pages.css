@@ -1,0 +1,401 @@
+/* LOGIN PAGE */
+.login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%);
+}
+
+.login-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.login-title {
+  text-align: center;
+  margin-bottom: 8px;
+  color: #1e40af;
+  font-size: 24px;
+}
+
+.login-subtitle {
+  text-align: center;
+  color: #666;
+  margin-bottom: 32px;
+  font-size: 14px;
+}
+
+.login-hint {
+  background: #f0f9ff;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 24px;
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}
+
+.login-error-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.login-error-close {
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 4px;
+}
+
+.login-submit {
+  width: 100%;
+  justify-content: center;
+}
+
+/* PUBLICATIONS PAGE - empty state */
+.pub-empty-state {
+  text-align: center;
+  margin-top: 50px;
+  padding: 40px;
+}
+
+.pub-empty-title {
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.pub-empty-text {
+  color: #999;
+}
+
+/* BULLETINS PAGE - empty state */
+.bulletin-empty {
+  text-align: center;
+  margin-top: 50px;
+  padding: 40px;
+}
+
+.bulletin-empty-title {
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.bulletin-empty-text {
+  color: #999;
+}
+
+/* NOTES PAGE */
+.notes-tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+/* SCANNER PAGE */
+.scanner-steps {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.scanner-step {
+  flex: 1;
+  text-align: center;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #999;
+  font-size: 13px;
+}
+
+.scanner-step-active {
+  background: #1e40af;
+  color: white;
+}
+
+.scanner-step-done {
+  background: #10b981;
+  color: white;
+}
+
+.scanner-upload-zone {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.scanner-upload-zone:hover {
+  border-color: #1e40af;
+}
+
+.scanner-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scanner-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+/* FORMATEURS PAGE */
+.formateur-password-cell {
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.formateur-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* SEQUENCES PAGE */
+.sequences-empty {
+  text-align: center;
+  color: var(--gray-400);
+}
+
+.sequences-action-row {
+  display: flex;
+  gap: 8px;
+}
+
+.sequences-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.sequences-form-error {
+  border-color: #ef4444;
+}
+
+/* UNITES PAGE */
+.unites-accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.unites-accordion-header:hover {
+  background: var(--gray-50);
+}
+
+.unites-accordion-header-active {
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+  background: var(--gray-50);
+}
+
+.unites-accordion-body {
+  padding: 12px 16px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-top: none;
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
+}
+
+.unites-table {
+  width: 100%;
+  font-size: 14px;
+}
+
+.unites-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  background-color: #f9fafb;
+}
+
+.unites-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.unites-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.unites-modal-full {
+  grid-column: 1 / -1;
+}
+
+.unites-actions-row {
+  display: flex;
+  gap: 8px;
+}
+
+.unites-form-error {
+  border-color: #ef4444;
+}
+
+/* FILIERES GROUPES PAGE */
+.fg-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.fg-left {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.fg-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fg-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.fg-table {
+  width: 100%;
+  font-size: 14px;
+  border-collapse: collapse;
+}
+
+.fg-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.fg-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.fg-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.fg-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.fg-modal-full {
+  grid-column: 1 / -1;
+}
+
+/* ETUDIANTS PAGE */
+.etudiants-error-bar {
+  margin-bottom: 16px;
+}
+
+.etudiants-error-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.etudiants-empty {
+  text-align: center;
+  margin-top: 50px;
+  padding: 40px;
+}
+
+.etudiants-empty-title {
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.etudiants-empty-text {
+  color: #999;
+  margin-bottom: 24px;
+}
+
+.etudiants-empty-btns {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.etudiants-table {
+  font-size: 15px;
+}
+
+.etudiants-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.etudiants-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.etudiants-modal-full {
+  grid-column: 1 / -1;
+}
+
+.etudiants-manage-table {
+  font-size: 14px;
+  min-width: 400px;
+  width: 100%;
+}
+
+.etudiants-manage-th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  background-color: #f9fafb;
+}
+
+.etudiants-manage-td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.etudiants-scan-table {
+  font-size: 14px;
+  min-width: 400px;
+  width: 100%;
+}
+
+.etudiants-scan-th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  background-color: #f9fafb;
+}
+
+.etudiants-scan-td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}

@@ -3,179 +3,300 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Imports\FormateurUnitesImport;
+use App\Imports\FormateursImport;
 use App\Models\Formateur;
-use App\Models\Unite;
+use App\Models\Sequence;
 use App\Models\User;
 use App\Services\GeminiService;
-use App\Services\NoteParserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Imports\FormateursImport;
+
 class FormateurController extends Controller
 {
     protected $gemini;
-    protected $parser;
 
-    public function __construct(GeminiService $gemini, NoteParserService $parser)
+    public function __construct(GeminiService $gemini)
     {
         $this->gemini = $gemini;
-        $this->parser = $parser;
     }
 
-    // list all formateurs with their unites
     public function index()
     {
-        $formateurs = Formateur::with(['user', 'unites.filiere'])->get();
-        return response()->json(['success' => true, 'data' => $formateurs]);
+        try {
+            $formateurs = Formateur::with(['user', 'sequences.unite.filiere'])->get();
+            return response()->json(['success' => true, 'data' => $formateurs]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors du chargement des formateurs'], 500);
+        }
     }
 
-    // create new formateur
     public function store(Request $request)
     {
-        $request->validate([
-            'name'     => 'required|string',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6',
-        ]);
+        try {
+            $request->validate([
+                'name'     => 'required|string',
+                'email'    => 'required|email|unique:users,email',
+                'password' => 'required|string|min:6',
+            ]);
 
-        $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
-            'role'     => 'formateur',
-        ]);
+            $user = User::create([
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'password' => Hash::make($request->password),
+                'role'     => 'formateur',
+            ]);
 
-        $formateur = Formateur::create(['user_id' => $user->id]);
+            $formateur = Formateur::create(['user_id' => $user->id]);
 
-        return response()->json([
-            'success' => true,
-            'data'    => $formateur->load('user'),
-            'message' => 'Formateur créé',
-        ]);
+            return response()->json([
+                'success' => true,
+                'data'    => $formateur->load('user'),
+                'message' => 'Formateur créé',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la création du formateur'], 500);
+        }
     }
 
+    public function import(Request $request)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|mimes:xlsx,xls',
+            ]);
 
-// import formateurs from Excel
-public function import(Request $request)
-{
-    $request->validate([
-        'file' => 'required|mimes:xlsx,xls',
-    ]);
+            $import = new FormateursImport();
+            Excel::import($import, $request->file('file'));
 
-    $import = new FormateursImport();
-    Excel::import($import, $request->file('file'));
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'crees'      => $import->created,
+                    'mis_a_jour' => $import->updated,
+                    'erreurs'    => $import->errors,
+                ],
+                'message' => $import->created . ' formateurs importés',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de l\'import des formateurs'], 500);
+        }
+    }
 
-    return response()->json([
-        'success' => true,
-        'data'    => [
-            'crees'      => $import->created,
-            'mis_a_jour' => $import->updated,
-            'erreurs'    => $import->errors,
-        ],
-        'message' => $import->created . ' formateurs importés',
-    ]);
-}
+    public function preview(Request $request)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|mimes:xlsx,xls',
+            ]);
 
-// preview Excel before importing
-public function preview(Request $request)
-{
-    $request->validate([
-        'file' => 'required|mimes:xlsx,xls',
-    ]);
+            $rows = Excel::toArray([], $request->file('file'));
+            $data = array_slice($rows[0], 1, 5);
 
-    $rows = Excel::toArray([], $request->file('file'));
-    $data = array_slice($rows[0], 1, 5);
+            return response()->json([
+                'success' => true,
+                'data'    => $data,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la prévisualisation'], 500);
+        }
+    }
 
-    return response()->json([
-        'success' => true,
-        'data'    => $data,
-    ]);
-}
-    // delete formateur
     public function destroy($id)
     {
-        $formateur = Formateur::findOrFail($id);
-        $formateur->user()->delete();
-        $formateur->delete();
-        return response()->json(['success' => true, 'message' => 'Formateur supprimé']);
+        try {
+            $formateur = Formateur::findOrFail($id);
+            $formateur->user()->delete();
+            $formateur->delete();
+            return response()->json(['success' => true, 'message' => 'Formateur supprimé']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la suppression du formateur'], 500);
+        }
     }
 
-    // import unites from Excel file
-    public function importUnites(Request $request, $id)
+    public function getSequences($id)
     {
-        $request->validate([
-            'file' => 'required|mimes:xlsx,xls',
-        ]);
+        try {
+            $formateur = Formateur::with(['sequences.unite.filiere'])->findOrFail($id);
 
-        $import = new FormateurUnitesImport($id);
-        Excel::import($import, $request->file('file'));
+            $grouped = $formateur->sequences
+                ->groupBy('unite.filiere.nom')
+                ->map(function ($sequences, $filiere) {
+                    return [
+                        'filiere' => $filiere,
+                        'unites' => $sequences->groupBy('unite.nom')->map(function ($seqs, $unite) {
+                            return [
+                                'unite' => $unite,
+                                'sequences' => $seqs->map(function ($seq) {
+                                    return [
+                                            'id' => $seq->id,
+                                            'nom' => $seq->nom,
+                                            'masse_horaire' => $seq->pivot->masse_horaire ?? null,
+                                        ];
+                                })->values(),
+                            ];
+                        })->values(),
+                    ];
+                })->values();
 
-        return response()->json([
-            'success' => true,
-            'data'    => [
-                'assignees' => $import->assigned,
-                'erreurs'   => $import->errors,
-            ],
-            'message' => $import->assigned . ' unités assignées',
-        ]);
+            return response()->json(['success' => true, 'data' => $grouped]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors du chargement des séquences'], 500);
+        }
     }
 
-    // scan document to assign unites
-    public function scanUnites(Request $request, $id)
+    public function assignSequence(Request $request, $id)
     {
-        $request->validate([
-            'image' => 'required|image',
-        ]);
+        try {
+            $request->validate([
+                'sequence_id' => 'required|exists:sequences,id',
+                'masse_horaire' => 'nullable|integer|min:0',
+            ]);
 
-        $formateur = Formateur::findOrFail($id);
-        $base64    = base64_encode(file_get_contents($request->file('image')->getRealPath()));
-        $rawText   = $this->gemini->scanFormateurUnites($base64);
+            $formateur = Formateur::findOrFail($id);
+            $formateur->sequences()->syncWithoutDetaching([
+                $request->sequence_id => ['masse_horaire' => $request->masse_horaire],
+            ]);
 
-        // parse list of unite names
-        $clean     = preg_replace('/```json|```/', '', $rawText);
-        $uniteNoms = json_decode(trim($clean), true) ?? [];
+            return response()->json(['success' => true, 'message' => 'Séquence assignée']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de l\'assignation'], 500);
+        }
+    }
 
-        $assigned = [];
-        $errors   = [];
+    public function removeSequence(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'sequence_id' => 'required|exists:sequences,id',
+            ]);
 
-        foreach ($uniteNoms as $nom) {
-            $unite = Unite::whereRaw('LOWER(nom) LIKE ?', ['%' . strtolower($nom) . '%'])->first();
+            $formateur = Formateur::findOrFail($id);
+            $formateur->sequences()->detach($request->sequence_id);
 
-            if (!$unite) {
-                $errors[] = 'Unité non trouvée: ' . $nom;
-                continue;
+            return response()->json(['success' => true, 'message' => 'Séquence retirée']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors du retrait'], 500);
+        }
+    }
+
+    public function importSequences(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|mimes:xlsx,xls',
+            ]);
+
+            $rows = Excel::toArray([], $request->file('file'))[0] ?? [];
+            $header = array_map('strtolower', array_map('trim', $rows[0] ?? []));
+            $nomIndex = array_search('sequence_nom', $header);
+            $masseIndex = array_search('masse_horaire', $header);
+
+            $assigned = [];
+            $erreurs = [];
+
+            for ($i = 1; $i < count($rows); $i++) {
+                $row = $rows[$i];
+                $nom = trim($row[$nomIndex] ?? '');
+                if (!$nom) continue;
+
+                $sequence = Sequence::whereRaw('LOWER(nom) LIKE ?', ['%' . strtolower($nom) . '%'])->first();
+
+                if (!$sequence) {
+                    $erreurs[] = 'Séquence non trouvée: ' . $nom;
+                    continue;
+                }
+
+                $masse = $masseIndex !== false ? ($row[$masseIndex] ?? null) : null;
+                $formateur = Formateur::findOrFail($id);
+                $formateur->sequences()->syncWithoutDetaching([
+                    $sequence->id => ['masse_horaire' => $masse],
+                ]);
+                $assigned[] = $nom;
             }
 
-            $formateur->unites()->syncWithoutDetaching([$unite->id]);
-            $assigned[] = $unite->nom;
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'assignees' => $assigned,
+                    'erreurs'   => $erreurs,
+                ],
+                'message' => count($assigned) . ' séquence(s) assignée(s)',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de l\'import'], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'data'    => [
-                'assignees' => $assigned,
-                'erreurs'   => $errors,
-            ],
-            'message' => count($assigned) . ' unités assignées',
-        ]);
     }
 
-    // remove one unite from formateur
-    public function removeUnite(Request $request, $id)
+    public function scanSequences(Request $request, $id)
     {
-        $request->validate(['unite_id' => 'required|exists:unites,id']);
-        $formateur = Formateur::findOrFail($id);
-        $formateur->unites()->detach($request->unite_id);
+        try {
+            $request->validate([
+                'image' => 'required|image',
+            ]);
 
-        return response()->json(['success' => true, 'message' => 'Unité retirée']);
+            $formateur = Formateur::findOrFail($id);
+            $base64  = base64_encode(file_get_contents($request->file('image')->getRealPath()));
+
+            // Get formateur name for the prompt
+            $formateurName = $formateur->user->name;
+            $prompt  = "This is the official pedagogical tracking document (Cahier de Suivi Pedagogique) from a Moroccan nursing school. " .
+                      "It shows a table with formateur names and the sequences or modules they teach. " .
+                      "Find the formateur named {$formateurName} and extract all the sequence names listed under their name. " .
+                      "Return ONLY a JSON array of sequence names exactly as written in the document. " .
+                      "Example: [\"Hygiène individuelle et collective\", \"Technique de la litterie\", \"Anatomie physiologie\"] " .
+                      "Return nothing else, no explanation, no markdown.";
+
+            $rawText = $this->gemini->scanFormateurSequences($base64, $prompt);
+            $clean   = preg_replace('/```json|```/', '', $rawText);
+            $noms    = json_decode(trim($clean), true) ?? [];
+
+            $assigned = [];
+            $erreurs   = [];
+
+            foreach ($noms as $nom) {
+                $sequence = Sequence::whereRaw('LOWER(nom) LIKE ?', ['%' . strtolower($nom) . '%'])->first();
+
+                if (!$sequence) {
+                    $erreurs[] = 'Séquence non trouvée: ' . $nom;
+                    continue;
+                }
+
+                $formateur->sequences()->syncWithoutDetaching([$sequence->id]);
+                $assigned[] = $sequence->nom;
+            }
+
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'assignees' => $assigned,
+                    'erreurs'   => $erreurs,
+                ],
+                'message' => count($assigned) . ' séquence(s) assignée(s)',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors du scan'], 500);
+        }
     }
 
-    // get unites of one formateur
-    public function unites($id)
+    public function updatePassword(Request $request, $id)
     {
-        $formateur = Formateur::with(['unites.filiere', 'unites.sequences'])->findOrFail($id);
-        return response()->json(['success' => true, 'data' => $formateur->unites]);
+        try {
+            $request->validate([
+                'password' => 'required|string|min:6',
+            ]);
+
+            $formateur = Formateur::with('user')->findOrFail($id);
+            $formateur->user->update([
+                'password' => Hash::make($request->password),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Mot de passe mis à jour',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la mise à jour du mot de passe'], 500);
+        }
     }
 }

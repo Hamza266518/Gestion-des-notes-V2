@@ -24,19 +24,23 @@ class ScanController extends Controller
 
     public function scan(Request $request)
     {
-        // verify formateur has access to this unite
+        // verify formateur has access to this sequence
         $controle  = Controle::findOrFail($request->controle_id);
-        $unite     = $controle->sequence->unite;
+        $sequence  = $controle->sequence;
         $formateur = auth()->user()->formateur;
 
-        $hasAccess = $formateur->unites()->where('unite_id', $unite->id)->exists();
+        $hasAccess = $formateur->sequences()->where('sequence_id', $sequence->id)->exists();
 
         if (!$hasAccess) {
             return response()->json([
                 'success' => false,
-                'message' => 'Vous n\'êtes pas assigné à cette unité',
+                'message' => 'Vous n\'êtes pas assigné à cette séquence',
             ], 403);
         }
+
+        // Get only sequences assigned to this formateur for the dropdown
+        // This is handled in the frontend by filtering
+        // The backend already validated access above
         // Handle both 'images' array and single 'image'
         $validateRules = [
             'controle_id' => 'required|exists:controles,id',
@@ -111,7 +115,7 @@ class ScanController extends Controller
             'notes'                  => 'required|array',
             'notes.*.etudiant_id'    => 'required|exists:etudiants,id',
             'notes.*.controle_id'    => 'required|exists:controles,id',
-            'notes.*.note'           => 'required|numeric|min:0|max:20',
+            'notes.*.valeur'         => 'required|numeric|min:0|max:20',
             'notes.*.chemin_image'   => 'nullable|string',
         ]);
 
@@ -128,7 +132,7 @@ class ScanController extends Controller
             $note = Note::updateOrCreate(
                 ['etudiant_id' => $item['etudiant_id'], 'controle_id' => $item['controle_id']],
                 [
-                    'valeur'        => $item['note'],
+                    'valeur'        => $item['valeur'],
                     'chemin_image'  => $item['chemin_image'] ?? null,
                     'is_confirmed'  => true,
                     'confirmed_at'  => now(),

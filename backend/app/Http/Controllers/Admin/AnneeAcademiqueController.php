@@ -5,42 +5,91 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AnneeAcademique;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class AnneeAcademiqueController extends Controller
 {
-    public function index()
+    public function index(): JsonResponse
     {
+        $annees = AnneeAcademique::withCount(['groupes', 'etudiants', 'publications', 'diplomes'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return response()->json([
             'success' => true,
-            'data'    => AnneeAcademique::orderBy('created_at', 'desc')->get(),
+            'data' => $annees,
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        $request->validate(['label' => 'required|string|unique:annees_academiques,label']);
+        $request->validate([
+            'label' => 'required|string|max:255|unique:annees_academiques',
+        ]);
 
-        $annee = AnneeAcademique::create(['label' => $request->label, 'is_current' => false]);
+        $annee = AnneeAcademique::create([
+            'label' => $request->label,
+            'is_current' => false,
+        ]);
 
-        return response()->json(['success' => true, 'data' => $annee, 'message' => 'Année créée']);
+        return response()->json([
+            'success' => true,
+            'data' => $annee,
+        ], 201);
     }
 
-    public function setCurrent($id)
+    public function setCurrent(Request $request, $id): JsonResponse
     {
-        AnneeAcademique::query()->update(['is_current' => false]);
+        // Reset all to non-current
+        AnneeAcademique::where('is_current', true)->update(['is_current' => false]);
+
         $annee = AnneeAcademique::findOrFail($id);
         $annee->update(['is_current' => true]);
 
-        return response()->json(['success' => true, 'data' => $annee, 'message' => 'Année courante mise à jour']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Année courante mise à jour',
+        ]);
     }
 
-    public function destroy($id)
+    public function destroy($id): JsonResponse
     {
         $annee = AnneeAcademique::findOrFail($id);
-        if ($annee->is_current) {
-            return response()->json(['success' => false, 'message' => 'Impossible de supprimer l\'année courante'], 400);
+
+        // Check if has related data
+        if ($annee->etudiants()->exists() || $annee->groupes()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de supprimer. Cette année contient des données associées.',
+            ], 422);
         }
+
         $annee->delete();
-        return response()->json(['success' => true, 'message' => 'Année supprimée']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Année supprimée',
+        ]);
+    }
+
+    public function archive($id): JsonResponse
+    {
+        $annee = AnneeAcademique::findOrFail($id);
+        $annee->update(['is_current' => false, 'is_archived' => true]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Année archivée',
+        ]);
+    }
+
+    public function current(): JsonResponse
+    {
+        $annee = AnneeAcademique::where('is_current', true)->first();
+
+        return response()->json([
+            'success' => true,
+            'data' => $annee,
+        ]);
     }
 }

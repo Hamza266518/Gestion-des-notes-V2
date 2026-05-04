@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
-import { adminApi } from '../../api/admin';
-import { unitesApi } from '../../api/unites';
-import { sequencesApi } from '../../api/sequences';
-import { controlesApi } from '../../api/controles';
+import { FiX } from 'react-icons/fi';
+import { formateursApi } from '../../api/formateurs';
 import { notesApi } from '../../api/notes';
 import { scanNotesPaper } from '../../api/gemini';
 import { useToast } from '../../context/ToastContext';
@@ -15,85 +13,53 @@ export default function Scanner() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [sel, setSel] = useState({
-    filiere_id: '', niveau_id: '', groupe_id: '',
-    unite_id: '', sequence_id: '', controle_id: ''
-  });
   const [filieres, setFilieres] = useState([]);
-  const [niveaux, setNiveaux] = useState([]);
-  const [groupes, setGroupes] = useState([]);
-  const [unites, setUnites] = useState([]);
   const [sequences, setSequences] = useState([]);
-  const [controles, setControles] = useState([]);
+  const [sel, setSel] = useState({
+    filiere_id: '', sequence_id: '', controle_id: ''
+  });
 
   const [images, setImages] = useState([]);
   const [results, setResults] = useState([]);
   const [scanning, setScanning] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [savingResults, setSavingResults] = useState(false);
 
   const toast = useToast();
 
   useEffect(() => {
-    adminApi.getFilieres()
-      .then(r => setFilieres(r.data.data))
-      .catch((error) => handleApiError(error, toast))
+    setLoading(true);
+    formateursApi.getScanData()
+      .then(r => {
+        const data = r.data.data;
+        setFilieres(data.filieres || []);
+        setSequences(data.sequences || []);
+      })
+      .catch((err) => {
+        const info = handleApiError(err, toast, { showToast: false });
+        setError(info.message);
+      })
       .finally(() => setLoading(false));
+
+    return () => {
+      imagePreviews.forEach(url => URL.revokeObjectURL(url));
+    };
   }, []);
 
-  useEffect(() => {
-    if (sel.filiere_id) {
-      adminApi.getNiveaux(sel.filiere_id)
-        .then(r => setNiveaux(r.data.data))
-        .catch((error) => handleApiError(error, toast));
-    } else {
-      setNiveaux([]);
-    }
-  }, [sel.filiere_id]);
+  const filteredSequences = sel.filiere_id
+    ? sequences.filter(s => s.unite?.filiere_id == sel.filiere_id)
+    : sequences;
 
-  useEffect(() => {
-    if (sel.niveau_id) {
-      adminApi.getGroupes({ niveau_id: sel.niveau_id })
-        .then(r => setGroupes(r.data.data))
-        .catch((error) => handleApiError(error, toast));
-    } else {
-      setGroupes([]);
-    }
-  }, [sel.niveau_id]);
+  const filteredControles = sel.sequence_id
+    ? (sequences.find(s => s.id == sel.sequence_id)?.controles || [])
+    : [];
 
-  useEffect(() => {
-    if (sel.filiere_id) {
-      unitesApi.getUnites({ filiere_id: sel.filiere_id })
-        .then(r => setUnites(r.data.data))
-        .catch((error) => handleApiError(error, toast));
-    } else {
-      setUnites([]);
-    }
-  }, [sel.filiere_id]);
-
-  useEffect(() => {
-    if (sel.unite_id) {
-      sequencesApi.getSequences(sel.unite_id)
-        .then(r => setSequences(r.data.data))
-        .catch((error) => handleApiError(error, toast));
-    } else {
-      setSequences([]);
-    }
-  }, [sel.unite_id]);
-
-  useEffect(() => {
-    if (sel.sequence_id) {
-      controlesApi.getControles(sel.sequence_id)
-        .then(r => setControles(r.data.data))
-        .catch((error) => handleApiError(error, toast));
-    } else {
-      setControles([]);
-    }
-  }, [sel.sequence_id]);
+  const [imagePreviews, setImagePreviews] = useState([]);
 
   const handleImages = (e) => {
     const files = Array.from(e.target.files);
     setImages(files);
+    const previews = files.map(f => URL.createObjectURL(f));
+    setImagePreviews(previews);
   };
 
   const handleScan = async () => {
@@ -123,7 +89,6 @@ export default function Scanner() {
             }
           }
         } catch (imgError) {
-          console.error('Error scanning individual image:', imgError);
           // Continue with other images
         }
       }
@@ -136,13 +101,18 @@ export default function Scanner() {
 
       setResults(scanned);
       setStep(3);
-    } catch (error) {
-      console.error('Scan error:', error);
-      handleApiError(error, toast);
+    } catch (err) {
+      handleApiError(err, toast);
       setResults([]);
     } finally {
       setScanning(false);
     }
+  };
+
+  const removeImage = (i) => {
+    URL.revokeObjectURL(imagePreviews[i]);
+    setImages(prev => prev.filter((_, idx) => idx !== i));
+    setImagePreviews(prev => prev.filter((_, idx) => idx !== i));
   };
 
   const updateResult = (i, key, val) => {
@@ -154,50 +124,23 @@ export default function Scanner() {
   };
 
   const handleConfirm = async () => {
-    if (!sel.controle_id || !sel.groupe_id) {
-      toast.error('Veuillez sélectionner un contrôle et un groupe');
-      return;
-    }
-
-    const validResults = results.filter(r => r.note >= 0 && r.note <= 20);
-    if (validResults.length === 0) {
-      toast.error('Aucune note valide à enregistrer');
-      return;
-    }
+    if (results.length === 0 || !sel.controle_id) return;
 
     setSavingResults(true);
-
     try {
-      let savedCount = 0;
-      let errorCount = 0;
-
-      for (const r of validResults) {
-        try {
-          await notesApi.createNote({
-            controle_id: sel.controle_id,
-            etudiant_nom: r.nom,
-            valeur: r.note,
-            groupe_id: sel.groupe_id
-          });
-          savedCount++;
-        } catch (noteError) {
-          console.error('Error saving note for', r.nom, ':', noteError);
-          errorCount++;
-        }
+      for (const r of results) {
+        await notesApi.createNote({
+          controle_id: sel.controle_id,
+          etudiant_nom: r.nom,
+          valeur: r.note,
+        });
       }
-
-      if (errorCount > 0) {
-        toast.warning(`${savedCount} note(s) enregistrée(s), ${errorCount} en échec`);
-      } else {
-        showSuccess(toast, `${savedCount} note(s) enregistrée(s)`);
-      }
-
+      showSuccess(toast, `${results.length} note(s) enregistrée(s)`);
       setStep(1);
-      setResults([]);
       setImages([]);
-    } catch (error) {
-      console.error('Confirm error:', error);
-      handleApiError(error, toast);
+      setResults([]);
+    } catch (err) {
+      handleApiError(err, toast);
     } finally {
       setSavingResults(false);
     }
@@ -257,29 +200,17 @@ export default function Scanner() {
             </div>
           )}
           <div className="filter-bar" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-            <select className="form-select" value={sel.filiere_id} onChange={e => setSel(p => ({ ...p, filiere_id: e.target.value, unite_id: '', sequence_id: '', controle_id: '' }))}>
-              <option value="">Filière *</option>
+            <select className="form-select" value={sel.filiere_id} onChange={e => setSel(p => ({ ...p, filiere_id: e.target.value, sequence_id: '', controle_id: '' }))}>
+              <option value="">Filière</option>
               {filieres.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
             </select>
-            <select className="form-select" value={sel.niveau_id} onChange={e => setSel(p => ({ ...p, niveau_id: e.target.value, groupe_id: '' }))} disabled={!sel.filiere_id}>
-              <option value="">Niveau</option>
-              {niveaux.map(n => <option key={n.id} value={n.id}>{n.numero}ère année</option>)}
-            </select>
-            <select className="form-select" value={sel.groupe_id} onChange={e => setSel(p => ({ ...p, groupe_id: e.target.value }))} disabled={!sel.niveau_id}>
-              <option value="">Groupe</option>
-              {groupes.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
-            </select>
-            <select className="form-select" value={sel.unite_id} onChange={e => setSel(p => ({ ...p, unite_id: e.target.value, sequence_id: '', controle_id: '' }))} disabled={!sel.filiere_id}>
-              <option value="">Unité *</option>
-              {unites.map(u => <option key={u.id} value={u.id}>{u.nom}</option>)}
-            </select>
-            <select className="form-select" value={sel.sequence_id} onChange={e => setSel(p => ({ ...p, sequence_id: e.target.value, controle_id: '' }))} disabled={!sel.unite_id}>
-              <option value="">Séquence *</option>
-              {sequences.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
+            <select className="form-select" value={sel.sequence_id} onChange={e => setSel(p => ({ ...p, sequence_id: e.target.value, controle_id: '' }))} disabled={!sel.filiere_id}>
+              <option value="">Séquence</option>
+              {filteredSequences.map(s => <option key={s.id} value={s.id}>{s.unite?.nom} — {s.nom}</option>)}
             </select>
             <select className="form-select" value={sel.controle_id} onChange={e => setSel(p => ({ ...p, controle_id: e.target.value }))} disabled={!sel.sequence_id}>
-              <option value="">Contrôle *</option>
-              {controles.map(c => <option key={c.id} value={c.id}>Contrôle {c.numero}</option>)}
+              <option value="">Contrôle</option>
+              {filteredControles.map(c => <option key={c.id} value={c.id}>Contrôle {c.numero}</option>)}
             </select>
           </div>
           <button className="btn btn-primary" style={{ marginTop: 16 }} disabled={!sel.controle_id} onClick={() => setStep(2)}>
@@ -293,90 +224,132 @@ export default function Scanner() {
         <div className="card card-body" style={{ maxWidth: 1000, width: '90vw' }}>
           <div className="upload-zone">
             <input type="file" accept="image/*" multiple onChange={handleImages} />
-            <div className="upload-zone-icon">📷</div>
             <div className="upload-zone-text">
               <strong>Cliquer ou glisser</strong> les photos de notes
             </div>
           </div>
           {images.length > 0 && (
-            <div style={{ marginTop: 12, fontSize: 13 }}>{images.length} image(s) sélectionnée(s)</div>
+            <div style={{ marginTop: 20 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{images.length} image(s) sélectionnée(s)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+                {imagePreviews.map((src, i) => (
+                  <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+                    <img src={src} alt={`Page ${i + 1}`} style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block' }} />
+                    <div style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(239,68,68,0.92)', color: '#fff', border: 'none', borderRadius: 6, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }} onClick={() => removeImage(i)}>
+                      <FiX size={18} />
+                    </div>
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', padding: '4px 8px', fontSize: 12, textAlign: 'center' }}>
+                      Page {i + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button className="btn btn-outline" onClick={() => setStep(1)}>← Retour</button>
+            <button className="btn btn-outline" onClick={() => setStep(1)}>Retour</button>
             <button className="btn btn-primary" disabled={images.length === 0 || scanning} onClick={handleScan}>
-              {scanning ? (
-                <>
-                  <Spinner /> Lecture en cours...
-                </>
-              ) : 'Scanner'}
+              {scanning ? 'Lecture en cours...' : 'Scanner'}
             </button>
           </div>
+          {scanning && (
+            <div style={{ textAlign: 'center', padding: 20, marginTop: 16 }}>
+              <Spinner />
+              <p style={{ marginTop: 8, color: '#666' }}>Lecture des notes en cours...</p>
+            </div>
+          )}
         </div>
       )}
 
       {/* Step 3: Results */}
       {step === 3 && (
-        <div style={{ maxWidth: 1200, width: '90vw', minWidth: '900px', margin: '0 auto' }}>
+        <div style={{ maxWidth: 1400, width: '95vw', margin: '0 auto' }}>
           <div className="alert alert-info" style={{ marginBottom: 16 }}>
             Vérifiez les résultats avant de confirmer. Vous pouvez modifier les noms et notes si nécessaire.
           </div>
           {results.length === 0 ? (
             <div className="text-center" style={{ padding: 40 }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>📄</div>
-              <h4 style={{ color: '#666', marginBottom: 12 }}>Aucun résultat</h4>
+              <h4 style={{ color: '#666', marginBottom: 12 }}>Aucune note detectee</h4>
               <p style={{ color: '#999', marginBottom: 24 }}>
-                Aucune note n'a été détectée. Vérifiez que les photos sont claires et réessayez.
+                Verifiez l'image ou ressayer le scan.
               </p>
-              <button className="btn btn-primary" onClick={() => setStep(2)}>
-                ← Retour aux photos
-              </button>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                <button className="btn btn-primary" onClick={() => setStep(2)}>
+                  Retour aux photos
+                </button>
+                <button className="btn btn-outline" onClick={handleScan}>
+                  Ressayer le scan
+                </button>
+              </div>
             </div>
           ) : (
-            <>
-              <div style={{ overflowX: 'auto', marginBottom: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                <table style={{ fontSize: '15px', minWidth: '500px', width: '100%' }}>
-                  <thead>
-                    <tr style={{ backgroundColor: '#f9fafb' }}>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '250px' }}>Nom</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Note /20</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.map((r, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '12px 16px' }}>
-                          <input
-                            className="form-input"
-                            value={r.nom}
-                            onChange={e => updateResult(i, 'nom', e.target.value)}
-                            style={{ minWidth: '220px', width: '100%', padding: '8px 12px', fontSize: '15px' }}
-                          />
-                        </td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <input
-                            type="number"
-                            className="form-input"
-                            style={{ width: 70, padding: '8px 12px', fontSize: '15px' }}
-                            value={r.note}
-                            min={0}
-                            max={20}
-                            onChange={e => updateResult(i, 'note', Number(e.target.value))}
-                          />
-                        </td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <button className="btn btn-sm btn-danger" onClick={() => removeResult(i)}>Retirer</button>
-                        </td>
+            <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20 }}>
+              <div>
+                <h5 style={{ marginBottom: 8, fontWeight: 600 }}>Images uploadées</h5>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '70vh', overflowY: 'auto' }}>
+                  {imagePreviews.map((src, i) => (
+                    <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb', background: '#fff' }}>
+                      <img src={src} alt={`Page ${i + 1}`} style={{ width: '100%', height: 220, objectFit: 'contain', display: 'block', background: '#f9fafb' }} />
+                      <div style={{ position: 'absolute', top: 4, left: 4, background: 'var(--primary)', color: '#fff', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
+                        {i + 1}
+                      </div>
+                      <button
+                        onClick={() => removeImage(i)}
+                        style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(239,68,68,0.9)', color: '#fff', border: 'none', borderRadius: 4, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16 }}
+                        title="Retirer cette image"
+                      >
+                        <FiX />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div style={{ overflowX: 'auto', marginBottom: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                  <table style={{ fontSize: '15px', minWidth: '500px', width: '100%' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f9fafb' }}>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '250px' }}>Nom</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Note /20</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {results.map((r, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '12px 16px' }}>
+                            <input
+                              className="form-input"
+                              value={r.nom}
+                              onChange={e => updateResult(i, 'nom', e.target.value)}
+                              style={{ minWidth: '220px', width: '100%', padding: '8px 12px', fontSize: '15px' }}
+                            />
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <input
+                              type="number"
+                              className="form-input"
+                              style={{ width: 70, padding: '8px 12px', fontSize: '15px' }}
+                              value={r.note}
+                              min={0}
+                              max={20}
+                              onChange={e => updateResult(i, 'note', Number(e.target.value))}
+                            />
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <button className="btn btn-sm btn-danger" onClick={() => removeResult(i)}>Retirer</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-outline" onClick={() => setStep(2)}>← Retour</button>
+                  <button className="btn btn-primary" onClick={() => setStep(4)}>Suivant →</button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-outline" onClick={() => setStep(2)}>← Retour</button>
-                <button className="btn btn-primary" onClick={() => setStep(4)}>Suivant →</button>
-              </div>
-            </>
+            </div>
           )}
         </div>
       )}

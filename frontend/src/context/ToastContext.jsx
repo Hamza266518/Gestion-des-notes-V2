@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 const ToastContext = createContext(null);
 
@@ -19,7 +19,7 @@ const TOAST_COLORS = {
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
-  const addToast = (message, type = 'success', dismissible = false) => {
+  const addToast = useCallback((message, type = 'success', dismissible = false) => {
     const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type, dismissible }]);
 
@@ -28,21 +28,28 @@ export const ToastProvider = ({ children }) => {
         setToasts(prev => prev.filter(t => t.id !== id));
       }, TOAST_DURATION[type] || 3000);
     }
-  };
+  }, []);
 
-  const removeToast = (id) => {
+  const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(t => t.id !== id));
-  };
+  }, []);
+
+  const success = useCallback((msg) => addToast(msg, 'success'), [addToast]);
+  const error = useCallback((msg) => addToast(msg, 'error'), [addToast]);
+  const warning = useCallback((msg) => addToast(msg, 'warning'), [addToast]);
+  const info = useCallback((msg) => addToast(msg, 'info'), [addToast]);
+
+  const contextValue = useMemo(() => ({
+    toasts,
+    success,
+    error,
+    warning,
+    info,
+    removeToast
+  }), [toasts, success, error, warning, info, removeToast]);
 
   return (
-    <ToastContext.Provider value={{
-      toasts,
-      success: (msg) => addToast(msg, 'success'),
-      error:   (msg) => addToast(msg, 'error'),
-      warning: (msg) => addToast(msg, 'warning'),
-      info:    (msg) => addToast(msg, 'info'),
-      removeToast
-    }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       <div style={{
         position: 'fixed',

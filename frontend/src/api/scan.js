@@ -24,10 +24,11 @@ export const scanApi = {
       apiClient.post('/admin/scan-cin/confirm', data),
 
   // admin scans unites document
-  scanUnitesDocument: (file, filiereId) => {
+  scanUnitesDocument: (file, filiereId, semestre) => {
     const fd = new FormData();
     fd.append('image', file);
     fd.append('filiere_id', filiereId);
+    fd.append('semestre', semestre);
     return apiClient.post('/admin/scan-unites', fd);
   },
   confirmScanUnites: (data) =>

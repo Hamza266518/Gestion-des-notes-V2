@@ -1,17 +1,13 @@
-import { useToast } from '../context/ToastContext';
-
 /**
  * Centralized API error handler
  * Returns user-friendly error messages based on status code
  */
 export const handleApiError = (error, toast, options = {}) => {
-  const { showToast = true, redirectOn401 = true } = options;
+  const { showToast = true, redirectOn401 = false } = options;
 
   // Network error (no internet)
   if (!error.response) {
-    const message = "Pas de connexion internet. Vérifiez votre réseau.";
-    if (showToast && toast?.error) toast.error(message);
-    return { type: 'network', message, shouldRetry: true };
+    return 'Problème de connexion. Vérifiez votre internet.';
   }
 
   const status = error.response.status;
@@ -67,13 +63,7 @@ export const handleApiError = (error, toast, options = {}) => {
       shouldRetry = true;
   }
 
-  // Log full error for debugging (not shown to user)
-  console.error('API Error:', {
-    status,
-    data,
-    message: error.message,
-    url: error.config?.url
-  });
+  // Error logged for debugging (not shown to user)
 
   if (showToast && toast?.error) toast.error(message);
 

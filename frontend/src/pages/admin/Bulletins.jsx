@@ -1,208 +1,329 @@
-import React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { notesApi } from '../../api/notes';
 import { adminApi } from '../../api/admin';
 import { unitesApi } from '../../api/unites';
-import { notesApi } from '../../api/notes';
+import { etudiantsApi } from '../../api/etudiants';
+import { publicationsApi } from '../../api/publications';
 import { useToast } from '../../context/ToastContext';
-import Spinner from '../../components/common/Spinner';
+import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
+import { handleApiError } from '../../utils/errorHandler';
+import { getMention, formatNiveau } from '../../utils/helpers';
 import Badge from '../../components/common/Badge';
+import Spinner from '../../components/common/Spinner';
 import '../../css/components.css';
 import '../../css/layout.css';
+import '../../css/pages.css';
 
-const mention = (v) => {
-  if (v === null || v === undefined) return null;
-  if (v >= 16) return { label: 'Très Bien', color: 'green' };
-  if (v >= 14) return { label: 'Bien', color: 'teal' };
-  if (v >= 12) return { label: 'Assez Bien', color: 'yellow' };
-  if (v >= 10) return { label: 'Passable', color: 'orange' };
-  return { label: 'Insuffisant', color: 'red' };
+const thStyle = {
+  padding: '8px 12px',
+  textAlign: 'left',
+  fontWeight: 600,
+  borderBottom: '2px solid #e5e7eb',
+  fontSize: 12,
+};
+
+const tdStyle = {
+  padding: '6px 12px',
+  borderBottom: '1px solid #e5e7eb',
 };
 
 export default function Bulletins() {
-  const [filieres, setFilieres]   = useState([]);
-  const [niveaux, setNiveaux]     = useState([]);
-  const [groupes, setGroupes]     = useState([]);
-  const [annees, setAnnees]       = useState([]);
+  const [filieres, setFilieres] = useState([]);
+  const [niveaux, setNiveaux] = useState([]);
+  const [groupes, setGroupes] = useState([]);
   const [etudiants, setEtudiants] = useState([]);
-  const [unites, setUnites]       = useState([]);
-  const [bulletin, setBulletin]   = useState(null);
-  const [loading, setLoading]     = useState(false);
-  const [sel, setSel] = useState({
-    filiere_id: '', niveau_id: '', annee_id: '',
-    groupe_id: '', etudiant_id: '', semestre: '1'
-  });
-  const toast = useToast();
+  const [unites, setUnites] = useState([]);
 
-  const buildBulletin = async () => {
+  const [filiereId, setFiliereId] = useState('');
+  const [niveauId, setNiveauId] = useState('');
+  const [groupeId, setGroupeId] = useState('');
+  const [etudiantId, setEtudiantId] = useState('');
+
+  const [bulletin, setBulletin] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const printRef = useRef(null);
+  const toast = useToast();
+  const { currentAnnee } = useAnneeAcademique();
+
+  useEffect(() => {
+    adminApi.getFilieres()
+      .then(res => setFilieres(res.data.data || []))
+      .catch(() => setFilieres([]));
+  }, []);
+
+  useEffect(() => {
+    if (filiereId) {
+      adminApi.getNiveaux(filiereId)
+        .then(res => {
+          setNiveaux(res.data.data || []);
+          setNiveauId('');
+          setGroupeId('');
+        })
+        .catch(() => setNiveaux([]));
+    } else {
+      setNiveaux([]);
+      setNiveauId('');
+      setGroupeId('');
+    }
+  }, [filiereId]);
+
+  useEffect(() => {
+    if (niveauId && currentAnnee) {
+      adminApi.getGroupes({ niveau_id: niveauId, annee_academique_id: currentAnnee.id })
+        .then(res => {
+          setGroupes(res.data.data || []);
+          setGroupeId('');
+        })
+        .catch(() => setGroupes([]));
+    } else {
+      setGroupes([]);
+      setGroupeId('');
+    }
+  }, [niveauId, currentAnnee]);
+
+  useEffect(() => {
+    if (!filiereId || !currentAnnee) {
+      setUnites([]);
+      return;
+    }
+    unitesApi.getUnites({ filiere_id: filiereId })
+      .then(res => setUnites(res.data.data || []))
+      .catch(() => setUnites([]));
+  }, [filiereId, currentAnnee]);
+
+  useEffect(() => {
+    if (!groupeId) {
+      setEtudiants([]);
+      setEtudiantId('');
+      return;
+    }
+    etudiantsApi.getEtudiants({ groupe_id: groupeId })
+      .then(res => {
+        setEtudiants(res.data.data || []);
+        setEtudiantId('');
+      })
+      .catch(() => setEtudiants([]));
+  }, [groupeId]);
+
+  const loadBulletin = useCallback(async () => {
+    if (!etudiantId || !groupeId || !currentAnnee) return;
+
     setLoading(true);
     try {
-      const allNotes = await notesApi.getNotes({ groupe_id: sel.groupe_id });
-      const notes = allNotes.data.data.filter(n => n.etudiant_id == sel.etudiant_id);
-
-      const unitesData = unites.map(u => {
-        const seqsData = u.sequences?.map(s => {
-          const controlesData = s.controles?.map(c => {
-            const note = notes.find(n => n.controle_id === c.id);
-            return { numero: c.numero, valeur: note?.valeur ?? null };
-          }) ?? [];
-
-          const vals = controlesData.filter(c => c.valeur !== null).map(c => c.valeur);
-          const moySeq = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-
-          return { ...s, controles: controlesData, moyenne: moySeq };
-        }) ?? [];
-
-        const seqsWithMoy = seqsData.filter(s => s.moyenne !== null);
-        const moyUnite = seqsWithMoy.length > 0
-          ? seqsWithMoy.reduce((acc, s) => acc + s.moyenne * s.coefficient, 0) /
-            seqsWithMoy.reduce((acc, s) => acc + s.coefficient, 0)
-          : null;
-
-        return { ...u, sequences: seqsData, moyenne: moyUnite };
-      });
-
-      const unitesWithMoy = unitesData.filter(u => u.moyenne !== null);
-      const moyGen = unitesWithMoy.length > 0
-        ? unitesWithMoy.reduce((acc, u) => acc + u.moyenne * u.coefficient, 0) /
-          unitesWithMoy.reduce((acc, u) => acc + u.coefficient, 0)
-        : null;
-
-      setBulletin({ unites: unitesData, moyenne_generale: moyGen });
-    } catch {
-      toast.error('Erreur de chargement du bulletin');
+      const [bulletinRes] = await Promise.all([
+        notesApi.getBulletin({ etudiant_id: etudiantId, groupe_id: groupeId, annee_academique_id: currentAnnee.id }),
+      ]);
+      setBulletin(bulletinRes.data.data);
+    } catch (error) {
+      handleApiError(error, toast);
     } finally {
       setLoading(false);
     }
-  };
+  }, [etudiantId, groupeId, currentAnnee]);
 
   useEffect(() => {
-    if (sel.etudiant_id && unites.length > 0) {
-      buildBulletin();
-    }
-  }, [sel.etudiant_id, unites]);
+    loadBulletin();
+  }, [loadBulletin]);
 
-  const etudiant = etudiants.find(e => e.id == sel.etudiant_id);
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleResetFilters = () => {
+    setNiveauId('');
+    setGroupeId('');
+    setEtudiantId('');
+  };
+
+  const handleResetGroupeFilters = () => {
+    setEtudiantId('');
+  };
 
   return (
-    <div className="page">
+    <div className="page-container">
       <div className="page-header">
-        <h2 className="page-title">Bulletins de Notes</h2>
+        <h1>Bulletins</h1>
+        {currentAnnee && (
+          <span className="form-select" style={{display:'inline-block', padding:'8px 12px', background:'#e8f5e9', color:'#2e7d32', fontWeight:'bold'}}>
+            {currentAnnee.label}
+          </span>
+        )}
       </div>
 
-      <div className="filter-bar" style={{ flexWrap: 'wrap' }}>
-        <select className="form-select" value={sel.filiere_id} onChange={e => setSel(p => ({ ...p, filiere_id: e.target.value, niveau_id: '', groupe_id: '', etudiant_id: '' }))}>
-          <option value="">Filière</option>
+      <div className="filter-bar">
+        <select className="form-select" value={filiereId} onChange={e => { setFiliereId(e.target.value); handleResetFilters(); }}>
+          <option value="">Filiere</option>
           {filieres.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
         </select>
-        <select className="form-select" value={sel.annee_id} onChange={e => setSel(p => ({ ...p, annee_id: e.target.value }))}>
-          <option value="">Année</option>
-          {annees.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
-        </select>
-        <select className="form-select" value={sel.niveau_id} onChange={e => setSel(p => ({ ...p, niveau_id: e.target.value, groupe_id: '', etudiant_id: '' }))} disabled={!sel.filiere_id}>
+        <select className="form-select" value={niveauId} onChange={e => { setNiveauId(e.target.value); setGroupeId(''); handleResetGroupeFilters(); }} disabled={!filiereId}>
           <option value="">Niveau</option>
-          {niveaux.map(n => <option key={n.id} value={n.id}>{n.numero}ère année</option>)}
+          {niveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
         </select>
-        <select className="form-select" value={sel.groupe_id} onChange={e => setSel(p => ({ ...p, groupe_id: e.target.value, etudiant_id: '' }))} disabled={!sel.niveau_id}>
+        <select className="form-select" value={groupeId} onChange={e => { setGroupeId(e.target.value); handleResetGroupeFilters(); }} disabled={!niveauId}>
           <option value="">Groupe</option>
           {groupes.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
         </select>
-        <select className="form-select" value={sel.semestre} onChange={e => setSel(p => ({ ...p, semestre: e.target.value }))}>
-          <option value="1">Semestre 1</option>
-          <option value="2">Semestre 2</option>
-        </select>
-        <select className="form-select" value={sel.etudiant_id} onChange={e => setSel(p => ({ ...p, etudiant_id: e.target.value }))} disabled={!sel.groupe_id}>
-          <option value="">Stagiaire</option>
-          {etudiants.map(e => <option key={e.id} value={e.id}>{e.nom_prenom}</option>)}
+        <select className="form-select" value={etudiantId} onChange={e => setEtudiantId(e.target.value)} disabled={!groupeId}>
+          <option value="">Etudiant</option>
+          {etudiants.map(e => <option key={e.id} value={e.id}>{e.nom || e.nom_prenom}</option>)}
         </select>
       </div>
 
-      {!sel.etudiant_id ? (
-        <div className="card card-body" style={{ textAlign: 'center', color: 'var(--gray-400)' }}>
-          Sélectionnez un étudiant pour voir son bulletin
-        </div>
-      ) : loading ? <Spinner /> : bulletin && (
-        <div className="card">
-          <div className="card-body" style={{ borderBottom: '1px solid var(--gray-200)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ fontSize: 18, fontWeight: 700 }}>{etudiant?.nom_prenom}</div>
-                <div style={{ fontSize: 13, color: 'var(--gray-500)', marginTop: 4 }}>
-                  CIN: {etudiant?.cin} — N°: {etudiant?.numero_inscription}
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--gray-500)' }}>
-                  Groupe: {etudiant?.groupe?.nom} — Filière: {etudiant?.groupe?.niveau?.filiere?.nom}
-                </div>
+      {bulletin && bulletin.student && (
+        <div ref={printRef}>
+          <div className="card bulletin-card">
+            <div className="card-body bulletin-body">
+              <div className="bulletin-header">
+                <h2>IFP</h2>
+                <p>Institut de Formation Paramedicale</p>
+                <h3>Bulletin de Notes</h3>
+                <p>Annee Academique {currentAnnee?.label || ''}</p>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 13, color: 'var(--gray-500)' }}>Semestre {sel.semestre}</div>
-                {bulletin.moyenne_generale !== null && (
-                  <>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--primary)' }}>
-                      {bulletin.moyenne_generale.toFixed(2)}/20
-                    </div>
-                    {mention(bulletin.moyenne_generale) && (
-                      <Badge label={mention(bulletin.moyenne_generale).label} color={mention(bulletin.moyenne_generale).color} />
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table>
+              <div className="bulletin-info">
+                <div><strong>Etudiant:</strong> {bulletin.student.nom || bulletin.student.nom_prenom}</div>
+                <div><strong>CIN:</strong> {bulletin.student.cin || '—'}</div>
+                <div><strong>N° Inscription:</strong> {bulletin.student.numero_inscription || '—'}</div>
+                <div><strong>Filiere:</strong> {filieres.find(f => f.id == filiereId)?.nom || '—'}</div>
+              </div>
+
+              <div className="table-wrap">
+                <table>
               <thead>
                 <tr>
-                  <th style={{ minWidth: 200 }}>Unité / Séquence</th>
-                  <th>C1</th>
-                  <th>C2</th>
-                  <th>C3</th>
-                  <th>Moy. Séquence</th>
-                  <th>Moy. Unité</th>
+                  <th style={thStyle}>Unité</th>
+                  {(() => {
+                    const allSequences = [];
+                    (bulletin?.semesters?.[1]?.unites || []).forEach(u => {
+                      (u.sequences || []).forEach((_, i) => {
+                        if (!allSequences.includes(i)) allSequences.push(i);
+                      });
+                    });
+                    return allSequences.map(i => (
+                      <th key={i} style={thStyle}>C{i + 1}</th>
+                    ));
+                  })()}
+                  <th style={thStyle}>Moyenne</th>
+                  <th style={thStyle}>Moyenne</th>
+                  <th style={thStyle}>Coef</th>
                 </tr>
               </thead>
-              <tbody>
-                {bulletin.unites.map(u => (
-                  <React.Fragment key={u.id}>
-                    {u.sequences?.map((s, si) => (
-                      <tr key={s.id}>
-                        <td style={{ paddingLeft: si === 0 ? 20 : 36 }}>
-                          {si === 0 && <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray-500)', marginBottom: 2 }}>{u.nom}</div>}
-                          <span style={{ fontSize: 13 }}>↳ {s.nom}</span>
-                        </td>
-                        {[0, 1, 2].map(ci => (
-                          <td key={ci} style={{ textAlign: 'center' }}>
-                            {s.controles?.[ci]?.valeur ?? '—'}
-                          </td>
-                        ))}
-                        <td style={{ textAlign: 'center', fontWeight: 500 }}>
-                          {s.moyenne !== null ? s.moyenne.toFixed(2) : '—'}
-                        </td>
-                        {si === 0 && (
-                          <td
-                            rowSpan={u.sequences.length}
-                            style={{ textAlign: 'center', fontWeight: 700, verticalAlign: 'middle', color: 'var(--primary)' }}
-                          >
-                            {u.moyenne !== null ? u.moyenne.toFixed(2) : '—'}
-                          </td>
-                        )}
-                      </tr>
+                  <tbody>
+                    {bulletin.semesters[1]?.unites.map(unite => (
+                      <UniteRow key={unite.id} unite={unite} />
                     ))}
-                  </React.Fragment>
-                ))}
-                <tr style={{ background: 'var(--gray-50)', fontWeight: 700 }}>
-                  <td colSpan={5} style={{ textAlign: 'right', paddingRight: 16 }}>
-                    Moyenne Générale S{sel.semestre}
-                  </td>
-                  <td style={{ textAlign: 'center', color: 'var(--primary)', fontSize: 16 }}>
-                    {bulletin.moyenne_generale !== null ? bulletin.moyenne_generale.toFixed(2) : '—'}/20
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="bulletin-summary">
+                <SummaryCalculations bulletin={bulletin} />
+              </div>
+
+              <div className="bulletin-print-bar">
+                <button className="btn btn-primary" onClick={handlePrint}>
+                  Imprimer le bulletin
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 }
+
+function UniteRow({ unite }) {
+  const maxControles = Math.max(...unite.sequences.map(s => s.controles.length), 3);
+
+  return (
+    <>
+      <tr className="bulletin-unite-row">
+        <td style={{ ...tdStyle, fontWeight: 700 }}>{unite.nom}</td>
+        {Array.from({ length: maxControles }).map((_, i) => (
+          <td key={`u-e-${i}`} style={tdStyle}></td>
+        ))}
+        <td style={{ ...tdStyle, fontWeight: 700 }}>
+          {unite.moyenneUnite !== null ? unite.moyenneUnite.toFixed(2) : '—'}
+        </td>
+        <td style={{ ...tdStyle, fontWeight: 700 }}>
+          {unite.moyenneUnite !== null ? unite.moyenneUnite.toFixed(2) : '—'}
+        </td>
+        <td style={{ ...tdStyle, fontWeight: 700 }}>{unite.coefficient}</td>
+      </tr>
+      {unite.sequences.map((seq) => {
+        const cells = [];
+        for (let i = 0; i < maxControles; i++) {
+          const ctrl = seq.controles.find(c => c.numero === i + 1);
+          cells.push(
+            <td key={i} style={tdStyle}>
+              {ctrl?.valeur !== null && ctrl?.valeur !== undefined ? ctrl.valeur.toFixed(2) : '—'}
+            </td>
+          );
+        }
+        return (
+          <tr key={seq.id}>
+            <td className="bulletin-seq-name" style={tdStyle}>
+              <span className="bulletin-seq-arrow">→</span>{seq.nom}
+            </td>
+            {cells}
+            <td style={{ ...tdStyle, fontWeight: 600 }}>
+              {seq.moyenneSeq !== null ? seq.moyenneSeq.toFixed(2) : '—'}
+            </td>
+            <td style={tdStyle}></td>
+            <td style={tdStyle}>{seq.coefficient}</td>
+          </tr>
+        );
+      })}
+    </>
+  );
+}
+
+function SummaryCalculations({ bulletin }) {
+  const allUnites = [...(bulletin.semesters?.[1]?.unites || []), ...(bulletin.semesters?.[2]?.unites || [])];
+  const validUnites = allUnites.filter(u => u.moyenneUnite !== null);
+  const totalCoef = validUnites.reduce((s, u) => s + u.coefficient, 0);
+
+  const mpcc = totalCoef > 0
+    ? validUnites.reduce((s, u) => s + u.moyenneUnite * u.coefficient, 0) / totalCoef
+    : null;
+
+  const examTheo = bulletin.examNotes?.filter(e => e.type === 'theorique' && e.valeur !== null) || [];
+  const examPra = bulletin.examNotes?.filter(e => e.type === 'pratique' && e.valeur !== null) || [];
+
+  const mpefcft = examTheo.length > 0
+    ? examTheo.reduce((s, e) => s + e.valeur * (e.unite_coef || 1), 0) / examTheo.reduce((s, e) => s + (e.unite_coef || 1), 0)
+    : null;
+
+  const mpefcfp = examPra.length > 0
+    ? examPra.reduce((s, e) => s + e.valeur * (e.unite_coef || 1), 0) / examPra.reduce((s, e) => s + (e.unite_coef || 1), 0)
+    : null;
+
+  const stageNote = bulletin.stageNote;
+
+  const weights = { mpcc: 1, theo: 0.3, pra: 0.2, stage: 0.4 };
+  let moyenneFinale = null;
+  let totalWeight = 0;
+  if (mpcc !== null) { moyenneFinale = mpcc * 1; totalWeight += 1; }
+  if (mpefcft !== null) { moyenneFinale = (moyenneFinale || 0) + mpefcft * weights.theo; totalWeight += weights.theo; }
+  if (mpefcfp !== null) { moyenneFinale = (moyenneFinale || 0) + mpefcfp * weights.pra; totalWeight += weights.pra; }
+  if (stageNote !== null) { moyenneFinale = (moyenneFinale || 0) + stageNote * weights.stage; totalWeight += weights.stage; }
+  if (totalWeight > 0) moyenneFinale = moyenneFinale / totalWeight;
+
+  const { label: mentionLabel, color: mentionColorVal } = getMention(moyenneFinale);
+
+  return (
+    <div className="summary-grid">
+      <div className="summary-item">
+        <span className="summary-label">Moyenne annuelle:</span>
+        <span className="summary-value">{moyenneFinale?.toFixed(2) || '—'}</span>
+      </div>
+      <div className="summary-item">
+        <span className="summary-label">Mention:</span>
+        <Badge label={mentionLabel} color={mentionColorVal} />
+      </div>
+    </div>
+  );
+}
+

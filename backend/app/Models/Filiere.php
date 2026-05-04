@@ -8,8 +8,10 @@ class Filiere extends Model
 {
     protected $fillable = [
         'nom',
+        'nom_ar',
         'code',
         'section',
+        'type_formation',
         'nombre_annees',
     ];
 

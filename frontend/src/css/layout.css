@@ -24,3 +24,32 @@
   font-weight: 600;
   color: var(--gray-800);
 }
+
+@media print {
+  .sidebar,
+  .admin-navbar,
+  .page-header,
+  .filter-bar,
+  .btn,
+  .spinner-wrap {
+    display: none !important;
+  }
+
+  .admin-content {
+    margin-left: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  .page-content {
+    padding: 0 !important;
+  }
+
+  .page {
+    padding: 0 !important;
+  }
+
+  .card {
+    box-shadow: none !important;
+    border: none !important;
+  }
+}

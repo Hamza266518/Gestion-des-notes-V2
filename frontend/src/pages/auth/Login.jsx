@@ -1,19 +1,22 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth';
 import { useAuth } from '../../context/AuthContext';
+import { FiMail, FiLock, FiEye, FiEyeOff, FiLoader } from 'react-icons/fi';
+import logoIFP from '../../image/logo IFP.jpeg';
+import bgImage from '../../image/TIBYA.png';
 import '../../css/login.css';
-import '../../css/components.css';
-import '../../css/variables.css';
 
 export default function Login() {
-  const [email, setEmail]       = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError]       = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const { login }               = useAuth();
-  const navigate                = useNavigate();
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const passwordRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,9 +26,12 @@ export default function Login() {
       const res = await authApi.login(email, password);
       login(res.data.data);
       const r = res.data.data.role;
-      if (r === 'admin')     navigate('/admin/dashboard');
-      if (r === 'formateur') navigate('/formateur/scanner');
-      if (r === 'etudiant')  navigate('/etudiant/bulletin');
+      setTimeout(() => {
+        if (r === 'admin') navigate('/admin/dashboard');
+        else if (r === 'formateur') navigate('/formateur/scanner');
+        else if (r === 'etudiant') navigate('/etudiant/bulletin');
+        else navigate('/login');
+      }, 100);
     } catch (err) {
       if (err.response) {
         if (err.response.status === 401) {
@@ -49,82 +55,115 @@ export default function Login() {
 
   return (
     <div className="login-page">
+      <div className="login-bg">
+        <img src={bgImage} alt="" className="login-bg-image" />
+        <div className="login-bg-overlay" />
+      </div>
+
       <div className="login-left">
-        <div className="login-logo">IFP</div>
-        <div className="login-tagline">
-          Institut des Formations<br />Paramédicales Privé
-        </div>
-        <div className="login-desc">
-          Système de gestion des notes et bulletins des étudiants paramédicaux
+        <div className="login-left-content">
+          <img src={logoIFP} alt="IFP Logo" className="login-brand-logo" />
+          <div className="login-left-footer">
+            © 2026 IFP — Tous droits réservés
+          </div>
         </div>
       </div>
 
       <div className="login-right">
-        <div className="login-card">
-          <h2>Connexion</h2>
-          <p>Accédez à votre espace IFP</p>
+        <div className="login-card-wrapper">
+          <img src={logoIFP} alt="IFP Logo" className="login-brand-logo-mobile" />
+          <div className="login-card">
+            <div className="login-card-header">
+              <h2>Bonjour !</h2>
+              <p>Connectez-vous à votre espace</p>
+            </div>
 
-          {error && (
-            <div className="alert alert-error" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>{error}</span>
-              <button
-                style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 18, padding: '0 4px' }}
-                onClick={() => setError('')}
-              >
-                ×
+            {error && (
+              <div className="login-error">
+                <span>{error}</span>
+                <button type="button" onClick={() => setError('')} aria-label="Fermer">×</button>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} noValidate>
+              <div className="login-field">
+                <label htmlFor="login-email" className="login-field-label">
+                  Adresse email
+                </label>
+                <div className="login-input-wrap">
+                  <FiMail className="login-input-icon" />
+                  <input
+                    id="login-email"
+                    type="email"
+                    className="login-input"
+                    placeholder="CIN@ifp.ma"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    autoComplete="email"
+                    required
+                    aria-required="true"
+                  />
+                </div>
+              </div>
+
+              <div className="login-field">
+                <label htmlFor="login-password" className="login-field-label">
+                  Mot de passe
+                </label>
+                <div className="login-input-wrap">
+                  <FiLock className="login-input-icon" />
+                  <input
+                    id="login-password"
+                    ref={passwordRef}
+                    type={showPassword ? 'text' : 'password'}
+                    className="login-input"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                    aria-required="true"
+                  />
+                  <button
+                    type="button"
+                    className="login-eye-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Masquer' : 'Afficher'}
+                  >
+                    {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="login-options">
+                <button
+                  type="button"
+                  className="login-forgot-link"
+                  onClick={() => setShowHint(!showHint)}
+                >
+                  Mot de passe oublié ?
+                </button>
+              </div>
+
+              <button type="submit" className="login-btn-primary" disabled={loading}>
+                {loading ? (
+                  <>
+                    <FiLoader className="login-btn-spinner" /> Connexion en cours...
+                  </>
+                ) : (
+                  'Se connecter'
+                )}
               </button>
-            </div>
-          )}
+            </form>
 
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label">Identifiant</label>
-              <input
-                type="email"
-                className="form-input"
-                placeholder="CIN@ifp.ma"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Mot de passe</label>
-              <input
-                type="password"
-                className="form-input"
-                placeholder="••••••••"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%', justifyContent: 'center' }}
-              disabled={loading}
-            >
-              {loading ? 'Connexion en cours...' : 'Se connecter'}
-            </button>
-          </form>
-
-          <button
-            className="login-forgot"
-            onClick={() => setShowHint(!showHint)}
-          >
-            Mot de passe oublié ?
-          </button>
-
-          {showHint && (
-            <div className="login-hint">
-              <strong>Identifiant:</strong> votre CIN suivi de @ifp.ma<br />
-              <strong>Mot de passe:</strong> numéro d'inscription + 2 premiers caractères CIN<br />
-              <span style={{ fontSize: '12px', opacity: 0.8 }}>Exemple: 01AS27AB</span>
-            </div>
-          )}
+            {showHint && (
+              <div className="login-hint">
+                <p><strong>Identifiant :</strong> votre CIN suivi de @ifp.ma</p>
+                <p><strong>Mot de passe :</strong> n° inscription + 2 premiers caractères CIN</p>
+                <p className="login-hint-example">Exemple : 01AS27AB</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

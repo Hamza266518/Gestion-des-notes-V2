@@ -11,7 +11,8 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('App crash caught by boundary:', error, errorInfo);
+    console.error('ErrorBoundary caught:', error, errorInfo);
+    this.setState({ error });
   }
 
   handleReload = () => {
@@ -21,11 +22,11 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 40, textAlign: 'center', maxWidth: 600, margin: '100px auto' }}>
-          <h2 style={{ color: '#dc2626', marginBottom: 16 }}>Une erreur inattendue s'est produite</h2>
-          <p style={{ color: '#666', marginBottom: 24, fontSize: 16 }}>
-            Nous sommes désolés, une erreur technique est survenue. Veuillez recharger l'application.
-          </p>
+        <div style={{ padding: 40, textAlign: 'center', maxWidth: 700, margin: '40px auto' }}>
+          <h2 style={{ color: '#dc2626', marginBottom: 16 }}>Erreur inattendue</h2>
+          <pre style={{ textAlign: 'left', background: '#f8f9fa', padding: 16, borderRadius: 8, fontSize: 13, overflow: 'auto', maxHeight: 400, marginBottom: 24, color: '#333' }}>
+            {this.state.error?.stack || this.state.error?.message || 'Unknown error'}
+          </pre>
           <button className="btn btn-primary" onClick={this.handleReload} style={{ padding: '10px 24px' }}>
             Recharger l'application
           </button>
