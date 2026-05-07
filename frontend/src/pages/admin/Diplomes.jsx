@@ -24,8 +24,8 @@ const FIELDS = [
   { key: 'nationalite',        x: 0.352, y: 0.541, size: 11, bold: false, group: 'fr' },
   { key: 'numero_inscription', x: 0.246, y: 0.561, size: 11, bold: false, group: 'fr' },
   { key: 'date_inscription',   x: 0.436, y: 0.563, size: 11, bold: false, group: 'fr' },
-  { key: 'type_formation',     x: 0.075, y: 0.611, size: 11, bold: true,  group: 'fr' },
-  { key: 'filiere',            x: 0.120, y: 0.611, size: 11, bold: true,  group: 'fr' },
+  { key: 'type_formation',     x: 0.415, y: 0.585, size: 11, bold: true,  group: 'fr' },
+  { key: 'filiere',            x: 0.079, y: 0.611, size: 11, bold: true,  group: 'fr' },
   { key: 'promotion',          x: 0.519, y: 0.633, size: 11, bold: true,  group: 'fr' },
   { key: 'date_delivrance',    x: 0.466, y: 0.688, size: 11, bold: false, group: 'fr' },
   // Arabic fields (blue markers in calibration)
@@ -65,7 +65,7 @@ async function ensureArabicFont() {
       const buffer = await resp.arrayBuffer();
       arabicFontB64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
     }
-  } catch {console.log('Failed to load Arabic font for embedding in PDF');}
+  } catch {}
 
   arabicFontLoaded = true;
 }
@@ -261,8 +261,6 @@ export default function Diplomes() {
       const data = res.data.data;
       data._templateSrc = diplomaTemplate;
 
-      console.log('Diploma data:', data);
-
       const img = await new Promise((resolve, reject) => {
         const i = new Image();
         i.crossOrigin = 'anonymous';
@@ -324,7 +322,6 @@ export default function Diplomes() {
             p.setTextColor(0, 0, 0);
             p.text(String(value), x * pdfW, y * pdfH);
           }
-          console.log(`FR ${key}: "${value}" at (${mmX}mm, ${mmY}mm)`);
         } else {
           if (key === 'filiere_ar') {
             // Combine type_formation_ar + filiere_ar
@@ -351,7 +348,6 @@ export default function Diplomes() {
             p.setTextColor(0, 0, 0);
             p.text(String(value), x * pdfW, y * pdfH, { align: 'right' });
           }
-          console.log(`AR ${key}: "${value}" at (${mmX}mm, ${mmY}mm)`);
         }
       }
 

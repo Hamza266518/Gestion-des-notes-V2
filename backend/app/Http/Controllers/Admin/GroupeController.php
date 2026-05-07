@@ -51,9 +51,17 @@ class GroupeController extends Controller
     public function destroy($id)
     {
         try {
-            Groupe::findOrFail($id)->delete();
+            $groupe = Groupe::withCount('etudiants')->findOrFail($id);
+            if ($groupe->etudiants_count > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Impossible de supprimer. Ce groupe contient {$groupe->etudiants_count} étudiant(s).",
+                ], 422);
+            }
+            $groupe->delete();
             return response()->json(['success' => true, 'message' => 'Groupe supprimé']);
         } catch (\Exception $e) {
+            \Log::error('GroupeController::destroy error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Erreur lors de la suppression du groupe'], 500);
         }
     }

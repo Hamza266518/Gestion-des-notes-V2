@@ -67,8 +67,12 @@ export default function Sequences() {
   }, [selFiliere]);
 
   useEffect(() => {
-    if (selNiveau && currentAnnee?.id) {
-      adminApi.getGroupes({ niveau_id: selNiveau, annee_academique_id: currentAnnee.id }).then(r => setGroupes(r.data.data));
+    if (selNiveau) {
+      const params = { niveau_id: selNiveau };
+      if (currentAnnee?.id) {
+        params.annee_academique_id = currentAnnee.id;
+      }
+      adminApi.getGroupes(params).then(r => setGroupes(r.data.data));
       unitesApi.getUnites({ niveau_id: selNiveau }).then(r => setUnites(r.data.data));
     } else {
       setGroupes([]);

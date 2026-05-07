@@ -3,7 +3,7 @@ import portalApi from '../../api/portal';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { handleApiError } from '../../utils/errorHandler';
-import { formatNiveau, getMention } from '../../utils/helpers';
+import { formatNiveau } from '../../utils/helpers';
 import Badge from '../../components/common/Badge';
 import Spinner from '../../components/common/Spinner';
 import '../../css/components.css';
@@ -116,18 +116,30 @@ export default function MonBulletinView() {
                     <thead>
                       <tr>
                         <th style={thStyle}>Unite</th>
-                        <th style={thStyle}>Moyenne</th>
+                        <th style={{...thStyle, background: '#e0f2fe'}}>CC (36.66%)</th>
+                        <th style={{...thStyle, background: '#fef3c7'}}>Theorique (26.66%)</th>
+                        <th style={{...thStyle, background: '#dcfce7'}}>Pratique (36.66%)</th>
+                        <th style={thStyle}>Moy. Unite</th>
                         <th style={thStyle}>Coef</th>
                       </tr>
                     </thead>
                     <tbody>
                       {unites.map(unite => (
                         <tr key={unite.nom}>
-                          <td style={{ ...tdStyle, fontWeight: 700 }}>{unite.nom}</td>
-                          <td style={{ ...tdStyle, fontWeight: 700 }}>
+                          <td style={{...tdStyle, fontWeight: 700}}>{unite.nom}</td>
+                          <td style={{...tdStyle, background: '#f0f9ff'}}>
+                            {unite.moyenne_cc !== null && unite.moyenne_cc !== undefined ? unite.moyenne_cc.toFixed(2) : '—'}
+                          </td>
+                          <td style={{...tdStyle, background: '#fffbeb'}}>
+                            {unite.moyenne_theorique !== null && unite.moyenne_theorique !== undefined ? unite.moyenne_theorique.toFixed(2) : '—'}
+                          </td>
+                          <td style={{...tdStyle, background: '#f0fdf4'}}>
+                            {unite.moyenne_pratique !== null && unite.moyenne_pratique !== undefined ? unite.moyenne_pratique.toFixed(2) : '—'}
+                          </td>
+                          <td style={{...tdStyle, fontWeight: 700}}>
                             {unite.moyenne !== null && unite.moyenne !== undefined ? unite.moyenne.toFixed(2) : '—'}
                           </td>
-                          <td style={{ ...tdStyle, fontWeight: 700 }}>{unite.coefficient}</td>
+                          <td style={{...tdStyle, fontWeight: 700}}>{unite.coefficient}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -153,29 +165,42 @@ export default function MonBulletinView() {
 }
 
 function SummaryCalculations({ bulletinData }) {
-  const allUnites = [
-    ...(bulletinData.semestres?.[1] || []),
-    ...(bulletinData.semestres?.[2] || [])
-  ];
-  const validUnites = allUnites.filter(u => u.moyenne !== null && u.moyenne !== undefined);
-  const totalCoef = validUnites.reduce((s, u) => s + u.coefficient, 0);
-
-  const mpcc = totalCoef > 0
-    ? validUnites.reduce((s, u) => s + u.moyenne * u.coefficient, 0) / totalCoef
-    : null;
-
-  const moyenneFinale = bulletinData.moyenne_generale ?? mpcc;
-  const { label: mentionLabel, color: mentionColorVal } = getMention(moyenneFinale);
+  const moyenneFinale = bulletinData.moyenne_generale;
+  const mentionLabel = bulletinData.mention || '—';
 
   return (
     <div className="summary-grid">
       <div className="summary-item">
-        <span className="summary-label">Moyenne generale:</span>
-        <span className="summary-value">{moyenneFinale?.toFixed(2) || '—'}/20</span>
+        <span className="summary-label">Moyenne CC:</span>
+        <span className="summary-value">{bulletinData.moyenne_cc?.toFixed(2) || '—'}</span>
+      </div>
+      <div className="summary-item">
+        <span className="summary-label">Moyenne Theorique:</span>
+        <span className="summary-value">{bulletinData.moyenne_theorique?.toFixed(2) || '—'}</span>
+      </div>
+      <div className="summary-item">
+        <span className="summary-label">Moyenne Pratique:</span>
+        <span className="summary-value">{bulletinData.moyenne_pratique?.toFixed(2) || '—'}</span>
+      </div>
+      <div className="summary-item" style={{borderTop: '2px solid var(--primary)', paddingTop: 8}}>
+        <span className="summary-label" style={{fontWeight: 700}}>Moyenne Generale:</span>
+        <span className="summary-value" style={{fontWeight: 700, fontSize: 18}}>{moyenneFinale?.toFixed(2) || '—'}</span>
       </div>
       <div className="summary-item">
         <span className="summary-label">Mention:</span>
-        <Badge label={mentionLabel} color={mentionColorVal} />
+        <Badge label={mentionLabel} color={
+          mentionLabel === 'Très Bien' ? 'teal' :
+          mentionLabel === 'Bien' ? 'blue' :
+          mentionLabel === 'Assez Bien' ? 'green' :
+          mentionLabel === 'Passable' ? 'yellow' : 'red'
+        } />
+      </div>
+      <div className="summary-item">
+        <span className="summary-label">Decision du Jury:</span>
+        <Badge
+          label={bulletinData.decision || '—'}
+          color={bulletinData.decision === 'Admis(e)' ? 'green' : 'red'}
+        />
       </div>
     </div>
   );

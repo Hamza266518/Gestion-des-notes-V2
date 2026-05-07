@@ -140,6 +140,7 @@ class TestDataSeeder extends Seeder
                         'cin' => $s['cin'],
                         'numero_inscription' => $s['num'],
                         'date_naissance' => '2000-01-01',
+                        'status' => 'active',
                     ]
                 );
                 $asEtudiants[] = $etudiant;
@@ -175,6 +176,7 @@ class TestDataSeeder extends Seeder
                         'cin' => $s['cin'],
                         'numero_inscription' => $s['num'],
                         'date_naissance' => '2000-01-01',
+                        'status' => 'active',
                     ]
                 );
                 $ipEtudiants[] = $etudiant;

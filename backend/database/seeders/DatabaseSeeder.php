@@ -11,8 +11,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             TestDataSeeder::class,
             StudentSeeder::class,
-            ComprehensiveDataSeeder::class,
-            FormateurSequenceSeeder::class,
+            ReplaceFormateursSequencesSeeder::class,
         ]);
     }
 }

@@ -17,6 +17,6 @@ class NumeroInscriptionService
 
         $numero = str_pad($count + 1, 2, '0', STR_PAD_LEFT);
 
-        return $numero . ' ' . $filiereCode . $year; // "01 AS26"
+        return $numero . $filiereCode . $year; // "01AS26"
     }
 }

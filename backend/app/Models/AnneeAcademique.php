@@ -10,8 +10,17 @@ class AnneeAcademique extends Model
 
     protected $fillable = [
         'label',
+        'start_date',
+        'end_date',
         'is_current',
         'is_archived',
+    ];
+
+    protected $casts = [
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'is_current' => 'boolean',
+        'is_archived' => 'boolean',
     ];
 
     public function groupes()

@@ -3,8 +3,8 @@ import { adminApi } from '../../api/admin';
 import { unitesApi } from '../../api/unites';
 import { sequencesApi } from '../../api/sequences';
 import { formateursApi } from '../../api/formateurs';
-import { controlesApi } from '../../api/controles';
 import { scanApi } from '../../api/scan';
+import apiClient from '../../api/apiClient';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Modal from '../../components/common/Modal';
@@ -29,9 +29,7 @@ export default function Unites() {
   const [selNiveau, setSelNiveau] = useState('');
   const [openUnite, setOpenUnite] = useState(false);
   const [openSeq, setOpenSeq] = useState(false);
-  const [openCtrl, setOpenCtrl] = useState(false);
   const [selectedUnite, setSelectedUnite] = useState(null);
-  const [selectedSeq, setSelectedSeq] = useState(null);
   const [saving, setSaving] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [scanImage, setScanImage] = useState(null);
@@ -42,12 +40,14 @@ export default function Unites() {
   const [scanSemestre, setScanSemestre] = useState('');
   const [deletingUnite, setDeletingUnite] = useState(null);
   const [deletingSeq, setDeletingSeq] = useState(null);
-  const [deletingCtrl, setDeletingCtrl] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState({ type: null, id: null, nom: '' });
+  const [openEditSeq, setOpenEditSeq] = useState(false);
+  const [editingSeq, setEditingSeq] = useState(null);
+  const [editNombre, setEditNombre] = useState(2);
   const [formU, setFormU] = useState({ filiere_id: '', nom: '', numero_annee: '', semestre: '' });
   const [formS, setFormS] = useState({ nom: '', coefficient: '', nombre_controles: 2, formateur_id: '' });
-  const [formC, setFormC] = useState({ nom: '', sequence_id: '' });
   const [formErrors, setFormErrors] = useState({});
+  const [editingCtrl, setEditingCtrl] = useState({});
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
 
@@ -88,8 +88,12 @@ export default function Unites() {
   }, [selFiliere]);
 
   useEffect(() => {
-    if (selNiveau && currentAnnee?.id) {
-      adminApi.getGroupes({ niveau_id: selNiveau, annee_academique_id: currentAnnee.id })
+    if (selNiveau) {
+      const params = { niveau_id: selNiveau };
+      if (currentAnnee?.id) {
+        params.annee_academique_id = currentAnnee.id;
+      }
+      adminApi.getGroupes(params)
         .then(res => setGroupes(res.data.data))
         .catch((error) => handleApiError(error, toast));
     } else {
@@ -166,38 +170,6 @@ export default function Unites() {
     }
   };
 
-  const handleCreateControle = async () => {
-    if (!selectedSeq) return;
-
-    const errors = {};
-    if (!formC.nom) errors.nom = 'Le nom est requis';
-
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      toast.error('Veuillez remplir tous les champs obligatoires');
-      return;
-    }
-
-    setSaving(true);
-    setFormErrors({});
-
-    try {
-      await controlesApi.createControle({ ...formC, sequence_id: selectedSeq.id });
-      showSuccess(toast, 'Contrôle créé');
-      setOpenCtrl(false);
-      setFormC({ nom: '', sequence_id: '' });
-      load();
-    } catch (error) {
-      const fieldErrors = getFieldErrors(error);
-      if (Object.keys(fieldErrors).length > 0) {
-        setFormErrors(fieldErrors);
-      }
-      handleApiError(error, toast);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleDeleteUnite = (id, nomUnite) => {
     setDeleteConfirm({ type: 'unite', id, nom: nomUnite });
   };
@@ -206,8 +178,30 @@ export default function Unites() {
     setDeleteConfirm({ type: 'sequence', id, nom: nomSeq });
   };
 
-  const handleDeleteCtrl = (id, nomCtrl) => {
-    setDeleteConfirm({ type: 'controle', id, nom: nomCtrl });
+  const handleRenameControle = async (ctrlId, newName) => {
+    try {
+      await apiClient.put(`/admin/controles/${ctrlId}/rename`, { nom: newName });
+    } catch (error) {
+      console.error('Failed to rename controle:', error);
+    }
+  };
+
+  const handleEditSeq = async () => {
+    if (!editingSeq) return;
+    const newVal = parseInt(editNombre, 10);
+    if (isNaN(newVal) || newVal < 1 || newVal > 10) {
+      toast.error('Le nombre de contrôles doit être entre 1 et 10');
+      return;
+    }
+    try {
+      await sequencesApi.updateSequence(editingSeq.id, { nombre_controles: newVal });
+      showSuccess(toast, 'Séquence mise à jour');
+      setOpenEditSeq(false);
+      setEditingSeq(null);
+      load();
+    } catch (error) {
+      handleApiError(error, toast);
+    }
   };
 
   const confirmDelete = async () => {
@@ -219,9 +213,6 @@ export default function Unites() {
       } else if (type === 'sequence') {
         await sequencesApi.deleteSequence(id);
         showSuccess(toast, 'Séquence supprimée');
-      } else if (type === 'controle') {
-        await controlesApi.deleteControle(id);
-        showSuccess(toast, 'Contrôle supprimé');
       }
       setDeleteConfirm({ type: null, id: null, nom: '' });
       load();
@@ -425,50 +416,58 @@ export default function Unites() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontWeight: 500 }}>{s.nom}</span>
                         <Badge label={`Coeff ${s.coefficient}`} color="teal" />
-                        <Badge label={`${s.nombre_controles} contrôle(s)`} color="gray" />
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn btn-sm btn-outline" onClick={() => { setSelectedSeq(s); setOpenCtrl(true); setFormErrors({}); }}>
-                          + Contrôle
+                        <button className="btn btn-sm btn-outline" onClick={() => { setEditingSeq(s); setEditNombre(s.nombre_controles ?? 2); setOpenEditSeq(true); }}>
+                          Contrôles ({s.controles?.length ?? 0})
                         </button>
-                        <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDeleteSeq(s.id, s.nom)}
-                          disabled={deletingSeq === s.id}
-                        >
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDeleteSeq(s.id, s.nom)} disabled={deletingSeq === s.id}>
                           {deletingSeq === s.id ? 'Suppression...' : 'Supprimer'}
                         </button>
                       </div>
                     </div>
 
-                    {s.controles?.length > 0 && (
-                      <table style={{ width: '100%', fontSize: 13 }}>
-                        <thead>
-                          <tr>
-                            <th>Contrôle</th>
-                            <th>Formateur</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {s.controles.map(c => (
-                            <tr key={c.id}>
-                              <td>{c.nom}</td>
-                              <td>{c.formateur?.name ?? '—'}</td>
-                              <td>
-                                <button
-                                  className="btn btn-sm btn-danger"
-                                  onClick={() => handleDeleteCtrl(c.id, c.nom)}
-                                  disabled={deletingCtrl === c.id}
-                                >
-                                  {deletingCtrl === c.id ? 'Suppression...' : 'Supprimer'}
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                      {s.controles?.map(c => {
+                        const isEditing = editingCtrl[c.id];
+                        return (
+                          <span key={c.id} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            padding: '4px 10px', background: '#f3f4f6', borderRadius: 4, fontSize: 13,
+                          }}>
+                            {isEditing ? (
+                              <input
+                                className="form-input"
+                                style={{ width: 120, padding: '2px 6px', fontSize: 13, height: 24 }}
+                                defaultValue={c.nom}
+                                autoFocus
+                                onBlur={(e) => {
+                                  const newName = e.target.value.trim();
+                                  if (newName && newName !== c.nom) {
+                                    handleRenameControle(c.id, newName);
+                                  }
+                                  setEditingCtrl(p => ({ ...p, [c.id]: false }));
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') e.target.blur();
+                                  if (e.key === 'Escape') {
+                                    setEditingCtrl(p => ({ ...p, [c.id]: false }));
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span
+                                style={{ cursor: 'pointer' }}
+                                onDoubleClick={() => setEditingCtrl(p => ({ ...p, [c.id]: true }))}
+                                title="Double-cliquez pour renommer"
+                              >
+                                {c.nom}
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -609,24 +608,33 @@ export default function Unites() {
         </div>
       </Modal>
 
-      {/* Create controle modal */}
-      <Modal open={openCtrl} onClose={() => { setOpenCtrl(false); setFormErrors({}); }} title={`Nouveau Contrôle — ${selectedSeq?.nom}`}>
+      {/* Edit sequence controles modal */}
+      <Modal open={openEditSeq} onClose={() => { setOpenEditSeq(false); setEditingSeq(null); }} title={`Contrôles — ${editingSeq?.nom}`}>
+        <p style={{ marginBottom: 12, fontSize: 14, color: 'var(--gray-600)' }}>
+          Cette séquence a actuellement <strong>{editingSeq?.controles?.length ?? 0} contrôle(s)</strong>.
+        </p>
         <div className="form-group">
-          <label className="form-label">Nom du contrôle *</label>
-          <input
-            className={`form-input ${formErrors.nom ? 'border-red-500' : ''}`}
-            value={formC.nom ?? ''}
-            onChange={e => setFormC(p => ({ ...p, nom: e.target.value }))}
-            style={formErrors.nom ? { borderColor: '#ef4444' } : {}}
-          />
-          {formErrors.nom && (
-            <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.nom}</div>
-          )}
+          <label className="form-label">Nombre de contrôles *</label>
+          <select className="form-select" value={editNombre} onChange={e => setEditNombre(e.target.value)}>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
         </div>
+        {editNombre > (editingSeq?.controles?.length ?? 0) && (
+          <p style={{ fontSize: 13, color: 'var(--warning)', marginTop: 8 }}>
+            ⚠ {editNombre - (editingSeq?.controles?.length ?? 0)} contrôle(s) sera(ont) ajouté(s).
+          </p>
+        )}
+        {editNombre < (editingSeq?.controles?.length ?? 0) && (
+          <p style={{ fontSize: 13, color: 'var(--danger)', marginTop: 8 }}>
+            ⚠ {(editingSeq?.controles?.length ?? 0) - editNombre} contrôle(s) sera(ont) supprimé(s) avec leurs notes.
+          </p>
+        )}
         <div className="modal-footer">
-          <button className="btn btn-outline" onClick={() => { setOpenCtrl(false); setFormErrors({}); }}>Annuler</button>
-          <button className="btn btn-primary" onClick={handleCreateControle} disabled={saving}>
-            {saving ? 'Création...' : 'Créer'}
+          <button className="btn btn-outline" onClick={() => { setOpenEditSeq(false); setEditingSeq(null); }}>Annuler</button>
+          <button className="btn btn-primary" onClick={handleEditSeq}>
+            Valider
           </button>
         </div>
       </Modal>
@@ -733,7 +741,6 @@ export default function Unites() {
         <p>
           {deleteConfirm.type === 'unite' && `Supprimer l'unité "${deleteConfirm.nom}" ? Cette action est irréversible.`}
           {deleteConfirm.type === 'sequence' && `Supprimer la séquence "${deleteConfirm.nom}" ? Cette action est irréversible.`}
-          {deleteConfirm.type === 'controle' && `Supprimer le contrôle "${deleteConfirm.nom}" ? Cette action est irréversible.`}
         </p>
         <div className="modal-footer">
           <button className="btn btn-outline" onClick={() => setDeleteConfirm({ type: null, id: null, nom: '' })}>Annuler</button>

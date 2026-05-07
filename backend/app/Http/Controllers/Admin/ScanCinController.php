@@ -33,39 +33,42 @@ class ScanCinController extends Controller
                 'filiere_code'        => 'required|string',
             ]);
 
-            // Check if images is sent as array or single file
-            if ($request->hasFile('images')) {
-                $images = $request->file('images');
+            if ($request->hasFile('pdfs')) {
+                $pdfs = $request->file('pdfs');
+            } else if ($request->hasFile('pdf')) {
+                $pdfs = [$request->file('pdf')];
+            } else if ($request->hasFile('images')) {
+                $pdfs = $request->file('images');
             } else if ($request->hasFile('image')) {
-                $images = [$request->file('image')];
+                $pdfs = [$request->file('image')];
             } else {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Aucune image trouvée dans la requête',
+                    'message' => 'Aucun fichier PDF trouvé dans la requête',
                 ], 422);
             }
             
-            if (!is_array($images)) {
-                $images = [$images];
+            if (!is_array($pdfs)) {
+                $pdfs = [$pdfs];
             }
 
             $results = [];
             $errors  = [];
 
-            foreach ($images as $image) {
-                $base64 = base64_encode(file_get_contents($image->getRealPath()));
+            foreach ($pdfs as $pdf) {
+                $base64 = base64_encode(file_get_contents($pdf->getRealPath()));
                 $rawText = $this->gemini->scanCin($base64);
                 $students = $this->parser->parseCin($rawText);
 
                 if (empty($students)) {
-                    $errors[] = ['message' => 'CIN illisible'];
+                    $errors[] = ['message' => 'Document illisible'];
                     \Log::warning('ScanCin: no students parsed', ['raw' => $rawText]);
                     continue;
                 }
 
                 foreach ($students as $student) {
-                    if (empty($student['cin'])) {
-                        $errors[] = ['message' => 'CIN manquant pour un étudiant'];
+                    if (empty($student['nom_prenom'])) {
+                        $errors[] = ['message' => 'Nom manquant pour un étudiant'];
                         continue;
                     }
 
@@ -76,7 +79,8 @@ class ScanCinController extends Controller
 
                     $results[] = [
                         'nom_prenom'         => $student['nom_prenom'] ?? '',
-                        'cin'                => strtoupper($student['cin']),
+                        'nom_ar'             => $student['nom_ar'] ?? '',
+                        'cin'                => strtoupper($student['cin'] ?? ''),
                         'date_naissance'     => $student['date_naissance'] ?? '',
                         'numero_inscription' => $numero,
                         'groupe_id'          => $request->groupe_id,
@@ -101,6 +105,7 @@ class ScanCinController extends Controller
             $request->validate([
                 'stagiaires'                       => 'required|array',
                 'stagiaires.*.nom_prenom'          => 'required|string',
+                'stagiaires.*.nom_ar'              => 'nullable|string',
                 'stagiaires.*.cin'                 => 'required|string',
                 'stagiaires.*.date_naissance'      => 'nullable|date',
                 'stagiaires.*.numero_inscription'  => 'required|string',
@@ -138,6 +143,7 @@ class ScanCinController extends Controller
                         'groupe_id'           => $item['groupe_id'],
                         'annee_academique_id' => $item['annee_academique_id'],
                         'nom_prenom'          => $item['nom_prenom'],
+                        'nom_ar'              => $item['nom_ar'] ?? null,
                         'cin'                 => $cin,
                         'date_naissance'      => $item['date_naissance'] ?? null,
                         'numero_inscription'  => $item['numero_inscription'],

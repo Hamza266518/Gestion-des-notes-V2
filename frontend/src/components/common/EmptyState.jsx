@@ -1,4 +1,4 @@
-import '../css/components.css';
+import '../../css/components.css';
 
 export default function EmptyState({ message, actions }) {
   return (

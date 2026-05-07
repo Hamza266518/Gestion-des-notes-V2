@@ -226,6 +226,7 @@ class StudentSeeder extends Seeder
                 'cin' => $data['cin'],
                 'numero_inscription' => $numero,
                 'date_naissance' => null,
+                'status' => 'active',
             ]);
 
             $count++;

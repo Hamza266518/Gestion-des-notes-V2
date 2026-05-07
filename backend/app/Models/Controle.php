@@ -9,6 +9,8 @@ class Controle extends Model
     protected $fillable = [
         'sequence_id',
         'numero',
+        'type',
+        'nom',
         'date',
         'note_max',
         'formateur_id',

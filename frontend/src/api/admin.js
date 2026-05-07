@@ -3,8 +3,8 @@ import apiClient from './apiClient';
 export const adminApi = {
     getAnnees: () =>
         apiClient.get('/admin/annees-academiques'),
-    createAnnee: (label) =>
-        apiClient.post('/admin/annees-academiques', { label }),
+    createAnnee: (data) =>
+        apiClient.post('/admin/annees-academiques', data),
     setCurrentAnnee: (id) =>
         apiClient.post(`/admin/annees-academiques/${id}/set-current`),
     archiveAnnee: (id) =>
@@ -62,4 +62,7 @@ export const adminApi = {
 
     getActivityLogs: (params) =>
         apiClient.get('/admin/activity-logs', { params }),
+
+    confirmScanCin: (data) =>
+        apiClient.post('/admin/scan-cin/confirm', data),
 };

@@ -9,7 +9,8 @@ class IsAdmin
 {
     public function handle(Request $request, Closure $next)
     {
-        if (auth()->user()->role !== 'admin') {
+        $user = auth()->user();
+        if (!$user || $user->role !== 'admin') {
             return response()->json(['success' => false, 'message' => 'Accès refusé'], 403);
         }
         return $next($request);

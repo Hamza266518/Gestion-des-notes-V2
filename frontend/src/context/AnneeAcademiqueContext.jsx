@@ -8,31 +8,49 @@ export function AnneeAcademiqueProvider({ children }) {
   const [annees, setAnnees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [warning, setWarning] = useState(null);
 
   const fetchAnnees = useCallback(() => {
     const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
     if (!token) {
       setLoading(false);
-      return Promise.resolve();
+      return;
     }
     setLoading(true);
-    return apiClient.get('/annee-academique/current')
-      .then(res => {
-        const data = res.data.data;
-        setCurrentAnnee(data || null);
-        setAnnees(data ? [data] : []);
-      })
-      .catch((err) => {
-        console.error('Failed to fetch current academic year:', err);
-        if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('role');
-          window.location.href = '/login';
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    setWarning(null);
+
+    if (role === 'admin') {
+      apiClient.get('/admin/annees-academiques')
+        .then(res => {
+          const anneesData = res.data.data || [];
+          setAnnees(anneesData);
+          const current = anneesData.find(a => a.is_current) || null;
+          setCurrentAnnee(current);
+          setLoading(false);
+          apiClient.get('/annee-academique/current')
+            .then(res => {
+              if (res?.data?.warning) setWarning(res.data.warning);
+            })
+            .catch(() => {});
+        })
+        .catch((err) => {
+          console.error('Failed to fetch academic years:', err);
+          setLoading(false);
+        });
+    } else {
+      apiClient.get('/annee-academique/current')
+        .then(res => {
+          const annee = res.data.data || null;
+          setCurrentAnnee(annee);
+          setAnnees(annee ? [annee] : []);
+          if (res?.data?.warning) setWarning(res.data.warning);
+          setLoading(false);
+        })
+        .catch(() => {
+          setLoading(false);
+        });
+    }
   }, []);
 
   useEffect(() => {
@@ -47,8 +65,9 @@ export function AnneeAcademiqueProvider({ children }) {
     currentAnnee,
     annees,
     loading,
-    refreshAnnees
-  }), [currentAnnee, annees, loading, refreshAnnees]);
+    refreshAnnees,
+    warning,
+  }), [currentAnnee, annees, loading, refreshAnnees, warning]);
 
   return (
     <AnneeAcademiqueContext.Provider value={value}>

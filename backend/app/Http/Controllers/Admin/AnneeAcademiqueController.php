@@ -25,10 +25,14 @@ class AnneeAcademiqueController extends Controller
     {
         $request->validate([
             'label' => 'required|string|max:255|unique:annees_academiques',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
         $annee = AnneeAcademique::create([
             'label' => $request->label,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
             'is_current' => false,
         ]);
 
@@ -40,7 +44,6 @@ class AnneeAcademiqueController extends Controller
 
     public function setCurrent(Request $request, $id): JsonResponse
     {
-        // Reset all to non-current
         AnneeAcademique::where('is_current', true)->update(['is_current' => false]);
 
         $annee = AnneeAcademique::findOrFail($id);
@@ -56,7 +59,6 @@ class AnneeAcademiqueController extends Controller
     {
         $annee = AnneeAcademique::findOrFail($id);
 
-        // Check if has related data
         if ($annee->etudiants()->exists() || $annee->groupes()->exists()) {
             return response()->json([
                 'success' => false,
@@ -74,12 +76,22 @@ class AnneeAcademiqueController extends Controller
 
     public function archive($id): JsonResponse
     {
-        $annee = AnneeAcademique::findOrFail($id);
-        $annee->update(['is_current' => false, 'is_archived' => true]);
+        $annee = AnneeAcademique::withCount(['etudiants', 'groupes'])->findOrFail($id);
+
+        $counts = [
+            'etudiants' => $annee->etudiants_count,
+            'groupes'   => $annee->groupes_count,
+        ];
+
+        $annee->update([
+            'is_current' => false,
+            'is_archived' => true,
+        ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Année archivée',
+            'counts'  => $counts,
         ]);
     }
 
@@ -87,9 +99,29 @@ class AnneeAcademiqueController extends Controller
     {
         $annee = AnneeAcademique::where('is_current', true)->first();
 
+        $warning = null;
+        if ($annee && $annee->end_date) {
+            $daysLeft = now()->diffInDays($annee->end_date);
+            if ($daysLeft <= 30) {
+                if ($daysLeft > 0) {
+                    $warning = [
+                        'days_left' => $daysLeft,
+                        'message' => "L'année académique se termine dans {$daysLeft} jour(s)",
+                    ];
+                } else {
+                    $warning = [
+                        'days_left' => 0,
+                        'message' => "L'année académique est terminée. Veuillez l'archiver.",
+                        'can_archive' => true,
+                    ];
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => $annee,
+            'warning' => $warning,
         ]);
     }
 }

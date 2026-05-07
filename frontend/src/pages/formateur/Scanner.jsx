@@ -19,7 +19,7 @@ export default function Scanner() {
     filiere_id: '', sequence_id: '', controle_id: ''
   });
 
-  const [images, setImages] = useState([]);
+  const [pdfs, setPdfs] = useState([]);
   const [results, setResults] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [savingResults, setSavingResults] = useState(false);
@@ -41,7 +41,7 @@ export default function Scanner() {
       .finally(() => setLoading(false));
 
     return () => {
-      imagePreviews.forEach(url => URL.revokeObjectURL(url));
+      pdfUrls.forEach(url => URL.revokeObjectURL(url));
     };
   }, []);
 
@@ -53,18 +53,18 @@ export default function Scanner() {
     ? (sequences.find(s => s.id == sel.sequence_id)?.controles || [])
     : [];
 
-  const [imagePreviews, setImagePreviews] = useState([]);
+  const [pdfUrls, setPdfUrls] = useState([]);
 
-  const handleImages = (e) => {
+  const handleFiles = (e) => {
     const files = Array.from(e.target.files);
-    setImages(files);
-    const previews = files.map(f => URL.createObjectURL(f));
-    setImagePreviews(previews);
+    setPdfs(files);
+    const urls = files.map(f => URL.createObjectURL(f));
+    setPdfUrls(urls);
   };
 
   const handleScan = async () => {
-    if (images.length === 0) {
-      toast.warning('Veuillez sélectionner au moins une image');
+    if (pdfs.length === 0) {
+      toast.warning('Veuillez sélectionner au moins un fichier PDF');
       return;
     }
 
@@ -74,27 +74,28 @@ export default function Scanner() {
     try {
       const scanned = [];
 
-      for (const img of images) {
+      for (const pdf of pdfs) {
         try {
-          const data = await scanNotesPaper(img);
+          const data = await scanNotesPaper(pdf);
           if (Array.isArray(data)) {
             for (const row of data) {
               if (row.nom && row.note !== undefined) {
                 scanned.push({
                   nom: row.nom,
+                  nom_ar: row.nom_ar || '',
                   note: row.note,
                   confidence: 'high'
                 });
               }
             }
           }
-        } catch (imgError) {
-          // Continue with other images
+        } catch (pdfError) {
+          // Continue with other files
         }
       }
 
       if (scanned.length === 0) {
-        toast.error('Aucun résultat trouvé. Vérifiez que l\'image est lisible.');
+        toast.error('Aucun résultat trouvé. Vérifiez que le fichier PDF est lisible.');
       } else {
         showSuccess(toast, `${scanned.length} note(s) détectée(s)`);
       }
@@ -109,10 +110,10 @@ export default function Scanner() {
     }
   };
 
-  const removeImage = (i) => {
-    URL.revokeObjectURL(imagePreviews[i]);
-    setImages(prev => prev.filter((_, idx) => idx !== i));
-    setImagePreviews(prev => prev.filter((_, idx) => idx !== i));
+  const removePdf = (i) => {
+    URL.revokeObjectURL(pdfUrls[i]);
+    setPdfs(prev => prev.filter((_, idx) => idx !== i));
+    setPdfUrls(prev => prev.filter((_, idx) => idx !== i));
   };
 
   const updateResult = (i, key, val) => {
@@ -132,12 +133,13 @@ export default function Scanner() {
         await notesApi.createNote({
           controle_id: sel.controle_id,
           etudiant_nom: r.nom,
+          nom_ar: r.nom_ar || null,
           valeur: r.note,
         });
       }
       showSuccess(toast, `${results.length} note(s) enregistrée(s)`);
       setStep(1);
-      setImages([]);
+      setPdfs([]);
       setResults([]);
     } catch (err) {
       handleApiError(err, toast);
@@ -170,7 +172,7 @@ export default function Scanner() {
 
       {/* Steps */}
       <div className="steps" style={{ marginBottom: 28 }}>
-        {['Sélection', 'Photos', 'Résultats', 'Vérification', 'Confirmer'].map((label, i) => (
+        {['Sélection', 'PDF', 'Résultats', 'Vérification', 'Confirmer'].map((label, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{
@@ -223,19 +225,19 @@ export default function Scanner() {
       {step === 2 && (
         <div className="card card-body" style={{ maxWidth: 1000, width: '90vw' }}>
           <div className="upload-zone">
-            <input type="file" accept="image/*" multiple onChange={handleImages} />
+            <input type="file" accept=".pdf" multiple onChange={handleFiles} />
             <div className="upload-zone-text">
-              <strong>Cliquer ou glisser</strong> les photos de notes
+              <strong>Cliquer ou glisser</strong> les fichiers PDF de notes
             </div>
           </div>
-          {images.length > 0 && (
+          {pdfs.length > 0 && (
             <div style={{ marginTop: 20 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{images.length} image(s) sélectionnée(s)</div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{pdfs.length} fichier(s) PDF sélectionné(s)</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
-                {imagePreviews.map((src, i) => (
-                  <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb' }}>
-                    <img src={src} alt={`Page ${i + 1}`} style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block' }} />
-                    <div style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(239,68,68,0.92)', color: '#fff', border: 'none', borderRadius: 6, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }} onClick={() => removeImage(i)}>
+                {pdfUrls.map((src, i) => (
+                  <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb', background: '#f9fafb', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <embed src={src} type="application/pdf" style={{ width: '100%', height: '100%' }} />
+                    <div style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(239,68,68,0.92)', color: '#fff', border: 'none', borderRadius: 6, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }} onClick={() => removePdf(i)}>
                       <FiX size={18} />
                     </div>
                     <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', padding: '4px 8px', fontSize: 12, textAlign: 'center' }}>
@@ -248,7 +250,7 @@ export default function Scanner() {
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button className="btn btn-outline" onClick={() => setStep(1)}>Retour</button>
-            <button className="btn btn-primary" disabled={images.length === 0 || scanning} onClick={handleScan}>
+            <button className="btn btn-primary" disabled={pdfs.length === 0 || scanning} onClick={handleScan}>
               {scanning ? 'Lecture en cours...' : 'Scanner'}
             </button>
           </div>
@@ -271,11 +273,11 @@ export default function Scanner() {
             <div className="text-center" style={{ padding: 40 }}>
               <h4 style={{ color: '#666', marginBottom: 12 }}>Aucune note detectee</h4>
               <p style={{ color: '#999', marginBottom: 24 }}>
-                Verifiez l'image ou ressayer le scan.
+                Verifiez le fichier PDF ou ressayer le scan.
               </p>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                 <button className="btn btn-primary" onClick={() => setStep(2)}>
-                  Retour aux photos
+                  Retour aux fichiers
                 </button>
                 <button className="btn btn-outline" onClick={handleScan}>
                   Ressayer le scan
@@ -285,18 +287,18 @@ export default function Scanner() {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20 }}>
               <div>
-                <h5 style={{ marginBottom: 8, fontWeight: 600 }}>Images uploadées</h5>
+                <h5 style={{ marginBottom: 8, fontWeight: 600 }}>Fichiers PDF uploadés</h5>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '70vh', overflowY: 'auto' }}>
-                  {imagePreviews.map((src, i) => (
+                  {pdfUrls.map((src, i) => (
                     <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb', background: '#fff' }}>
-                      <img src={src} alt={`Page ${i + 1}`} style={{ width: '100%', height: 220, objectFit: 'contain', display: 'block', background: '#f9fafb' }} />
+                      <embed src={src} type="application/pdf" style={{ width: '100%', height: 220, display: 'block' }} />
                       <div style={{ position: 'absolute', top: 4, left: 4, background: 'var(--primary)', color: '#fff', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
                         {i + 1}
                       </div>
                       <button
-                        onClick={() => removeImage(i)}
+                        onClick={() => removePdf(i)}
                         style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(239,68,68,0.9)', color: '#fff', border: 'none', borderRadius: 4, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16 }}
-                        title="Retirer cette image"
+                        title="Retirer ce fichier"
                       >
                         <FiX />
                       </button>
@@ -309,7 +311,8 @@ export default function Scanner() {
                   <table style={{ fontSize: '15px', minWidth: '500px', width: '100%' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f9fafb' }}>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '250px' }}>Nom</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '220px' }}>Nom</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '180px' }}>الاسم بالعربية</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Note /20</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Actions</th>
                       </tr>
@@ -322,7 +325,15 @@ export default function Scanner() {
                               className="form-input"
                               value={r.nom}
                               onChange={e => updateResult(i, 'nom', e.target.value)}
-                              style={{ minWidth: '220px', width: '100%', padding: '8px 12px', fontSize: '15px' }}
+                              style={{ minWidth: '200px', width: '100%', padding: '8px 12px', fontSize: '15px' }}
+                            />
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <input
+                              className="form-input"
+                              value={r.nom_ar || ''}
+                              onChange={e => updateResult(i, 'nom_ar', e.target.value)}
+                              style={{ minWidth: '160px', width: '100%', padding: '8px 12px', fontSize: '15px', direction: 'rtl', textAlign: 'right' }}
                             />
                           </td>
                           <td style={{ padding: '12px 16px' }}>

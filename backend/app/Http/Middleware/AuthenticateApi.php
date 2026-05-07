@@ -5,13 +5,12 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 
-class IsEtudiant
+class AuthenticateApi
 {
     public function handle(Request $request, Closure $next)
     {
-        $user = auth()->user();
-        if (!$user || $user->role !== 'etudiant') {
-            return response()->json(['success' => false, 'message' => 'Accès refusé'], 403);
+        if (!auth()->check()) {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
         }
         return $next($request);
     }

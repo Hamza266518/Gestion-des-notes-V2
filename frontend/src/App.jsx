@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AnneeAcademiqueProvider } from './context/AnneeAcademiqueContext';
+import { ToastProvider } from './context/ToastContext';
 import PrivateRoute from './components/common/PrivateRoute';
 import AdminLayout from './components/common/AdminLayout';
 import EtudiantLayout from './components/common/EtudiantLayout';
@@ -18,6 +19,7 @@ import Diplomes from './pages/admin/Diplomes';
 import Notes from './pages/admin/Notes';
 import Publications from './pages/admin/Publications';
 import Bulletins from './pages/admin/Bulletins';
+import Sequences from './pages/admin/Sequences';
 
 import MonBulletin from './pages/etudiant/MonBulletin';
 import MonBulletinView from './pages/etudiant/MonBulletinView';
@@ -30,59 +32,62 @@ export default function App() {
   return (
     <AuthProvider>
       <AnneeAcademiqueProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Navigate to="/login" replace />} />
+        <ToastProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
 
-          <Route
-            path="/admin"
-            element={
-              <PrivateRoute role="admin">
-                <AdminLayout />
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="annees" element={<AnneesAcademiques />} />
-            <Route path="filieres-groupes" element={<FilieresGroupes />} />
-            <Route path="etudiants" element={<Etudiants />} />
-            <Route path="unites" element={<Unites />} />
-            <Route path="formateurs" element={<Formateurs />} />
-            <Route path="scan-cin" element={<ScanCin />} />
-            <Route path="diplomes" element={<Diplomes />} />
-            <Route path="notes" element={<Notes />} />
-            <Route path="publications" element={<Publications />} />
-            <Route path="bulletins" element={<Bulletins />} />
-          </Route>
+            <Route
+              path="/admin"
+              element={
+                <PrivateRoute role="admin">
+                  <AdminLayout />
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="annees" element={<AnneesAcademiques />} />
+              <Route path="filieres-groupes" element={<FilieresGroupes />} />
+              <Route path="etudiants" element={<Etudiants />} />
+              <Route path="unites" element={<Unites />} />
+              <Route path="formateurs" element={<Formateurs />} />
+              <Route path="scan-cin" element={<ScanCin />} />
+              <Route path="diplomes" element={<Diplomes />} />
+              <Route path="notes" element={<Notes />} />
+              <Route path="publications" element={<Publications />} />
+              <Route path="bulletins" element={<Bulletins />} />
+              <Route path="sequences" element={<Sequences />} />
+            </Route>
 
-          <Route
-            path="/etudiant"
-            element={
-              <PrivateRoute role="etudiant">
-                <EtudiantLayout />
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<Navigate to="bulletin" replace />} />
-            <Route path="bulletin" element={<MonBulletin />} />
-            <Route path="mon-bulletin" element={<MonBulletinView />} />
-          </Route>
+            <Route
+              path="/etudiant"
+              element={
+                <PrivateRoute role="etudiant">
+                  <EtudiantLayout />
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<Navigate to="bulletin" replace />} />
+              <Route path="bulletin" element={<MonBulletin />} />
+              <Route path="mon-bulletin" element={<MonBulletinView />} />
+            </Route>
 
-          <Route
-            path="/formateur"
-            element={
-              <PrivateRoute role="formateur">
-                <FormateurLayout />
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<Navigate to="scanner" replace />} />
-            <Route path="scanner" element={<Scanner />} />
-            <Route path="notes" element={<NotesList />} />
-            <Route path="liste-notes" element={<MesNotesList />} />
-          </Route>
-        </Routes>
+            <Route
+              path="/formateur"
+              element={
+                <PrivateRoute role="formateur">
+                  <FormateurLayout />
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<Navigate to="scanner" replace />} />
+              <Route path="scanner" element={<Scanner />} />
+              <Route path="notes" element={<NotesList />} />
+              <Route path="liste-notes" element={<MesNotesList />} />
+            </Route>
+          </Routes>
+        </ToastProvider>
       </AnneeAcademiqueProvider>
     </AuthProvider>
   );

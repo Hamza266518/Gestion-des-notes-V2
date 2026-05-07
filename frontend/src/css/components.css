@@ -877,3 +877,518 @@
   .filter-bar .form-select:disabled {
     opacity: 0.5;
   }
+
+  /* ═══════════════════════════════════════════════
+     RESPONSIVE STYLES
+     ═══════════════════════════════════════════════ */
+
+  /* Tablet (1024px and below) */
+  @media (max-width: 1024px) {
+    .page {
+      padding: 20px;
+    }
+
+    .stats-grid {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .filter-bar {
+      flex-direction: column;
+    }
+
+    .filter-bar .form-select,
+    .filter-bar .form-input {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .fg-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .sequences-modal-grid,
+    .unites-modal-grid,
+    .fg-modal-grid,
+    .etudiants-modal-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .bulletin-info {
+      grid-template-columns: 1fr;
+    }
+
+    .dashboard-quick-btns {
+      flex-direction: column;
+    }
+
+    .dashboard-quick-btns .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  /* Mobile (768px and below) */
+  @media (max-width: 768px) {
+    .page {
+      padding: 12px;
+    }
+
+    .page-title {
+      font-size: 17px;
+    }
+
+    .page-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .page-header .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 7px 12px;
+      font-size: 12.5px;
+    }
+
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+
+    /* Cards */
+    .card-body {
+      padding: 14px;
+    }
+
+    /* Tables */
+    thead th {
+      padding: 8px 12px;
+      font-size: 11px;
+    }
+
+    tbody td {
+      padding: 8px 12px;
+      font-size: 12.5px;
+    }
+
+    .table-empty {
+      padding: 32px 16px;
+    }
+
+    /* Forms */
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      font-size: 12px;
+    }
+
+    .form-input,
+    .form-select {
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+
+    /* Modal */
+    .custom-modal {
+      width: 95%;
+      max-width: 95%;
+      margin: 0 10px;
+    }
+
+    .custom-modal-header {
+      padding: 16px 16px 0 16px;
+    }
+
+    .custom-modal-body {
+      padding: 16px;
+    }
+
+    .custom-modal-footer {
+      padding: 12px 16px 16px 16px;
+      flex-direction: column;
+    }
+
+    .custom-modal-footer .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Steps */
+    .steps {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .step {
+      flex: unset;
+    }
+
+    .step-label {
+      display: none;
+    }
+
+    /* Stats */
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .stat-card {
+      padding: 14px;
+    }
+
+    .stat-icon {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+    }
+
+    /* Upload Zone */
+    .upload-zone {
+      padding: 24px 16px;
+    }
+
+    .upload-zone-icon {
+      font-size: 32px;
+    }
+
+    /* Alert */
+    .alert {
+      padding: 10px 12px;
+      font-size: 12.5px;
+    }
+
+    /* Toast */
+    .toast-container {
+      top: 10px;
+      right: 10px;
+      left: 10px;
+    }
+
+    .toast-item {
+      min-width: unset;
+      max-width: unset;
+    }
+
+    /* Scanner layout */
+    .scanner-results-list {
+      gap: 6px;
+    }
+
+    .scanner-result-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    /* Formateur actions */
+    .formateur-actions {
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .formateur-actions .btn {
+      width: 100%;
+    }
+
+    /* Sequences */
+    .sequences-action-row {
+      flex-direction: column;
+    }
+
+    .sequences-action-row .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Unites */
+    .unites-actions-row {
+      flex-direction: column;
+    }
+
+    .unites-actions-row .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* FG */
+    .fg-actions {
+      flex-direction: column;
+    }
+
+    .fg-actions .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Etudiants */
+    .etudiants-actions {
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .etudiants-actions .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .etudiants-empty-btns {
+      flex-direction: column;
+    }
+
+    .etudiants-empty-btns .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Bulletin */
+    .bulletin-header h2 {
+      font-size: 18px;
+    }
+
+    .bulletin-header h3 {
+      font-size: 15px;
+    }
+
+    .bulletin-summary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .bulletin-footer {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .bulletin-print-bar {
+      flex-direction: column;
+    }
+
+    .bulletin-print-bar .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Recap table */
+    .recap-table-wrap {
+      padding: 12px;
+    }
+
+    .recap-header-row {
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .recap-header-row span {
+      min-width: unset;
+    }
+
+    /* Activity log */
+    .activity-log-content {
+      min-width: 0;
+    }
+
+    /* Dashboard */
+    .dashboard-error {
+      margin: 60px auto;
+    }
+
+    /* Bulk save bar */
+    .bulk-save-bar {
+      flex-direction: column;
+    }
+
+    .bulk-save-bar .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Tab bar */
+    .tab-bar {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;
+    }
+
+    .stats-bar {
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Publications */
+    .pub-select {
+      width: 100%;
+    }
+
+    .pub-cell {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
+  }
+
+  /* Small mobile (480px and below) */
+  @media (max-width: 480px) {
+    .page {
+      padding: 8px;
+    }
+
+    .page-title {
+      font-size: 16px;
+    }
+
+    .card-body {
+      padding: 10px;
+    }
+
+    /* Stats - single column */
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .stat-card {
+      padding: 12px;
+    }
+
+    .stat-value {
+      font-size: 18px;
+    }
+
+    /* Tables - compact */
+    thead th {
+      padding: 6px 8px;
+      font-size: 10px;
+    }
+
+    tbody td {
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .btn-sm {
+      padding: 3px 6px;
+      font-size: 10px;
+    }
+
+    /* Forms */
+    .form-input,
+    .form-select {
+      padding: 7px 8px;
+      font-size: 12.5px;
+    }
+
+    /* Steps - just numbers */
+    .steps {
+      justify-content: center;
+    }
+
+    /* Upload zone */
+    .upload-zone {
+      padding: 20px 12px;
+    }
+
+    .upload-zone-text {
+      font-size: 12px;
+    }
+
+    /* Toast */
+    .toast-container {
+      top: 8px;
+      right: 8px;
+      left: 8px;
+    }
+
+    .toast {
+      padding: 10px 14px;
+      font-size: 12.5px;
+      min-width: unset;
+    }
+
+    /* Empty state */
+    .empty-state {
+      padding: 24px 12px;
+    }
+
+    .empty-state-message {
+      font-size: 14px;
+    }
+
+    .empty-state-actions {
+      flex-direction: column;
+    }
+
+    .empty-state-actions .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Modal */
+    .custom-modal-title {
+      font-size: 16px;
+    }
+
+    /* Scanner result table in review */
+    table {
+      font-size: 12px;
+    }
+
+    /* Bulletin */
+    .bulletin-table {
+      font-size: 11px;
+    }
+
+    .bulletin-table th,
+    .bulletin-table td {
+      padding: 4px 6px;
+    }
+
+    .bulletin-footer-score {
+      font-size: 20px;
+    }
+
+    .bulletin-footer-label {
+      font-size: 14px;
+    }
+
+    /* Recap */
+    .recap-table {
+      font-size: 11px;
+    }
+
+    .recap-table thead th {
+      padding: 6px 8px;
+    }
+
+    .recap-table tbody td {
+      padding: 4px 8px;
+    }
+
+    /* Login hint */
+    .login-hint {
+      font-size: 12px;
+    }
+  }

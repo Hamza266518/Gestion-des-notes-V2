@@ -41,12 +41,17 @@ class ScanController extends Controller
         // Get only sequences assigned to this formateur for the dropdown
         // This is handled in the frontend by filtering
         // The backend already validated access above
-        // Handle both 'images' array and single 'image'
+        // Handle both 'pdfs' array, single 'pdf', or fallback to 'images'
         $validateRules = [
             'controle_id' => 'required|exists:controles,id',
         ];
         
-        if ($request->hasFile('images')) {
+        if ($request->hasFile('pdfs')) {
+            $validateRules['pdfs'] = 'required|array';
+            $validateRules['pdfs.*'] = 'required|mimes:pdf|max:10240';
+        } else if ($request->hasFile('pdf')) {
+            $validateRules['pdf'] = 'required|mimes:pdf|max:10240';
+        } else if ($request->hasFile('images')) {
             $validateRules['images'] = 'required|array';
             $validateRules['images.*'] = 'required|image';
         } else {
@@ -60,16 +65,20 @@ class ScanController extends Controller
         $errors    = [];
         $formateur = auth()->user()->formateur;
 
-        // Handle both 'images' array and single 'image'
-        if ($request->hasFile('images')) {
-            $images = $request->file('images');
+        // Handle multiple file input names
+        if ($request->hasFile('pdfs')) {
+            $files = $request->file('pdfs');
+        } else if ($request->hasFile('pdf')) {
+            $files = [$request->file('pdf')];
+        } else if ($request->hasFile('images')) {
+            $files = $request->file('images');
         } else {
-            $images = [$request->file('image')];
+            $files = [$request->file('image')];
         }
 
-        foreach ($images as $image) {
-            $base64    = base64_encode(file_get_contents($image->getRealPath()));
-            $imagePath = $image->store('scans', 'public');
+        foreach ($files as $file) {
+            $base64    = base64_encode(file_get_contents($file->getRealPath()));
+            $imagePath = $file->store('scans', 'public');
             $rawText   = $this->gemini->scanNotes($base64);
 
             $log = ScanLog::create([

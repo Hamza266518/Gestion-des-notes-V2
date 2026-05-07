@@ -16,13 +16,13 @@ const toBase64 = (file) =>
     reader.readAsDataURL(file);
   });
 
-const callGemini = async (key, base64Image, prompt) => {
+const callGemini = async (key, base64Data, prompt, mimeType = 'image/jpeg') => {
   if (!key) {
     throw new Error('Missing Gemini API key');
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), mimeType === 'application/pdf' ? 60000 : 30000);
 
   try {
     const response = await fetch(GEMINI_URL(key), {
@@ -32,7 +32,7 @@ const callGemini = async (key, base64Image, prompt) => {
         contents: [{
           parts: [
             { text: prompt },
-            { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
+            { inline_data: { mime_type: mimeType, data: base64Data } }
           ]
         }]
       }),
@@ -69,34 +69,43 @@ const parseJson = (raw) => {
 
 export const scanNotesPaper = async (file) => {
   const base64 = await toBase64(file);
-  const prompt = `This is a student grade paper from a Moroccan nursing school.
-Extract every student name and their numeric score.
-Return ONLY a valid JSON array: [{"nom":"Fatima Zahra Idrissi","note":14}]
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  const prompt = `You are reading a PDF document containing student grades from a nursing school in Morocco (Institut de Formation aux Professions Paramédicales).
+Extract ALL students and their grades from this PDF.
+Return ONLY a valid JSON array: [{"nom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","note":14}]
 Rules:
-- nom: full name exactly as written
-- note: number between 0 and 20 only, no /20 symbol
-- If score written as 14/20 extract only 14
-- Skip unreadable rows
-- Return ONLY the JSON array, nothing else`;
+- nom: full name in French/Latin script, exactly as written (CAPITAL LETTERS preferred)
+- nom_ar: full name in Arabic script as written in the PDF. If no Arabic name is present, use empty string ""
+- note: numeric score only (0-20), extract just the number without /20
+- If the grade is written as 14/20 extract only 14
+- If multiple students appear, extract ALL of them
+- Read carefully both French and Arabic sections of the document
+- If the PDF contains a table, extract each row as a student with their grade
+- If some fields are missing or unclear, use empty strings ""
+- Return ONLY the JSON array, nothing else, no markdown, no code fences, no explanation`;
 
-  const raw = await callGemini(KEYS.formateur, base64, prompt);
+  const raw = await callGemini(KEYS.formateur, base64, prompt, isPdf ? 'application/pdf' : 'image/jpeg');
   const result = parseJson(raw);
   return Array.isArray(result) ? result.filter(r => r.nom && r.note !== undefined) : [];
 };
 
 export const scanStudentList = async (file) => {
   const base64 = await toBase64(file);
-  const prompt = `This is a student list from a Moroccan nursing school.
-Extract every student full name and CIN number.
-Return ONLY a valid JSON array: [{"nom_prenom":"FATIMA ZAHRA IDRISSI","cin":"AB123456"}]
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  const prompt = `You are reading a PDF document containing a list of students from a Moroccan nursing school (Institut de Formation aux Professions Paramédicales).
+Extract ALL students from this document.
+Return ONLY a valid JSON array: [{"nom_prenom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","cin":"AB123456"}]
 Rules:
-- nom_prenom: full name in CAPITAL letters exactly as written
-- cin: alphanumeric CIN code exactly as written
-- If CIN missing include student with cin as empty string ""
-- Skip rows with no readable name
-- Return ONLY the JSON array, nothing else`;
+- nom_prenom: full name in French/Latin script, CAPITAL LETTERS exactly as written
+- nom_ar: full name in Arabic script as written. If no Arabic name is present, use empty string ""
+- cin: alphanumeric CIN code exactly as written. If not found use ""
+- If multiple students appear in the PDF, extract ALL of them
+- Read carefully both French and Arabic sections of the document
+- If the PDF contains a table, extract each row as a student
+- If some fields are missing or unclear, leave them as empty strings ""
+- Return ONLY the JSON array, nothing else, no markdown, no code fences, no explanation`;
 
-  const raw = await callGemini(KEYS.students, base64, prompt);
+  const raw = await callGemini(KEYS.students, base64, prompt, isPdf ? 'application/pdf' : 'image/jpeg');
   const result = parseJson(raw);
   return Array.isArray(result) ? result.filter(r => r.nom_prenom) : [];
 };

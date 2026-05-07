@@ -23,8 +23,6 @@ export default function NotesList() {
   const { currentAnnee } = useAnneeAcademique();
 
   const loadSequences = useCallback(async () => {
-    if (!currentAnnee) return;
-
     setLoading(true);
     setError(null);
 
@@ -37,7 +35,7 @@ export default function NotesList() {
     } finally {
       setLoading(false);
     }
-  }, [currentAnnee, toast]);
+  }, [toast]);
 
   useEffect(() => {
     loadSequences();

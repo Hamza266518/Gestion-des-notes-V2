@@ -49,8 +49,12 @@ export default function ScanCin() {
   }, [selFiliere, filieres]);
 
   useEffect(() => {
-    if (selNiveau && currentAnnee?.id) {
-      adminApi.getGroupes({ niveau_id: selNiveau, annee_academique_id: currentAnnee.id })
+    if (selNiveau) {
+      const params = { niveau_id: selNiveau };
+      if (currentAnnee?.id) {
+        params.annee_academique_id = currentAnnee.id;
+      }
+      adminApi.getGroupes(params)
         .then(res => setGroupes(res.data.data))
         .catch(() => setGroupes([]));
     } else {
@@ -72,9 +76,10 @@ export default function ScanCin() {
         const data = await scanStudentList(img);
         if (Array.isArray(data)) {
           for (const student of data) {
-            if (student.cin) {
+            if (student.nom_prenom) {
               scanned.push({
                 nom_prenom: student.nom_prenom ?? '',
+                nom_ar: student.nom_ar ?? '',
                 cin: student.cin ?? '',
                 numero_inscription: '',
                 groupe_id: selGroupe,
@@ -85,7 +90,7 @@ export default function ScanCin() {
         }
       }
       if (scanned.length === 0) {
-        toast.error('Aucun CIN trouvé. Vérifiez que les images sont lisibles.');
+        toast.error('Aucun étudiant trouvé. Vérifiez que les fichiers PDF sont lisibles.');
       } else {
         setResults(scanned);
         setStep(3);
@@ -198,19 +203,19 @@ export default function ScanCin() {
           <div className="upload-zone">
             <input
               type="file"
-              accept="image/*"
+              accept=".pdf"
               multiple
               onChange={handleImages}
             />
-            <div className="upload-zone-icon">📷</div>
+            <div className="upload-zone-icon">📄</div>
             <div className="upload-zone-text">
-              <strong>Cliquer ou glisser</strong> les photos CIN ici
+              <strong>Cliquer ou glisser</strong> les fichiers PDF ici
             </div>
           </div>
 
           {images.length > 0 && (
             <div style={{ marginTop: 12, fontSize: 13, color: 'var(--gray-600)' }}>
-              {images.length} image(s) sélectionnée(s)
+              {images.length} fichier(s) PDF sélectionné(s)
             </div>
           )}
 
@@ -221,7 +226,7 @@ export default function ScanCin() {
               disabled={images.length === 0 || scanning}
               onClick={handleScan}
             >
-              {scanning ? 'Lecture en cours...' : 'Scanner les CIN'}
+              {scanning ? 'Lecture en cours...' : 'Scanner les PDF'}
             </button>
           </div>
 
@@ -241,13 +246,14 @@ export default function ScanCin() {
               <thead>
                 <tr>
                   <th>Nom et Prénom</th>
+                  <th>الاسم بالعربية</th>
                   <th>CIN</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {results.length === 0 ? (
-                  <tr><td colSpan={3} className="table-empty">Aucun résultat</td></tr>
+                  <tr><td colSpan={4} className="table-empty">Aucun résultat</td></tr>
                 ) : results.map((r, i) => (
                   <tr key={i}>
                     <td>
@@ -255,6 +261,14 @@ export default function ScanCin() {
                         className="form-input"
                         value={r.nom_prenom}
                         onChange={e => updateResult(i, 'nom_prenom', e.target.value)}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-input"
+                        value={r.nom_ar || ''}
+                        onChange={e => updateResult(i, 'nom_ar', e.target.value)}
+                        style={{ direction: 'rtl', textAlign: 'right' }}
                       />
                     </td>
                     <td>

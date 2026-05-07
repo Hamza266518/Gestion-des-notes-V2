@@ -399,3 +399,366 @@
   padding: 10px 14px;
   border-bottom: 1px solid #e5e7eb;
 }
+
+/* RECAP NOTES TABLE (Jury Sheet) */
+.recap-table-wrap {
+  background: var(--white);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+  padding: 24px;
+  overflow-x: auto;
+}
+
+.recap-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--primary);
+}
+
+.recap-header-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--gray-700);
+}
+
+.recap-header-row span {
+  min-width: 45%;
+}
+
+.recap-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.recap-table thead th {
+  background: var(--gray-50);
+  padding: 10px 12px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--gray-700);
+  border: 1px solid var(--gray-200);
+  font-size: 12px;
+}
+
+.subject-header {
+  min-width: 100px;
+}
+
+.subject-header div:first-child {
+  margin-bottom: 4px;
+}
+
+.coeff {
+  font-size: 11px;
+  color: var(--gray-500);
+  font-weight: 500;
+}
+
+.avg-header {
+  background: var(--primary) !important;
+  color: var(--white) !important;
+  min-width: 90px;
+}
+
+.recap-table tbody td {
+  padding: 8px 12px;
+  border: 1px solid var(--gray-200);
+  text-align: center;
+  color: var(--gray-700);
+}
+
+.student-name {
+  text-align: left !important;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.note-fail {
+  color: var(--danger);
+}
+
+.avg-cell {
+  background: var(--gray-50);
+  font-weight: bold;
+}
+
+.class-avg-row {
+  background: #e8f5e9 !important;
+}
+
+.class-avg-row td {
+  font-weight: bold;
+  color: var(--success);
+  border-top: 2px solid var(--success);
+}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE STYLES
+   ═══════════════════════════════════════════════ */
+
+/* Tablet (1024px and below) */
+@media (max-width: 1024px) {
+  .fg-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sequences-modal-grid,
+  .unites-modal-grid,
+  .fg-modal-grid,
+  .etudiants-modal-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Mobile (768px and below) */
+@media (max-width: 768px) {
+  /* Login */
+  .login-card {
+    margin: 0 16px;
+    padding: 28px 24px;
+    max-width: calc(100% - 32px);
+  }
+
+  .login-title {
+    font-size: 22px;
+  }
+
+  /* Scanner */
+  .scanner-steps {
+    flex-direction: column;
+  }
+
+  .scanner-step {
+    padding: 10px;
+  }
+
+  .scanner-upload-zone {
+    padding: 28px 20px;
+  }
+
+  .scanner-result-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /* Sequences */
+  .sequences-action-row {
+    flex-direction: column;
+  }
+
+  .sequences-action-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sequences-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Unites */
+  .unites-actions-row {
+    flex-direction: column;
+  }
+
+  .unites-actions-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .unites-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* FG */
+  .fg-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .fg-actions {
+    flex-direction: column;
+  }
+
+  .fg-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .fg-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Etudiants */
+  .etudiants-actions {
+    flex-direction: column;
+  }
+
+  .etudiants-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .etudiants-empty {
+    margin-top: 30px;
+    padding: 24px 16px;
+  }
+
+  .etudiants-empty-btns {
+    flex-direction: column;
+  }
+
+  .etudiants-empty-btns .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .etudiants-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Formateur */
+  .formateur-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Recap */
+  .recap-table-wrap {
+    padding: 16px;
+  }
+
+  .recap-header-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .recap-header-row span {
+    min-width: unset;
+  }
+
+  /* Bulletin */
+  .bulletin-empty {
+    margin-top: 30px;
+    padding: 24px 16px;
+  }
+
+  /* Publications */
+  .pub-empty-state {
+    margin-top: 30px;
+    padding: 24px 16px;
+  }
+
+  /* Notes tab bar */
+  .notes-tab-bar {
+    flex-wrap: wrap;
+  }
+}
+
+/* Small mobile (480px and below) */
+@media (max-width: 480px) {
+  /* Login */
+  .login-card {
+    margin: 0 12px;
+    padding: 24px 20px;
+    border-radius: 12px;
+  }
+
+  .login-title {
+    font-size: 20px;
+  }
+
+  .login-subtitle {
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+
+  /* Scanner */
+  .scanner-upload-zone {
+    padding: 24px 16px;
+  }
+
+  /* Recap */
+  .recap-table-wrap {
+    padding: 12px;
+  }
+
+  .recap-table {
+    font-size: 11px;
+  }
+
+  .recap-table thead th {
+    padding: 6px 8px;
+  }
+
+  .recap-table tbody td {
+    padding: 4px 8px;
+  }
+
+  /* Etudiants */
+  .etudiants-empty {
+    padding: 20px 12px;
+  }
+
+  .bulletin-empty {
+    padding: 20px 12px;
+  }
+
+  .pub-empty-state {
+    padding: 20px 12px;
+  }
+
+  /* Tables */
+  .unites-table th,
+  .unites-table td {
+    padding: 8px 10px;
+  }
+
+  .fg-table th,
+  .fg-table td {
+    padding: 8px 10px;
+  }
+
+  .etudiants-manage-th,
+  .etudiants-manage-td {
+    padding: 8px 10px;
+  }
+
+  .etudiants-scan-th,
+  .etudiants-scan-td {
+    padding: 8px 10px;
+  }
+}
+
+@media print {
+  .filter-bar,
+  .page-header button,
+  .btn {
+    display: none !important;
+  }
+
+  .recap-table-wrap {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .recap-table thead th {
+    background: var(--gray-50) !important;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .avg-header {
+    background: var(--primary) !important;
+    color: var(--white) !important;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .class-avg-row {
+    background: #e8f5e9 !important;
+    -webkit-print-color-adjust: exact;
+  }
+}

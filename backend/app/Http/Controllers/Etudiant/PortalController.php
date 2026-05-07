@@ -6,15 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Note;
 use App\Models\SemestrePublication;
 use App\Models\Unite;
+use App\Services\BulletinService;
 use App\Services\MoyenneService;
 
 class PortalController extends Controller
 {
     protected $moyenneService;
+    protected $bulletinService;
 
-    public function __construct(MoyenneService $moyenneService)
+    public function __construct(MoyenneService $moyenneService, BulletinService $bulletinService)
     {
         $this->moyenneService = $moyenneService;
+        $this->bulletinService = $bulletinService;
     }
 
     public function monBulletin()
@@ -107,54 +110,30 @@ class PortalController extends Controller
 
     protected function getBulletin($etudiant, $filiereId, $groupeId, $anneeId)
     {
-        $bulletin = [
-            'semestres' => [1 => [], 2 => []],
-            'examens' => [],
-            'stage_note' => null,
-            'moyenne_generale' => null,
-            'mention' => null,
-        ];
+        $bulletin = $this->bulletinService->calculateBulletin($etudiant->id, $anneeId);
+        $mention = $this->bulletinService->getMention($bulletin['moyenne_generale']);
 
-        foreach ([1, 2] as $semestre) {
-            $unites = Unite::where('filiere_id', $filiereId)
-                ->where('semestre', $semestre)
-                ->where('is_active', true)
-                ->with('sequences.controles')
-                ->orderBy('ordre')
-                ->get();
-
-            foreach ($unites as $unite) {
-                $sequencesData = [];
-                foreach ($unite->sequences as $sequence) {
-                    $controlesData = [];
-                    foreach ($sequence->controles as $controle) {
-                        $note = Note::where('etudiant_id', $etudiant->id)
-                            ->where('controle_id', $controle->id)
-                            ->first();
-                        $controlesData[] = [
-                            'numero' => $controle->numero,
-                            'valeur' => $note?->valeur,
-                        ];
-                    }
-                    $sequencesData[] = [
-                        'nom'         => $sequence->nom,
-                        'coefficient' => $sequence->coefficient,
-                        'controles'   => $controlesData,
-                        'moyenne'     => $this->moyenneService->moyenneSequence($etudiant->id, $sequence->id),
-                    ];
-                }
-                $bulletin['semestres'][$semestre][] = [
-                    'nom'         => $unite->nom,
-                    'coefficient' => $unite->coefficient,
-                    'sequences'   => $sequencesData,
-                    'moyenne'     => $this->moyenneService->moyenneUnite($etudiant->id, $unite->id),
-                ];
-            }
+        $semestres = [1 => [], 2 => []];
+        foreach ($bulletin['unites'] as $u) {
+            $semestres[$u['semestre']][] = [
+                'nom' => $u['nom'],
+                'coefficient' => $u['coefficient'],
+                'sequences' => $u['sequences'],
+                'moyenne' => $u['moyenneUnite'],
+                'moyenne_cc' => $u['moyenne_cc'],
+                'moyenne_theorique' => $u['moyenne_theorique'],
+                'moyenne_pratique' => $u['moyenne_pratique'],
+            ];
         }
 
-        $bulletin['moyenne_generale'] = $this->moyenneService->moyenneGenerale($etudiant->id, null, $anneeId);
-        $bulletin['mention'] = $this->moyenneService->getMention($bulletin['moyenne_generale']);
-
-        return $bulletin;
+        return [
+            'semestres' => $semestres,
+            'moyenne_generale' => $bulletin['moyenne_generale'],
+            'moyenne_cc' => $bulletin['moyenne_cc'],
+            'moyenne_theorique' => $bulletin['moyenne_theorique'],
+            'moyenne_pratique' => $bulletin['moyenne_pratique'],
+            'mention' => $mention['label'],
+            'decision' => $bulletin['decision'],
+        ];
     }
 }

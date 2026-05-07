@@ -31,77 +31,93 @@ class GeminiService
         ]);
     }
 
-    public function scanNotes(string $base64Image): string
+    public function scanNotes(string $base64Pdf): string
     {
         if (empty($this->apiKeyFormateur)) {
             \Log::error('Gemini API key for formateur/notes is missing');
             return '[]';
         }
 
-        \Log::info('Calling Gemini API for notes scan (formateur)...');
-        
-        $response = Http::timeout(30)->post($this->baseUrl . '?key=' . $this->apiKeyFormateur, [
-            'contents' => [[
-                'parts' => [
-                    [
-                        'text' => 'This is a student grade paper from a nursing school in Morocco.
-                        Extract the student full name and their numeric score.
-                        Return ONLY a JSON array like: [{"nom":"Full Name","note":14}]
-                        Rules:
-                        - nom: full name exactly as written
-                        - note: numeric score only (no /20)
-                        - If multiple students return all
-                        - Return nothing else, no explanation, no markdown'
-                    ],
-                    [
-                        'inline_data' => [
-                            'mime_type' => 'image/jpeg',
-                            'data'      => $base64Image
+        \Log::info('Calling Gemini API for notes scan (PDF)...');
+
+        try {
+            $response = Http::timeout(90)->post($this->baseUrl . '?key=' . $this->apiKeyFormateur, [
+                'contents' => [[
+                    'parts' => [
+                        [
+                            'text' => 'You are reading a PDF document containing student grades from a nursing school in Morocco (Institut de Formation aux Professions Paramédicales).
+Extract ALL students and their grades from this PDF.
+Return ONLY a valid JSON array like: [{"nom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","note":14}]
+Rules:
+- nom: full name in French/Latin script, exactly as written in the PDF (CAPITAL LETTERS preferred)
+- nom_ar: full name in Arabic script as written in the PDF. If no Arabic name is present, use an empty string ""
+- note: numeric score only (0-20), extract just the number without /20
+- If the grade is written as 14/20 extract only 14
+- If multiple students appear in the PDF, extract ALL of them
+- Read carefully both French and Arabic sections of the document
+- If the PDF contains a table, extract each row as a student with their grade
+- If some fields are missing or unclear, use reasonable guesses or empty strings ""
+- Return ONLY the JSON array, nothing else, no markdown, no code fences, no explanation'
+                        ],
+                        [
+                            'inline_data' => [
+                                'mime_type' => 'application/pdf',
+                                'data'      => $base64Pdf
+                            ]
                         ]
                     ]
-                ]
-            ]]
-        ]);
+                ]]
+            ]);
 
-        $data = $response->json();
-        
-        if (isset($data['error'])) {
-            \Log::error('Gemini API error (notes): ' . json_encode($data['error']));
+            $data = $response->json();
+
+            if (isset($data['error'])) {
+                \Log::error('Gemini API error (notes): ' . json_encode($data['error']));
+                return '[]';
+            }
+
+            return $data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
+        } catch (\Exception $e) {
+            \Log::error('Gemini API exception for notes', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return '[]';
         }
-
-        return $data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
     }
 
-    public function scanCin(string $base64Image): string
+    public function scanCin(string $base64Pdf): string
     {
         if (empty($this->apiKeyStudents)) {
             \Log::error('Gemini API key for students/CIN is missing');
             return '[]';
         }
 
-        \Log::info('Calling Gemini API for CIN scan...');
+        \Log::info('Calling Gemini API for CIN scan (PDF)...');
 
         try {
-            $response = Http::timeout(60)->post($this->baseUrl . '?key=' . $this->apiKeyStudents, [
+            $response = Http::timeout(90)->post($this->baseUrl . '?key=' . $this->apiKeyStudents, [
                 'contents' => [[
                     'parts' => [
                         [
-                            'text' => 'This is a student CIN (Carte d\'identité Nationale) from Morocco.
-Extract ALL students from the image.
-Return ONLY a JSON array like: [{"nom_prenom":"FATIMA ZAHRA IDRISSI","cin":"AB123456","date_naissance":"1998-05-15"}]
+                            'text' => 'You are reading a PDF document containing a list of students from a Moroccan nursing school (Institut de Formation aux Professions Paramédicales).
+Extract ALL students from this document.
+Return ONLY a valid JSON array like: [{"nom_prenom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","cin":"AB123456","date_naissance":"1998-05-15"}]
 Rules:
-- nom_prenom: full name in CAPITAL LETTERS exactly as written
-- cin: CIN code exactly as written (8 characters)
-- date_naissance: date of birth in YYYY-MM-DD format
-- If multiple students in one image, return all of them
-- If image is unclear, return as much as you can read
-- Return ONLY the JSON array, nothing else, no markdown, no explanation'
+- nom_prenom: full name in French/Latin script, CAPITAL LETTERS exactly as written in the PDF
+- nom_ar: full name in Arabic script as written in the PDF. If no Arabic name is present, use an empty string ""
+- cin: CIN code exactly as written (alphanumeric, typically 8 characters). If not found use ""
+- date_naissance: date of birth in YYYY-MM-DD format if found. If not found use ""
+- If multiple students appear in the PDF, extract ALL of them
+- Read carefully both French and Arabic sections of the document
+- If the PDF contains a table, extract each row as a student
+- If some fields are missing or unclear, leave them as empty strings ""
+- Return ONLY the JSON array, nothing else, no markdown, no code fences, no explanation'
                         ],
                         [
                             'inline_data' => [
-                                'mime_type' => 'image/jpeg',
-                                'data'      => $base64Image
+                                'mime_type' => 'application/pdf',
+                                'data'      => $base64Pdf
                             ]
                         ]
                     ]

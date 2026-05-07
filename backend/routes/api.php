@@ -25,105 +25,110 @@ use App\Http\Controllers\Etudiant\PortalController;
 
 // Auth - public
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::get('/annee-academique/current', [AnneeAcademiqueController::class, 'current']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
-    Route::get('/auth/me',      [AuthController::class, 'me']);
-    Route::get('/annee-academique/current', [AnneeAcademiqueController::class, 'current']);
+    Route::get('/auth/me', [AuthController::class, 'me']);
 
     // ── ADMIN ──────────────────────────────────────────────
-    Route::prefix('admin')->middleware('isAdmin')->group(function () {
+    Route::prefix('admin')->middleware(\App\Http\Middleware\IsAdmin::class)->group(function () {
 
         // Annees academiques
-        Route::get('/annees-academiques',                        [AnneeAcademiqueController::class, 'index']);
-        Route::post('/annees-academiques',                       [AnneeAcademiqueController::class, 'store']);
-        Route::post('/annees-academiques/{id}/set-current',      [AnneeAcademiqueController::class, 'setCurrent']);
-        Route::delete('/annees-academiques/{id}',                [AnneeAcademiqueController::class, 'destroy']);
-        Route::post('/annees-academiques/{id}/archive',          [AnneeAcademiqueController::class, 'archive']);
+        Route::get('/annees-academiques', [AnneeAcademiqueController::class, 'index']);
+        Route::post('/annees-academiques', [AnneeAcademiqueController::class, 'store']);
+        Route::post('/annees-academiques/{id}/set-current', [AnneeAcademiqueController::class, 'setCurrent']);
+        Route::delete('/annees-academiques/{id}', [AnneeAcademiqueController::class, 'destroy']);
+        Route::post('/annees-academiques/{id}/archive', [AnneeAcademiqueController::class, 'archive']);
 
         // Filieres
-        Route::get('/filieres',          [FiliereController::class, 'index']);
-        Route::post('/filieres',         [FiliereController::class, 'store']);
-        Route::put('/filieres/{id}',     [FiliereController::class, 'update']);
-        Route::delete('/filieres/{id}',  [FiliereController::class, 'destroy']);
+        Route::get('/filieres', [FiliereController::class, 'index']);
+        Route::post('/filieres', [FiliereController::class, 'store']);
+        Route::put('/filieres/{id}', [FiliereController::class, 'update']);
+        Route::delete('/filieres/{id}', [FiliereController::class, 'destroy']);
 
         // Niveaux
-        Route::get('/niveaux',           [NiveauController::class, 'index']);
-        Route::post('/niveaux',          [NiveauController::class, 'store']);
-        Route::delete('/niveaux/{id}',   [NiveauController::class, 'destroy']);
+        Route::get('/niveaux', [NiveauController::class, 'index']);
+        Route::post('/niveaux', [NiveauController::class, 'store']);
+        Route::delete('/niveaux/{id}', [NiveauController::class, 'destroy']);
 
         // Groupes
-        Route::get('/groupes',           [GroupeController::class, 'index']);
-        Route::post('/groupes',          [GroupeController::class, 'store']);
-        Route::put('/groupes/{id}',      [GroupeController::class, 'update']);
-        Route::delete('/groupes/{id}',   [GroupeController::class, 'destroy']);
+        Route::get('/groupes', [GroupeController::class, 'index']);
+        Route::post('/groupes', [GroupeController::class, 'store']);
+        Route::put('/groupes/{id}', [GroupeController::class, 'update']);
+        Route::delete('/groupes/{id}', [GroupeController::class, 'destroy']);
 
         // Etudiants
-        Route::get('/etudiants',         [EtudiantController::class, 'index']);
-        Route::put('/etudiants/{id}',    [EtudiantController::class, 'update']);
+        Route::get('/etudiants', [EtudiantController::class, 'index']);
+        Route::post('/etudiants', [EtudiantController::class, 'store']);
+        Route::put('/etudiants/{id}', [EtudiantController::class, 'update']);
         Route::delete('/etudiants/{id}', [EtudiantController::class, 'destroy']);
 
         // Import Excel etudiants
-        Route::post('/import',           [ImportController::class, 'import']);
-        Route::post('/preview',          [ImportController::class, 'preview']);
+        Route::post('/import', [ImportController::class, 'import']);
+        Route::post('/preview', [ImportController::class, 'preview']);
 
         // Scan CIN
-        Route::post('/scan-cin',         [ScanCinController::class, 'scan']);
+        Route::post('/scan-cin', [ScanCinController::class, 'scan']);
         Route::post('/scan-cin/confirm', [ScanCinController::class, 'confirm']);
 
         // Formateurs
-        Route::get('/formateurs',                          [FormateurController::class, 'index']);
-        Route::post('/formateurs',                         [FormateurController::class, 'store']);
-        Route::delete('/formateurs/{id}',                  [FormateurController::class, 'destroy']);
-        Route::get('/formateurs/{id}/sequences',          [FormateurController::class, 'getSequences']);
-        Route::post('/formateurs/{id}/assign-sequence',    [FormateurController::class, 'assignSequence']);
+        Route::get('/formateurs', [FormateurController::class, 'index']);
+        Route::post('/formateurs', [FormateurController::class, 'store']);
+        Route::delete('/formateurs/{id}', [FormateurController::class, 'destroy']);
+        Route::get('/formateurs/{id}/sequences', [FormateurController::class, 'getSequences']);
+        Route::post('/formateurs/{id}/assign-sequence', [FormateurController::class, 'assignSequence']);
         Route::delete('/formateurs/{id}/remove-sequence', [FormateurController::class, 'removeSequence']);
-        Route::post('/formateurs/{id}/import-sequences',  [FormateurController::class, 'importSequences']);
-        Route::post('/formateurs/{id}/scan-sequences',    [FormateurController::class, 'scanSequences']);
-        Route::post('/formateurs/import',                  [FormateurController::class, 'import']);
-        Route::post('/formateurs/preview',                 [FormateurController::class, 'preview']);
-        Route::post('/formateurs/{id}/update-password',   [FormateurController::class, 'updatePassword']);
+        Route::post('/formateurs/{id}/import-sequences', [FormateurController::class, 'importSequences']);
+        Route::post('/formateurs/{id}/scan-sequences', [FormateurController::class, 'scanSequences']);
+        Route::post('/formateurs/import', [FormateurController::class, 'import']);
+        Route::post('/formateurs/preview', [FormateurController::class, 'preview']);
+        Route::post('/formateurs/{id}/update-password', [FormateurController::class, 'updatePassword']);
 
         // Unites
-        Route::get('/unites',                        [UniteController::class, 'index']);
-        Route::post('/unites',                       [UniteController::class, 'store']);
-        Route::put('/unites/{id}',                   [UniteController::class, 'update']);
-        Route::delete('/unites/{id}',                [UniteController::class, 'destroy']);
-        Route::post('/unites/{id}/toggle-active',    [UniteController::class, 'toggleActive']);
-        Route::post('/unites/import',                [UniteController::class, 'import']);
-        Route::post('/unites/preview',               [UniteController::class, 'preview']);
+        Route::get('/unites', [UniteController::class, 'index']);
+        Route::post('/unites', [UniteController::class, 'store']);
+        Route::put('/unites/{id}', [UniteController::class, 'update']);
+        Route::delete('/unites/{id}', [UniteController::class, 'destroy']);
+        Route::post('/unites/{id}/toggle-active', [UniteController::class, 'toggleActive']);
+        Route::post('/unites/import', [UniteController::class, 'import']);
+        Route::post('/unites/preview', [UniteController::class, 'preview']);
 
         // Scan Unites Document
-        Route::post('/scan-unites',                  [ScanUnitesController::class, 'scan']);
-        Route::post('/scan-unites/confirm',        [ScanUnitesController::class, 'confirm']);
+        Route::post('/scan-unites', [ScanUnitesController::class, 'scan']);
+        Route::post('/scan-unites/confirm', [ScanUnitesController::class, 'confirm']);
 
         // Sequences
-        Route::get('/sequences',                      [SequenceController::class, 'index']);
-        Route::post('/sequences',                     [SequenceController::class, 'store']);
-        Route::put('/sequences/{id}',                 [SequenceController::class, 'update']);
-        Route::delete('/sequences/{id}',              [SequenceController::class, 'destroy']);
-        Route::post('/sequences/{id}/toggle-active',  [SequenceController::class, 'toggleActive']);
+        Route::get('/sequences', [SequenceController::class, 'index']);
+        Route::post('/sequences', [SequenceController::class, 'store']);
+        Route::put('/sequences/{id}', [SequenceController::class, 'update']);
+        Route::delete('/sequences/{id}', [SequenceController::class, 'destroy']);
+        Route::post('/sequences/{id}/toggle-active', [SequenceController::class, 'toggleActive']);
 
         // Controles
-        Route::get('/controles',                          [ControleController::class, 'index']);
-        Route::post('/controles',                         [ControleController::class, 'store']);
-        Route::delete('/controles/{id}',                  [ControleController::class, 'destroy']);
-        Route::post('/controles/generate/{sequenceId}',   [ControleController::class, 'generateForSequence']);
+        Route::get('/controles', [ControleController::class, 'index']);
+        Route::post('/controles', [ControleController::class, 'store']);
+        Route::put('/controles/{id}/rename', [SequenceController::class, 'renameControle']);
+        Route::put('/controles/{id}/type', [SequenceController::class, 'setControleType']);
+        Route::delete('/controles/{id}', [ControleController::class, 'destroy']);
+        Route::post('/controles/generate/{sequenceId}', [ControleController::class, 'generateForSequence']);
 
         // Notes admin
-        Route::get('/notes',       [NoteAdminController::class, 'index']);
-        Route::put('/notes/{id}',  [NoteAdminController::class, 'update']);
-        Route::get('/examens',     [ExamController::class, 'index']);
+        Route::get('/notes', [NoteAdminController::class, 'index']);
+        Route::put('/notes/{id}', [NoteAdminController::class, 'update']);
+        Route::get('/recap-notes', [NoteAdminController::class, 'recapNotes']);
+        Route::get('/bulletins', [NoteAdminController::class, 'bulletin']);
+        Route::get('/examens', [ExamController::class, 'index']);
         Route::post('/examens/bulk', [ExamController::class, 'bulkStore']);
 
         // Publications
-        Route::get('/publications',                  [PublicationController::class, 'index']);
-        Route::post('/publications/publish',         [PublicationController::class, 'publish']);
-        Route::post('/publications/unpublish',  [PublicationController::class, 'unpublish']);
+        Route::get('/publications', [PublicationController::class, 'index']);
+        Route::post('/publications/publish', [PublicationController::class, 'publish']);
+        Route::post('/publications/unpublish', [PublicationController::class, 'unpublish']);
 
         // Diplomes
-        Route::get('/diplomes',              [DiplomeController::class, 'index']);
-        Route::post('/diplomes/generate',    [DiplomeController::class, 'generate']);
+        Route::get('/diplomes', [DiplomeController::class, 'index']);
+        Route::post('/diplomes/generate', [DiplomeController::class, 'generate']);
         Route::post('/diplomes/generate-all', [DiplomeController::class, 'generateAll']);
         Route::put('/diplomes/{id}/printed', [DiplomeController::class, 'markPrinted']);
         Route::get('/diplomes/{id}/download', [DiplomeController::class, 'download']);
@@ -133,16 +138,16 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ── FORMATEUR ──────────────────────────────────────────
-    Route::prefix('formateur')->middleware('isFormateur')->group(function () {
-        Route::post('/scan',    [ScanController::class, 'scan']);
+    Route::prefix('formateur')->middleware(\App\Http\Middleware\IsFormateur::class)->group(function () {
+        Route::post('/scan', [ScanController::class, 'scan']);
         Route::post('/confirm', [ScanController::class, 'confirm']);
-        Route::get('/notes',    [NoteController::class, 'index']);
+        Route::get('/notes', [NoteController::class, 'index']);
         Route::get('/sequences', [NoteController::class, 'mySequences']);
         Route::get('/scan-data', [NoteController::class, 'scanData']);
     });
 
     // ── ETUDIANT ───────────────────────────────────────────
-    Route::prefix('etudiant')->middleware('isEtudiant')->group(function () {
+    Route::prefix('etudiant')->middleware(\App\Http\Middleware\IsEtudiant::class)->group(function () {
         Route::get('/bulletin', [PortalController::class, 'monBulletin']);
     });
 });

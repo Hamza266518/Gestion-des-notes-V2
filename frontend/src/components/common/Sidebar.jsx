@@ -12,8 +12,12 @@ import {
   FiCheckSquare, 
   FiAward,
   FiCamera,
-  FiLogOut
+  FiLogOut,
+  FiChevronLeft,
+  FiChevronRight,
+  FiX
 } from 'react-icons/fi';
+import logoMenu from '../../image/logo-menu.png';
 import '../../css/sidebar.css';
 
 const adminLinks = [
@@ -40,7 +44,7 @@ const etudiantLinks = [
   { to: '/etudiant/mon-bulletin', label: 'Mon Bulletin', icon: FiAward },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed, mobileOpen, onToggle, onCloseMobile }) {
   const { role, logout } = useAuth();
 
   const links =
@@ -49,35 +53,58 @@ export default function Sidebar() {
     etudiantLinks;
 
   return (
-    <div className="sidebar">
-      <div className="sidebar-logo">
-        <div className="sidebar-logo-title">IFP</div>
-        <div className="sidebar-logo-sub">Institut des Formations Paramédicales Privé</div>
-      </div>
+    <>
+      {mobileOpen && (
+        <div className="sidebar-overlay" onClick={onCloseMobile} />
+      )}
 
-      <nav className="sidebar-nav">
-        {links.map(link => {
-          const Icon = link.icon;
-          return (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) =>
-                `sidebar-link${isActive ? ' active' : ''}`
-              }
-            >
-              <span className="sidebar-link-icon"><Icon size={20} /></span>
-              <span>{link.label}</span>
-            </NavLink>
-          );
-        })}
-      </nav>
+      <div className={`sidebar${collapsed ? ' sidebar-collapsed' : ''}${mobileOpen ? ' sidebar-mobile-open' : ''}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-logo">
+            <img 
+              src={logoMenu} 
+              alt="IFP Logo" 
+              className="sidebar-logo-img" 
+            />
+            {!collapsed && (
+              <div className="sidebar-logo-sub">Institut des Formations Paramédicales Privé</div>
+            )}
+          </div>
+          <button className="sidebar-toggle desktop-toggle" onClick={onToggle} aria-label="Toggle sidebar">
+            {collapsed ? <FiChevronRight size={18} /> : <FiChevronLeft size={18} />}
+          </button>
+          <button className="sidebar-toggle mobile-close" onClick={onCloseMobile} aria-label="Close sidebar">
+            <FiX size={20} />
+          </button>
+        </div>
 
-      <div className="sidebar-footer">
-        <button className="sidebar-logout" onClick={logout}>
-          <FiLogOut size={18} /> Déconnexion
-        </button>
+        <nav className="sidebar-nav">
+          {links.map(link => {
+            const Icon = link.icon;
+            return (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                className={({ isActive }) =>
+                  `sidebar-link${isActive ? ' active' : ''}`
+                }
+                onClick={mobileOpen ? onCloseMobile : undefined}
+                title={collapsed ? link.label : undefined}
+              >
+                <span className="sidebar-link-icon"><Icon size={20} /></span>
+                {!collapsed && <span>{link.label}</span>}
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        <div className="sidebar-footer">
+          <button className="sidebar-logout" onClick={logout}>
+            <FiLogOut size={18} />
+            {!collapsed && <span>Déconnexion</span>}
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

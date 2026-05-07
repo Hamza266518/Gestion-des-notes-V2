@@ -1,5 +1,6 @@
 import { useAuth } from '../../context/AuthContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
+import { FiMenu } from 'react-icons/fi';
 import '../../css/navbar.css';
 
 const roleLabels = {
@@ -8,12 +9,15 @@ const roleLabels = {
   etudiant:  'Etudiant',
 };
 
-export default function Navbar({ title }) {
+export default function Navbar({ title, collapsed, onToggleSidebar }) {
   const { user, role } = useAuth();
   const { currentAnnee } = useAnneeAcademique();
 
   return (
-    <div className="navbar">
+    <div className={`navbar${collapsed ? ' sidebar-collapsed' : ''}`}>
+      <button className="navbar-hamburger" onClick={onToggleSidebar} aria-label="Toggle menu">
+        <FiMenu size={22} />
+      </button>
       <span className="navbar-title">{title}</span>
       <div className="navbar-right">
         {currentAnnee && <span className="navbar-year">{currentAnnee.label}</span>}
