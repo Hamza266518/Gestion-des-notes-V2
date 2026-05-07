@@ -102,12 +102,18 @@ Rules:
                         [
                             'text' => 'You are reading a PDF document containing a list of students from a Moroccan nursing school (Institut de Formation aux Professions Paramédicales).
 Extract ALL students from this document.
-Return ONLY a valid JSON array like: [{"nom_prenom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","cin":"AB123456","date_naissance":"1998-05-15"}]
+Return ONLY a valid JSON array like: [{"nom_prenom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","cin":"AB123456","date_naissance":"1998-05-15","cin_ar":"AB123456","date_naissance_ar":"1998-05-15","lieu_naissance_ar":"","nationalite_ar":"","numero_inscription_ar":"","date_inscription_ar":""}]
 Rules:
 - nom_prenom: full name in French/Latin script, CAPITAL LETTERS exactly as written in the PDF
 - nom_ar: full name in Arabic script as written in the PDF. If no Arabic name is present, use an empty string ""
 - cin: CIN code exactly as written (alphanumeric, typically 8 characters). If not found use ""
 - date_naissance: date of birth in YYYY-MM-DD format if found. If not found use ""
+- cin_ar: CIN code in Arabic numerals if present, otherwise same as cin
+- date_naissance_ar: date of birth in Arabic if present, otherwise empty string ""
+- lieu_naissance_ar: place of birth in Arabic if found, otherwise empty string ""
+- nationalite_ar: nationality in Arabic if found, otherwise empty string ""
+- numero_inscription_ar: registration number in Arabic if found, otherwise empty string ""
+- date_inscription_ar: registration date in Arabic if found, otherwise empty string ""
 - If multiple students appear in the PDF, extract ALL of them
 - Read carefully both French and Arabic sections of the document
 - If the PDF contains a table, extract each row as a student

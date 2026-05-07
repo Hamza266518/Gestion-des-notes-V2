@@ -132,11 +132,12 @@
   padding: 40px;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color var(--transition), background var(--transition);
 }
 
 .scanner-upload-zone:hover {
   border-color: #1e40af;
+  background: var(--primary-faint);
 }
 
 .scanner-results-list {
@@ -400,6 +401,188 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.bulletin-footer-score {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.bulletin-unite-row td {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* MON BULLETIN (student view) */
+.bulletin-card {
+  background: var(--white);
+  border-radius: var(--border-radius-lg, 12px);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.08));
+  overflow: hidden;
+}
+
+.bulletin-header {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: var(--white);
+  padding: 28px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.bulletin-brand h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.bulletin-brand p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.bulletin-title-area {
+  text-align: right;
+}
+
+.bulletin-title-area h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.bulletin-title-area p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.bulletin-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 20px 32px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.bulletin-info-item {
+  display: flex;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.bulletin-info-item:nth-last-child(-n+2) {
+  border-bottom: none;
+}
+
+.bulletin-info-label {
+  min-width: 130px;
+  font-size: 13px;
+  color: var(--gray-500);
+  font-weight: 500;
+}
+
+.bulletin-info-value {
+  font-size: 14px;
+  color: var(--gray-800);
+  font-weight: 600;
+}
+
+.bulletin-table-wrap {
+  padding: 24px 32px 8px;
+  overflow-x: auto;
+}
+
+.bulletin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.bulletin-table thead th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--gray-600);
+  border-bottom: 2px solid var(--gray-200);
+  white-space: nowrap;
+}
+
+.bulletin-table tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--gray-100);
+  color: var(--gray-700);
+}
+
+.bulletin-unite-name {
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.bulletin-col-cc { background: #f0f9ff; }
+.bulletin-col-theo { background: #fffbeb; }
+.bulletin-col-pra { background: #f0fdf4; }
+
+.bulletin-cell-cc { background: #f0f9ff; text-align: center; }
+.bulletin-cell-theo { background: #fffbeb; text-align: center; }
+.bulletin-cell-pra { background: #f0fdf4; text-align: center; }
+.bulletin-cell-moy { text-align: center; font-weight: 700; color: var(--primary); }
+.bulletin-cell-coef { text-align: center; font-weight: 700; }
+
+.bulletin-summary {
+  padding: 20px 32px 28px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  background: var(--gray-50);
+  border-radius: 10px;
+  padding: 20px 24px;
+  border: 1px solid var(--gray-200);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  background: var(--white);
+  border-radius: 8px;
+  border: 1px solid var(--gray-100);
+}
+
+.summary-item-total {
+  border: 2px solid var(--primary);
+  background: var(--primary-faint);
+}
+
+.summary-label {
+  font-size: 11px;
+  color: var(--gray-500);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summary-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.summary-value-main {
+  font-size: 20px;
+  color: var(--primary);
+}
+
 /* RECAP NOTES TABLE (Jury Sheet) */
 .recap-table-wrap {
   background: var(--white);
@@ -441,7 +624,7 @@
   font-weight: 600;
   color: var(--gray-700);
   border: 1px solid var(--gray-200);
-  font-size: 12px;
+  font-size: 11.5px;
 }
 
 .subject-header {
@@ -738,6 +921,26 @@
   .page-header button,
   .btn {
     display: none !important;
+  }
+
+  .bulletin-card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .bulletin-header {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .bulletin-cell-cc,
+  .bulletin-cell-theo,
+  .bulletin-cell-pra,
+  .bulletin-col-cc,
+  .bulletin-col-theo,
+  .bulletin-col-pra {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .recap-table-wrap {

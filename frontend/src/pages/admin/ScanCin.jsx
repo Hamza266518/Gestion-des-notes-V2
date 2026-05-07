@@ -81,6 +81,12 @@ export default function ScanCin() {
                 nom_prenom: student.nom_prenom ?? '',
                 nom_ar: student.nom_ar ?? '',
                 cin: student.cin ?? '',
+                cin_ar: student.cin_ar ?? '',
+                date_naissance_ar: student.date_naissance_ar ?? '',
+                lieu_naissance_ar: student.lieu_naissance_ar ?? '',
+                nationalite_ar: student.nationalite_ar ?? '',
+                numero_inscription_ar: student.numero_inscription_ar ?? '',
+                date_inscription_ar: student.date_inscription_ar ?? '',
                 numero_inscription: '',
                 groupe_id: selGroupe,
                 annee_academique_id: currentAnnee.id,
@@ -106,7 +112,18 @@ export default function ScanCin() {
   const handleConfirm = async () => {
     setSaving(true);
     try {
-      const res = await adminApi.confirmScanCin({ stagiaires: results, filiere_code: filiereCode });
+      const res = await adminApi.confirmScanCin({
+        stagiaires: results.map(r => ({
+          ...r,
+          date_naissance_ar: r.date_naissance_ar || null,
+          lieu_naissance_ar: r.lieu_naissance_ar || null,
+          cin_ar: r.cin_ar || null,
+          nationalite_ar: r.nationalite_ar || null,
+          numero_inscription_ar: r.numero_inscription_ar || null,
+          date_inscription_ar: r.date_inscription_ar || null,
+        })),
+        filiere_code: filiereCode
+      });
       toast.success(`${res.data.data.crees} étudiants créés`);
       setStep(1);
       setResults([]);
@@ -241,19 +258,23 @@ export default function ScanCin() {
             Vérifiez et corrigez les informations avant de confirmer
           </div>
 
-          <div className="table-wrap" style={{ marginBottom: 16 }}>
-            <table>
+          <div className="table-wrap" style={{ marginBottom: 16, overflowX: 'auto' }}>
+            <table style={{ minWidth: '800px' }}>
               <thead>
                 <tr>
                   <th>Nom et Prénom</th>
                   <th>الاسم بالعربية</th>
                   <th>CIN</th>
+                  <th>رقم البطاقة</th>
+                  <th>تاريخ الميلاد</th>
+                  <th>مكان الميلاد</th>
+                  <th>الجنسية</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {results.length === 0 ? (
-                  <tr><td colSpan={4} className="table-empty">Aucun résultat</td></tr>
+                  <tr><td colSpan={8} className="table-empty">Aucun résultat</td></tr>
                 ) : results.map((r, i) => (
                   <tr key={i}>
                     <td>
@@ -276,6 +297,39 @@ export default function ScanCin() {
                         className="form-input"
                         value={r.cin}
                         onChange={e => updateResult(i, 'cin', e.target.value)}
+                        style={{ width: '120px' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-input"
+                        value={r.cin_ar || ''}
+                        onChange={e => updateResult(i, 'cin_ar', e.target.value)}
+                        style={{ direction: 'rtl', textAlign: 'right', width: '120px' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-input"
+                        value={r.date_naissance_ar || ''}
+                        onChange={e => updateResult(i, 'date_naissance_ar', e.target.value)}
+                        style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-input"
+                        value={r.lieu_naissance_ar || ''}
+                        onChange={e => updateResult(i, 'lieu_naissance_ar', e.target.value)}
+                        style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-input"
+                        value={r.nationalite_ar || ''}
+                        onChange={e => updateResult(i, 'nationalite_ar', e.target.value)}
+                        style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
                       />
                     </td>
                     <td>

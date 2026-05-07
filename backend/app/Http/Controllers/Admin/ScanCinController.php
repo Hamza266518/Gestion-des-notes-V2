@@ -78,13 +78,19 @@ class ScanCinController extends Controller
                     );
 
                     $results[] = [
-                        'nom_prenom'         => $student['nom_prenom'] ?? '',
-                        'nom_ar'             => $student['nom_ar'] ?? '',
-                        'cin'                => strtoupper($student['cin'] ?? ''),
-                        'date_naissance'     => $student['date_naissance'] ?? '',
-                        'numero_inscription' => $numero,
-                        'groupe_id'          => $request->groupe_id,
-                        'annee_academique_id'=> $request->annee_academique_id,
+                        'nom_prenom'          => $student['nom_prenom'] ?? '',
+                        'nom_ar'              => $student['nom_ar'] ?? '',
+                        'cin'                 => strtoupper($student['cin'] ?? ''),
+                        'cin_ar'              => $student['cin_ar'] ?? '',
+                        'date_naissance'      => $student['date_naissance'] ?? '',
+                        'date_naissance_ar'   => $student['date_naissance_ar'] ?? '',
+                        'lieu_naissance_ar'   => $student['lieu_naissance_ar'] ?? '',
+                        'nationalite_ar'      => $student['nationalite_ar'] ?? '',
+                        'numero_inscription'  => $numero,
+                        'numero_inscription_ar' => $student['numero_inscription_ar'] ?? '',
+                        'date_inscription_ar' => $student['date_inscription_ar'] ?? '',
+                        'groupe_id'           => $request->groupe_id,
+                        'annee_academique_id' => $request->annee_academique_id,
                     ];
                 }
             }
@@ -103,14 +109,20 @@ class ScanCinController extends Controller
     {
         try {
             $request->validate([
-                'stagiaires'                       => 'required|array',
-                'stagiaires.*.nom_prenom'          => 'required|string',
-                'stagiaires.*.nom_ar'              => 'nullable|string',
-                'stagiaires.*.cin'                 => 'required|string',
-                'stagiaires.*.date_naissance'      => 'nullable|date',
-                'stagiaires.*.numero_inscription'  => 'required|string',
-                'stagiaires.*.groupe_id'           => 'required|exists:groupes,id',
-                'stagiaires.*.annee_academique_id' => 'required|exists:annees_academiques,id',
+                'stagiaires'                            => 'required|array',
+                'stagiaires.*.nom_prenom'               => 'required|string',
+                'stagiaires.*.nom_ar'                   => 'nullable|string',
+                'stagiaires.*.cin'                      => 'required|string',
+                'stagiaires.*.date_naissance'           => 'nullable|date',
+                'stagiaires.*.numero_inscription'       => 'required|string',
+                'stagiaires.*.groupe_id'                => 'required|exists:groupes,id',
+                'stagiaires.*.annee_academique_id'      => 'required|exists:annees_academiques,id',
+                'stagiaires.*.date_naissance_ar'        => 'nullable|string',
+                'stagiaires.*.lieu_naissance_ar'        => 'nullable|string',
+                'stagiaires.*.cin_ar'                   => 'nullable|string',
+                'stagiaires.*.nationalite_ar'           => 'nullable|string',
+                'stagiaires.*.numero_inscription_ar'    => 'nullable|string',
+                'stagiaires.*.date_inscription_ar'      => 'nullable|string',
             ]);
 
             $created = 0;
@@ -147,6 +159,12 @@ class ScanCinController extends Controller
                         'cin'                 => $cin,
                         'date_naissance'      => $item['date_naissance'] ?? null,
                         'numero_inscription'  => $item['numero_inscription'],
+                        'date_naissance_ar'        => $item['date_naissance_ar'] ?? null,
+                        'lieu_naissance_ar'        => $item['lieu_naissance_ar'] ?? null,
+                        'cin_ar'                   => $item['cin_ar'] ?? null,
+                        'nationalite_ar'           => $item['nationalite_ar'] ?? null,
+                        'numero_inscription_ar'    => $item['numero_inscription_ar'] ?? null,
+                        'date_inscription_ar'      => $item['date_inscription_ar'] ?? null,
                     ]
                 );
             }

@@ -55,25 +55,6 @@ class AnneeAcademiqueController extends Controller
         ]);
     }
 
-    public function destroy($id): JsonResponse
-    {
-        $annee = AnneeAcademique::findOrFail($id);
-
-        if ($annee->etudiants()->exists() || $annee->groupes()->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Impossible de supprimer. Cette année contient des données associées.',
-            ], 422);
-        }
-
-        $annee->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Année supprimée',
-        ]);
-    }
-
     public function archive($id): JsonResponse
     {
         $annee = AnneeAcademique::withCount(['etudiants', 'groupes'])->findOrFail($id);

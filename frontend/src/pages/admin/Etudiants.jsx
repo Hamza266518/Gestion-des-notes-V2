@@ -32,6 +32,14 @@ export default function Etudiants() {
   const [editData, setEditData]     = useState(null);
   const [editSaving, setEditSaving] = useState(false);
   const toast = useToast();
+  const [printMode, setPrintMode] = useState(false);
+  const [printFiliere, setPrintFiliere] = useState('');
+  const [printNiveau, setPrintNiveau] = useState('');
+  const [printGroupe, setPrintGroupe] = useState('');
+  const [printEtudiants, setPrintEtudiants] = useState([]);
+  const [printLoading, setPrintLoading] = useState(false);
+  const [printNiveaux, setPrintNiveaux] = useState([]);
+  const [printGroupes, setPrintGroupes] = useState([]);
 
   // ─── load does NOT depend on currentAnnee — it just sends whatever filters exist ───
   const load = useCallback(() => {
@@ -64,6 +72,26 @@ export default function Etudiants() {
       setNiveaux([]);
     }
   }, [filters.filiere_id]);
+
+  useEffect(() => {
+    if (!printFiliere) { setPrintNiveaux([]); setPrintNiveau(''); setPrintGroupe(''); setPrintGroupes([]); return; }
+    adminApi.getNiveaux(printFiliere).then(res => setPrintNiveaux(res.data.data || [])).catch(() => setPrintNiveaux([]));
+    setPrintNiveau(''); setPrintGroupe(''); setPrintGroupes([]);
+  }, [printFiliere]);
+
+  useEffect(() => {
+    if (!printNiveau) { setPrintGroupes([]); setPrintGroupe(''); return; }
+    const params = { niveau_id: printNiveau };
+    if (currentAnnee?.id) params.annee_academique_id = currentAnnee.id;
+    adminApi.getGroupes(params).then(res => setPrintGroupes(res.data.data || [])).catch(() => setPrintGroupes([]));
+    setPrintGroupe('');
+  }, [printNiveau, currentAnnee]);
+
+  useEffect(() => {
+    if (!printGroupe) { setPrintEtudiants([]); return; }
+    setPrintLoading(true);
+    etudiantsApi.getEtudiants({ groupe_id: printGroupe }).then(res => setPrintEtudiants(res.data.data || [])).catch(() => setPrintEtudiants([])).finally(() => setPrintLoading(false));
+  }, [printGroupe]);
 
   const handleDelete = async (id, nomPrenom) => {
     if (!window.confirm(`Supprimer l'étudiant ${nomPrenom} ? Cette action est irréversible.`)) return;
@@ -112,6 +140,12 @@ export default function Etudiants() {
         niveau_id: niveauId,
         niveaux: niveaux,
         groupe_nom: groupe?.nom || '',
+        date_naissance_ar: etudiant.date_naissance_ar || '',
+        lieu_naissance_ar: etudiant.lieu_naissance_ar || '',
+        cin_ar: etudiant.cin_ar || '',
+        nationalite_ar: etudiant.nationalite_ar || '',
+        numero_inscription_ar: etudiant.numero_inscription_ar || '',
+        date_inscription_ar: etudiant.date_inscription_ar || '',
       });
       setEditOpen(true);
     } catch (err) {
@@ -131,6 +165,12 @@ export default function Etudiants() {
         nationalite: editData.nationalite || 'Marocaine',
         date_inscription: editData.date_inscription || null,
         groupe_id: editData.groupe_id,
+        date_naissance_ar: editData.date_naissance_ar || null,
+        lieu_naissance_ar: editData.lieu_naissance_ar || null,
+        cin_ar: editData.cin_ar || null,
+        nationalite_ar: editData.nationalite_ar || null,
+        numero_inscription_ar: editData.numero_inscription_ar || null,
+        date_inscription_ar: editData.date_inscription_ar || null,
       });
       showSuccess(toast, 'Étudiant modifié avec succès');
       setEditOpen(false);
@@ -199,6 +239,12 @@ export default function Etudiants() {
           numero_inscription: r.numero_inscription,
           groupe_id: scanGroupe,
           annee_academique_id: currentAnnee.id,
+          date_naissance_ar: r.date_naissance_ar || null,
+          lieu_naissance_ar: r.lieu_naissance_ar || null,
+          cin_ar: r.cin_ar || null,
+          nationalite_ar: r.nationalite_ar || null,
+          numero_inscription_ar: r.numero_inscription_ar || null,
+          date_inscription_ar: r.date_inscription_ar || null,
         })),
         filiere_code: filieres.find(f => f.id == scanFiliere)?.code ?? '',
       });
@@ -236,16 +282,25 @@ export default function Etudiants() {
 
   return (
     <div className="page">
+      <div className="page-main">
       <div className="page-header">
         <h2 className="page-title">Étudiants</h2>
-        <button
-          className="btn btn-primary"
-          onClick={() => { setScanOpen(true); setScanResults([]); }}
-          disabled={filieres.length === 0}
-          title={filieres.length === 0 ? "Veuillez d'abord ajouter une filière" : ''}
-        >
-          Scanner CIN
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="btn btn-outline"
+            onClick={() => { setPrintMode(true); setPrintFiliere(''); setPrintNiveau(''); setPrintGroupe(''); setPrintEtudiants([]); setPrintNiveaux([]); setPrintGroupes([]); }}
+          >
+            Imprimer
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => { setScanOpen(true); setScanResults([]); }}
+            disabled={filieres.length === 0}
+            title={filieres.length === 0 ? "Veuillez d'abord ajouter une filière" : ''}
+          >
+            Scanner CIN
+          </button>
+        </div>
       </div>
 
       {/* Warning banner when no current year — but list still shows */}
@@ -326,8 +381,10 @@ export default function Etudiants() {
                     <th>CIN</th>
                     <th>Date de naissance</th>
                     <th>N° Inscription</th>
+                    <th>Email</th>
+                    <th>Mot de passe</th>
                     <th>Groupe</th>
-                    <th>Actions</th>
+                    <th className="no-print">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -338,9 +395,22 @@ export default function Etudiants() {
                       <td>{e.cin}</td>
                       <td>{e.date_naissance ?? '—'}</td>
                       <td><Badge label={e.numero_inscription} color="blue" /></td>
+                      <td style={{ fontSize: 12 }}>{e.user?.email ?? '—'}</td>
+                      <td><code style={{ fontSize: 12, background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 4 }}>password</code></td>
                       <td>{e.groupe?.nom ?? '—'}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 8 }}>
+                      <td className="no-print">
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap' }}>
+                          <button
+                            className="btn btn-sm btn-outline"
+                            onClick={() => {
+                              const text = `${e.user?.email ?? ''}:password`;
+                              navigator.clipboard.writeText(text);
+                              toast.success('Identifiants copiés');
+                            }}
+                            title="Copier email:password"
+                          >
+                            Copier
+                          </button>
                           <button
                             className="btn btn-sm btn-outline"
                             onClick={() => handleEdit(e)}
@@ -363,6 +433,71 @@ export default function Etudiants() {
             </div>
           )}
         </>
+      )}
+
+      </div>
+
+      {printMode && (
+        <div className="print-overlay">
+          <div className="print-header">
+            <h2>Liste des emails des étudiants</h2>
+            <div className="print-toolbar">
+              <button className="btn btn-primary" onClick={() => window.print()} disabled={printLoading}>Imprimer</button>
+              <button className="btn btn-outline" onClick={() => setPrintMode(false)}>Retour</button>
+            </div>
+          </div>
+          <div className="print-filters">
+            <select className="form-select" value={printFiliere} onChange={e => setPrintFiliere(e.target.value)}>
+              <option value="">Toutes les filières</option>
+              {filieres.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+            </select>
+            <select className="form-select" value={printNiveau} onChange={e => setPrintNiveau(e.target.value)} disabled={!printFiliere}>
+              <option value="">Tous les niveaux</option>
+              {printNiveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
+            </select>
+            <select className="form-select" value={printGroupe} onChange={e => setPrintGroupe(e.target.value)} disabled={!printNiveau}>
+              <option value="">Tous les groupes</option>
+              {printGroupes.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
+            </select>
+          </div>
+          {printLoading ? (
+            <div className="text-center mt-5"><Spinner /><p className="mt-2 text-muted">Chargement...</p></div>
+          ) : printGroupe && printEtudiants.length === 0 ? (
+            <div className="text-center mt-5" style={{ padding: 40 }}>
+              <FiClipboard size={48} style={{ marginBottom: 16, color: 'var(--color-muted)' }} />
+              <p style={{ color: '#999' }}>Aucun étudiant trouvé pour ce groupe</p>
+            </div>
+          ) : printEtudiants.length > 0 ? (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Nom et Prénom</th>
+                    <th>N° Inscription</th>
+                    <th>Email</th>
+                    <th>Mot de passe</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {printEtudiants.map((e, i) => (
+                    <tr key={e.id}>
+                      <td>{i + 1}</td>
+                      <td><strong>{e.nom_prenom}</strong></td>
+                      <td>{e.numero_inscription}</td>
+                      <td style={{ fontSize: 12 }}>{e.user?.email ?? '—'}</td>
+                      <td><code style={{ fontSize: 12, background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 4 }}>password</code></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center mt-5" style={{ padding: 40, color: '#999' }}>
+              Sélectionnez une filière, un niveau et un groupe pour afficher la liste
+            </div>
+          )}
+        </div>
       )}
 
       <ScanModal
@@ -519,62 +654,52 @@ function ScanModal({ open, onClose, filieres, scanResults, extracting, scanSavin
 
       {scanResults.length > 0 && (
         <div style={{ overflowX: 'auto', marginTop: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-          <table style={{ fontSize: '15px', minWidth: '600px', width: '100%' }}>
+          <table style={{ fontSize: '14px', minWidth: '1200px', width: '100%' }}>
             <thead>
               <tr style={{ backgroundColor: '#f9fafb' }}>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '200px' }}>Nom et Prénom</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '180px' }}>الاسم بالعربية</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '120px' }}>CIN</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '130px' }}>Date de naissance</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '130px' }}>N° Inscription</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Actions</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '160px' }}>Nom</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '130px' }}>الاسم</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>CIN</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>رقم البطاقة</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Date naiss.</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>تاريخ الميلاد</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>مكان الميلاد</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>الجنسية</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '110px' }}>N° Inscription</th>
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '80px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {scanResults.map((r, idx) => (
                 <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '12px 16px' }}>
-                    <input
-                      className="form-input"
-                      value={r.nom_prenom}
-                      onChange={e => onUpdateResult(idx, 'nom_prenom', e.target.value)}
-                      style={{ minWidth: '180px', width: '100%', padding: '8px 12px', fontSize: '15px' }}
-                    />
+                  <td style={{ padding: '8px 12px' }}>
+                    <input className="form-input" value={r.nom_prenom} onChange={e => onUpdateResult(idx, 'nom_prenom', e.target.value)} style={{ minWidth: '140px', padding: '6px 10px', fontSize: '14px' }} />
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <input
-                      className="form-input"
-                      value={r.nom_ar || ''}
-                      onChange={e => onUpdateResult(idx, 'nom_ar', e.target.value)}
-                      style={{ minWidth: '160px', width: '100%', padding: '8px 12px', fontSize: '15px', direction: 'rtl', textAlign: 'right' }}
-                    />
+                  <td style={{ padding: '8px 12px' }}>
+                    <input className="form-input" value={r.nom_ar || ''} onChange={e => onUpdateResult(idx, 'nom_ar', e.target.value)} style={{ minWidth: '110px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <input
-                      className="form-input"
-                      value={r.cin}
-                      onChange={e => onUpdateResult(idx, 'cin', e.target.value)}
-                      style={{ minWidth: '120px', padding: '8px 12px', fontSize: '15px' }}
-                    />
+                  <td style={{ padding: '8px 12px' }}>
+                    <input className="form-input" value={r.cin} onChange={e => onUpdateResult(idx, 'cin', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px' }} />
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <input
-                      className="form-input"
-                      type="date"
-                      value={r.date_naissance}
-                      onChange={e => onUpdateResult(idx, 'date_naissance', e.target.value)}
-                      style={{ minWidth: '130px', padding: '8px 12px', fontSize: '15px' }}
-                    />
+                  <td style={{ padding: '8px 12px' }}>
+                    <input className="form-input" value={r.cin_ar || ''} onChange={e => onUpdateResult(idx, 'cin_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <input
-                      className="form-input"
-                      value={r.numero_inscription}
-                      disabled
-                      style={{ minWidth: '120px', padding: '8px 12px', fontSize: '15px', backgroundColor: '#f3f4f6' }}
-                    />
+                  <td style={{ padding: '8px 12px' }}>
+                    <input className="form-input" type="date" value={r.date_naissance} onChange={e => onUpdateResult(idx, 'date_naissance', e.target.value)} style={{ minWidth: '100px', padding: '6px 10px', fontSize: '14px' }} />
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
+                  <td style={{ padding: '8px 12px' }}>
+                    <input className="form-input" value={r.date_naissance_ar || ''} onChange={e => onUpdateResult(idx, 'date_naissance_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <input className="form-input" value={r.lieu_naissance_ar || ''} onChange={e => onUpdateResult(idx, 'lieu_naissance_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <input className="form-input" value={r.nationalite_ar || ''} onChange={e => onUpdateResult(idx, 'nationalite_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <input className="form-input" value={r.numero_inscription} disabled style={{ minWidth: '100px', padding: '6px 10px', fontSize: '14px', backgroundColor: '#f3f4f6' }} />
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>
                     <button className="btn btn-sm btn-danger" onClick={() => onRemoveResult(idx)}>Supprimer</button>
                   </td>
                 </tr>
@@ -666,6 +791,89 @@ function EditModal({ open, onClose, editData, filieres, onSave, saving, onUpdate
                 type="date"
                 value={editData.date_inscription || ''}
                 onChange={e => onUpdate({ ...editData, date_inscription: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Arabic info section */}
+        <div style={{ marginBottom: 20 }}>
+          <h4 style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)', marginBottom: 12, paddingBottom: 8, borderBottom: '2px solid var(--primary)' }}>
+            Informations en arabe
+          </h4>
+
+          <div className="form-group">
+            <label className="form-label">الاسم الكامل</label>
+            <input
+              className="form-input"
+              value={editData.nom_ar || ''}
+              onChange={e => onUpdate({ ...editData, nom_ar: e.target.value })}
+              style={{ direction: 'rtl', textAlign: 'right' }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">تاريخ الميلاد</label>
+              <input
+                className="form-input"
+                value={editData.date_naissance_ar || ''}
+                onChange={e => onUpdate({ ...editData, date_naissance_ar: e.target.value })}
+                style={{ direction: 'rtl', textAlign: 'right' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">مكان الميلاد</label>
+              <input
+                className="form-input"
+                value={editData.lieu_naissance_ar || ''}
+                onChange={e => onUpdate({ ...editData, lieu_naissance_ar: e.target.value })}
+                style={{ direction: 'rtl', textAlign: 'right' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">رقم البطاقة</label>
+              <input
+                className="form-input"
+                value={editData.cin_ar || ''}
+                onChange={e => onUpdate({ ...editData, cin_ar: e.target.value })}
+                style={{ direction: 'rtl', textAlign: 'right' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">الجنسية</label>
+              <input
+                className="form-input"
+                value={editData.nationalite_ar || ''}
+                onChange={e => onUpdate({ ...editData, nationalite_ar: e.target.value })}
+                style={{ direction: 'rtl', textAlign: 'right' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">رقم التسجيل</label>
+              <input
+                className="form-input"
+                value={editData.numero_inscription_ar || ''}
+                onChange={e => onUpdate({ ...editData, numero_inscription_ar: e.target.value })}
+                style={{ direction: 'rtl', textAlign: 'right' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">تاريخ التسجيل</label>
+              <input
+                className="form-input"
+                value={editData.date_inscription_ar || ''}
+                onChange={e => onUpdate({ ...editData, date_inscription_ar: e.target.value })}
+                style={{ direction: 'rtl', textAlign: 'right' }}
               />
             </div>
           </div>

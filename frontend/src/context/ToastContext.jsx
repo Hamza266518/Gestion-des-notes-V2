@@ -24,7 +24,7 @@ export const ToastProvider = ({ children }) => {
           <div
             key={toast.id}
             style={{
-              background: toast.type === 'error' ? '#ef4444' : '#10b981',
+              background: toast.type === 'error' ? '#DC2626' : '#16A34A',
               color: 'white',
               padding: '12px 20px',
               marginBottom: 8,

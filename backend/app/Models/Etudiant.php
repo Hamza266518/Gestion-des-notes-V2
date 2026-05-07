@@ -10,6 +10,8 @@ class Etudiant extends Model
         'user_id', 'groupe_id', 'annee_academique_id', 'status',
         'nom_prenom', 'nom_ar', 'cin', 'numero_inscription',
         'date_naissance', 'lieu_naissance', 'nationalite', 'date_inscription',
+        'date_naissance_ar', 'lieu_naissance_ar', 'cin_ar',
+        'nationalite_ar', 'numero_inscription_ar', 'date_inscription_ar',
     ];
 
     public function user()

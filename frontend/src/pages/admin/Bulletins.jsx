@@ -180,7 +180,6 @@ export default function Bulletins() {
                 <h2>IFP</h2>
                 <p>Institut de Formation Paramedicale</p>
                 <h3>Bulletin de Notes</h3>
-                <p>Annee Academique {currentAnnee?.label || ''}</p>
               </div>
 
               <div className="bulletin-info">

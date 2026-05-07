@@ -17,6 +17,7 @@ import Formateurs from './pages/admin/Formateurs';
 import ScanCin from './pages/admin/ScanCin';
 import Diplomes from './pages/admin/Diplomes';
 import Notes from './pages/admin/Notes';
+import GestionNotes from './pages/admin/GestionNotes';
 import Publications from './pages/admin/Publications';
 import Bulletins from './pages/admin/Bulletins';
 import Sequences from './pages/admin/Sequences';
@@ -55,6 +56,7 @@ export default function App() {
               <Route path="scan-cin" element={<ScanCin />} />
               <Route path="diplomes" element={<Diplomes />} />
               <Route path="notes" element={<Notes />} />
+              <Route path="saisie-notes" element={<GestionNotes />} />
               <Route path="publications" element={<Publications />} />
               <Route path="bulletins" element={<Bulletins />} />
               <Route path="sequences" element={<Sequences />} />

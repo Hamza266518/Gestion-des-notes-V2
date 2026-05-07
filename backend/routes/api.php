@@ -38,7 +38,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/annees-academiques', [AnneeAcademiqueController::class, 'index']);
         Route::post('/annees-academiques', [AnneeAcademiqueController::class, 'store']);
         Route::post('/annees-academiques/{id}/set-current', [AnneeAcademiqueController::class, 'setCurrent']);
-        Route::delete('/annees-academiques/{id}', [AnneeAcademiqueController::class, 'destroy']);
         Route::post('/annees-academiques/{id}/archive', [AnneeAcademiqueController::class, 'archive']);
 
         // Filieres

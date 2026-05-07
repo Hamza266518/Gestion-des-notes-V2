@@ -22,7 +22,7 @@
 
 /* ===== LEFT PANEL ===== */
 .login-left {
-  width: 42%;
+  width: 45%;
   position: relative;
   z-index: 1;
   display: flex;
@@ -70,7 +70,7 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.92);
   padding: 18px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.2);
   transition: transform 0.3s ease;
 }
 
@@ -120,11 +120,11 @@
 
 /* Card */
 .login-card {
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
-  border-radius: 16px;
+  border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 5px 4px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
   padding: 40px 36px;
 }
 
@@ -333,7 +333,7 @@
 .login-btn-primary {
   width: 100%;
   padding: 13px 20px;
-  background: #0d9488;
+  background: var(--primary);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -346,11 +346,11 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 2px 8px rgba(14, 165, 164, 0.25);
+  box-shadow: 0 3px 12px rgba(27,58,107,0.3);
 }
 
 .login-btn-primary:hover:not(:disabled) {
-  background: #3200bc;
+  background: var(--primary-dark);
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(14, 165, 164, 0.3);
 }

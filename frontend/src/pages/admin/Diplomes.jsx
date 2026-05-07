@@ -16,28 +16,26 @@ const mentionColor = (m) => {
 };
 
 const FIELDS = [
-  // French fields (red markers in calibration)
-  { key: 'nom_prenom',         x: 0.135, y: 0.489, size: 11, bold: true,  group: 'fr' },
-  { key: 'date_naissance',     x: 0.106, y: 0.515, size: 11, bold: false, group: 'fr' },
-  { key: 'lieu_naissance',     x: 0.359, y: 0.508, size: 11, bold: false, group: 'fr' },
-  { key: 'cin',                x: 0.178, y: 0.541, size: 11, bold: false, group: 'fr' },
-  { key: 'nationalite',        x: 0.352, y: 0.541, size: 11, bold: false, group: 'fr' },
+  { key: 'nom_prenom', x: 0.135, y: 0.489, size: 11, bold: true, group: 'fr' },
+  { key: 'date_naissance', x: 0.106, y: 0.515, size: 11, bold: false, group: 'fr' },
+  { key: 'lieu_naissance', x: 0.359, y: 0.508, size: 11, bold: false, group: 'fr' },
+  { key: 'cin', x: 0.178, y: 0.541, size: 11, bold: false, group: 'fr' },
+  { key: 'nationalite', x: 0.352, y: 0.541, size: 11, bold: false, group: 'fr' },
   { key: 'numero_inscription', x: 0.246, y: 0.561, size: 11, bold: false, group: 'fr' },
-  { key: 'date_inscription',   x: 0.436, y: 0.563, size: 11, bold: false, group: 'fr' },
-  { key: 'type_formation',     x: 0.415, y: 0.585, size: 11, bold: true,  group: 'fr' },
-  { key: 'filiere',            x: 0.079, y: 0.611, size: 11, bold: true,  group: 'fr' },
-  { key: 'promotion',          x: 0.519, y: 0.633, size: 11, bold: true,  group: 'fr' },
-  { key: 'date_delivrance',    x: 0.466, y: 0.688, size: 11, bold: false, group: 'fr' },
-  // Arabic fields (blue markers in calibration)
-  { key: 'nom_ar',              x: 0.829, y: 0.487, size: 11, bold: true,  group: 'ar' },
-  { key: 'date_naissance_ar',     x: 0.786, y: 0.513, size: 11, bold: false, group: 'ar' },
-  { key: 'lieu_naissance_ar',     x: 0.546, y: 0.517, size: 11, bold: false, group: 'ar' },
-  { key: 'cin_ar',                x: 0.781, y: 0.533, size: 11, bold: false, group: 'ar' },
-  { key: 'nationalite_ar',        x: 0.561, y: 0.543, size: 11, bold: false, group: 'ar' },
-  { key: 'numero_inscription_ar', x: 0.729, y: 0.563, size: 11, bold: false, group: 'ar' },
-  { key: 'date_inscription_ar',   x: 0.548, y: 0.567, size: 11, bold: false, group: 'ar' },
-  { key: 'type_formation_ar',     x: 0.780, y: 0.607, size: 11, bold: true,  group: 'ar' },
-  { key: 'filiere_ar',            x: 0.868, y: 0.607, size: 11, bold: true,  group: 'ar' },
+  { key: 'date_inscription', x: 0.436, y: 0.563, size: 11, bold: false, group: 'fr' },
+  { key: 'type_formation', x: 0.415, y: 0.585, size: 11, bold: true, group: 'fr' },
+  { key: 'filiere', x: 0.079, y: 0.611, size: 11, bold: true, group: 'fr' },
+  { key: 'promotion', x: 0.520, y: 0.632, size: 11, bold: true, group: 'fr' },
+  { key: 'date_delivrance', x: 0.472, y: 0.690, size: 11, bold: false, group: 'fr' },
+  { key: 'nom_ar', x: 0.872, y: 0.490, size: 11, bold: true, group: 'ar' },
+  { key: 'date_naissance_ar', x: 0.803, y: 0.515, size: 11, bold: false, group: 'ar' },
+  { key: 'lieu_naissance_ar', x: 0.568, y: 0.516, size: 11, bold: false, group: 'ar' },
+  { key: 'cin_ar', x: 0.789, y: 0.539, size: 11, bold: false, group: 'ar' },
+  { key: 'nationalite_ar', x: 0.569, y: 0.541, size: 11, bold: false, group: 'ar' },
+  { key: 'numero_inscription_ar', x: 0.750, y: 0.561, size: 11, bold: false, group: 'ar' },
+  { key: 'date_inscription_ar', x: 0.569, y: 0.566, size: 11, bold: false, group: 'ar' },
+  { key: 'type_formation_ar', x: 0.627, y: 0.586, size: 11, bold: true, group: 'ar' },
+  { key: 'filiere_ar', x: 0.875, y: 0.610, size: 11, bold: true, group: 'ar' }
 ];
 
 let arabicFontLoaded = false;
@@ -63,7 +61,12 @@ async function ensureArabicFont() {
     const resp = await fetch(fontUrl);
     if (resp.ok) {
       const buffer = await resp.arrayBuffer();
-      arabicFontB64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      arabicFontB64 = btoa(binary);
     }
   } catch {}
 
@@ -77,11 +80,13 @@ function renderArabicToImage(text, fontSizePx, bold) {
   const testCtx = testCanvas.getContext('2d');
   testCtx.font = font;
   testCtx.direction = 'rtl';
-  const textW = testCtx.measureText(text).width;
+  const metrics = testCtx.measureText(text);
+  const textW = metrics.width;
+  const ascent = metrics.actualBoundingBoxAscent || fontSizePx * 0.85;
+  const descent = metrics.actualBoundingBoxDescent || fontSizePx * 0.15;
 
-  const padding = 2;
-  const w = Math.max(Math.ceil(textW), 10) + padding * 2;
-  const h = Math.ceil(fontSizePx * 1.6);
+  const w = Math.max(Math.ceil(textW), 2);
+  const h = Math.ceil(ascent + descent);
 
   const canvas = document.createElement('canvas');
   canvas.width = w;
@@ -90,11 +95,12 @@ function renderArabicToImage(text, fontSizePx, bold) {
 
   ctx.font = font;
   ctx.direction = 'rtl';
-  ctx.textBaseline = 'middle';
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'right';
   ctx.fillStyle = '#000000';
-  ctx.fillText(text, w - padding, h / 2);
+  ctx.fillText(text, w, 0);
 
-  return { dataUrl: canvas.toDataURL('image/png'), width: w, height: h };
+  return { dataUrl: canvas.toDataURL('image/png'), width: w, height: h, ascent };
 }
 
 function CalibrationOverlay({ templateSrc, onFieldsChange }) {
@@ -323,31 +329,25 @@ export default function Diplomes() {
             p.text(String(value), x * pdfW, y * pdfH);
           }
         } else {
+          let textToRender;
           if (key === 'filiere_ar') {
-            // Combine type_formation_ar + filiere_ar
             const typeFormationAr = data.type_formation_ar || '';
             const filiereNameAr = String(value);
-            const fullText = [typeFormationAr, filiereNameAr].filter(Boolean).join(' ');
-            if (arabicFontB64) {
-              p.setFont('Amiri', bold ? 'bold' : 'normal');
-            } else {
-              p.setFont('helvetica', bold ? 'bold' : 'normal');
-            }
-            p.setFontSize(size);
-            p.setTextColor(0, 0, 0);
-            p.text(fullText, x * pdfW, y * pdfH, { align: 'right' });
+            textToRender = [typeFormationAr, filiereNameAr].filter(Boolean).join(' ');
           } else if (key === 'type_formation_ar') {
-            // Skip - already handled via filiere_ar
+            continue;
           } else {
-            if (arabicFontB64) {
-              p.setFont('Amiri', bold ? 'bold' : 'normal');
-            } else {
-              p.setFont('helvetica', bold ? 'bold' : 'normal');
-            }
-            p.setFontSize(size);
-            p.setTextColor(0, 0, 0);
-            p.text(String(value), x * pdfW, y * pdfH, { align: 'right' });
+            textToRender = String(value);
           }
+
+          const pxSize = size * 1.333;
+          const rendered = renderArabicToImage(textToRender, pxSize, bold);
+          const mmPerPx = 25.4 / 96;
+          const imgW = rendered.width * mmPerPx;
+          const imgH = rendered.height * mmPerPx;
+          const imgX = x * pdfW - imgW;
+          const imgY = y * pdfH - rendered.ascent * mmPerPx;
+          p.addImage(rendered.dataUrl, 'PNG', imgX, imgY, imgW, imgH);
         }
       }
 

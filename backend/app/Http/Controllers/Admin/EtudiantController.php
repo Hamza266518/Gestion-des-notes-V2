@@ -21,7 +21,7 @@ class EtudiantController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Etudiant::with(['groupe.niveau.filiere', 'anneeAcademique']);
+            $query = Etudiant::with(['user', 'groupe.niveau.filiere', 'anneeAcademique']);
 
             if ($request->filled('annee_academique_id')) {
                 $query->where('annee_academique_id', $request->annee_academique_id);
@@ -99,6 +99,12 @@ class EtudiantController extends Controller
                     'date_naissance'      => $request->date_naissance,
                     'numero_inscription'  => $numero,
                     'status'              => 'active',
+                    'date_naissance_ar'   => $request->date_naissance_ar,
+                    'lieu_naissance_ar'   => $request->lieu_naissance_ar,
+                    'cin_ar'              => $request->cin_ar,
+                    'nationalite_ar'      => $request->nationalite_ar,
+                    'numero_inscription_ar'=> $request->numero_inscription_ar,
+                    'date_inscription_ar' => $request->date_inscription_ar,
                 ]
             );
 
@@ -113,10 +119,19 @@ class EtudiantController extends Controller
     {
         try {
             $request->validate([
-                'nom_prenom'     => 'required|string',
-                'cin'            => 'required|string',
-                'date_naissance' => 'nullable|date',
-                'groupe_id'      => 'required|exists:groupes,id',
+                'nom_prenom'         => 'required|string',
+                'cin'                => 'required|string',
+                'date_naissance'     => 'nullable|date',
+                'groupe_id'          => 'required|exists:groupes,id',
+                'lieu_naissance'     => 'nullable|string',
+                'nationalite'        => 'nullable|string',
+                'date_inscription'   => 'nullable|date',
+                'date_naissance_ar'  => 'nullable|string',
+                'lieu_naissance_ar'  => 'nullable|string',
+                'cin_ar'             => 'nullable|string',
+                'nationalite_ar'     => 'nullable|string',
+                'numero_inscription_ar' => 'nullable|string',
+                'date_inscription_ar' => 'nullable|string',
             ]);
 
             $etudiant = Etudiant::with('user')->findOrFail($id);
@@ -124,10 +139,19 @@ class EtudiantController extends Controller
             $newEmail = strtolower($request->cin) . '@ifp.ma';
 
             $etudiant->update([
-                'nom_prenom'     => $request->nom_prenom,
-                'cin'            => strtoupper($request->cin),
-                'date_naissance' => $request->date_naissance,
-                'groupe_id'      => $request->groupe_id,
+                'nom_prenom'         => $request->nom_prenom,
+                'cin'                => strtoupper($request->cin),
+                'date_naissance'     => $request->date_naissance,
+                'lieu_naissance'     => $request->lieu_naissance,
+                'nationalite'        => $request->nationalite,
+                'date_inscription'   => $request->date_inscription,
+                'groupe_id'          => $request->groupe_id,
+                'date_naissance_ar'  => $request->date_naissance_ar,
+                'lieu_naissance_ar'  => $request->lieu_naissance_ar,
+                'cin_ar'             => $request->cin_ar,
+                'nationalite_ar'     => $request->nationalite_ar,
+                'numero_inscription_ar' => $request->numero_inscription_ar,
+                'date_inscription_ar' => $request->date_inscription_ar,
             ]);
 
             if ($etudiant->user) {

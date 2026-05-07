@@ -108,14 +108,20 @@ class DiplomeController extends Controller
                     'date_delivrance'    => now()->format('d/m/Y'),
                     // Arabic fields
                     'nom_ar'              => $etudiant->nom_ar ?? '',
-                    'date_naissance_ar'     => $etudiant->date_naissance
-                        ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : '',
-                    'lieu_naissance_ar'     => $etudiant->lieu_naissance ?? '',
-                    'cin_ar'                => $etudiant->cin ?? '',
-                    'nationalite_ar'        => $etudiant->nationalite ?? 'Marocaine',
-                    'numero_inscription_ar' => $etudiant->numero_inscription ?? '',
-                    'date_inscription_ar'   => $etudiant->date_inscription
-                        ? \Carbon\Carbon::parse($etudiant->date_inscription)->format('d/m/Y') : '',
+                    'date_naissance_ar'     => $etudiant->date_naissance_ar
+                        ?? ($etudiant->date_naissance
+                            ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : ''),
+                    'lieu_naissance_ar'     => $etudiant->lieu_naissance_ar
+                        ?? ($etudiant->lieu_naissance ?? ''),
+                    'cin_ar'                => $etudiant->cin_ar
+                        ?? ($etudiant->cin ?? ''),
+                    'nationalite_ar'        => $etudiant->nationalite_ar
+                        ?? ($etudiant->nationalite ?? 'Marocaine'),
+                    'numero_inscription_ar' => $etudiant->numero_inscription_ar
+                        ?? ($etudiant->numero_inscription ?? ''),
+                    'date_inscription_ar'   => $etudiant->date_inscription_ar
+                        ?? ($etudiant->date_inscription
+                            ? \Carbon\Carbon::parse($etudiant->date_inscription)->format('d/m/Y') : ''),
                     'filiere_ar'            => $filiere?->nom_ar ?? '',
                     'type_formation_ar'     => $filiere?->type_formation ?? '',
                 ]
