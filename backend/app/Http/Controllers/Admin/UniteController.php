@@ -17,6 +17,13 @@ class UniteController extends Controller
                 ->when($request->filiere_id, fn($q) => $q->where('filiere_id', $request->filiere_id))
                 ->when($request->numero_annee, fn($q) => $q->where('numero_annee', $request->numero_annee))
                 ->when($request->semestre, fn($q) => $q->where('semestre', $request->semestre))
+                ->when($request->niveau_id, function($q) use ($request) {
+                    $niveau = \App\Models\Niveau::find($request->niveau_id);
+                    if ($niveau) {
+                        $q->where('numero_annee', $niveau->numero)
+                          ->where('filiere_id', $niveau->filiere_id);
+                    }
+                })
                 ->orderBy('ordre')
                 ->get();
             return response()->json(['success' => true, 'data' => $unites]);
@@ -35,7 +42,7 @@ class UniteController extends Controller
                 'numero_annee' => 'required|integer',
                 'semestre'     => 'required|integer|in:1,2',
             ]);
-            $unite = Unite::create($request->all());
+            $unite = Unite::create($request->only(['filiere_id', 'nom', 'coefficient', 'numero_annee', 'semestre', 'ordre']));
             return response()->json(['success' => true, 'data' => $unite, 'message' => 'Unité créée']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors de la création de l\'unité'], 500);
@@ -46,7 +53,7 @@ class UniteController extends Controller
     {
         try {
             $unite = Unite::findOrFail($id);
-            $unite->update($request->all());
+            $unite->update($request->only(['nom', 'coefficient', 'numero_annee', 'semestre', 'ordre']));
             return response()->json(['success' => true, 'data' => $unite, 'message' => 'Unité mise à jour']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors de la mise à jour de l\'unité'], 500);
@@ -105,7 +112,8 @@ class UniteController extends Controller
                 'file' => 'required|mimes:xlsx,xls',
             ]);
 
-            $rows = Excel::toArray([], $request->file('file'));
+            $import = new UnitesImport(0);
+            $rows = Excel::toArray($import, $request->file('file'));
             $data = array_slice($rows[0], 1, 5);
 
             return response()->json([

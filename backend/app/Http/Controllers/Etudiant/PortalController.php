@@ -34,6 +34,7 @@ class PortalController extends Controller
         $anneeId   = $etudiant->annee_academique_id;
         $groupeId  = $etudiant->groupe_id;
         $filiereId = $etudiant->groupe->niveau->filiere_id;
+        $niveauNumero = $etudiant->groupe->niveau->numero;
 
         // Check publication states
         $publications = SemestrePublication::where('groupe_id', $groupeId)
@@ -62,12 +63,12 @@ class PortalController extends Controller
 
         // Notes S1 - raw scores only
         if ($pubStates['notes_s1']) {
-            $result['notes_s1'] = $this->getRawNotes($etudiant->id, $filiereId, 1, $anneeId);
+            $result['notes_s1'] = $this->getRawNotes($etudiant->id, $filiereId, $niveauNumero, 1, $anneeId);
         }
 
         // Notes S2 - raw scores only
         if ($pubStates['notes_s2']) {
-            $result['notes_s2'] = $this->getRawNotes($etudiant->id, $filiereId, 2, $anneeId);
+            $result['notes_s2'] = $this->getRawNotes($etudiant->id, $filiereId, $niveauNumero, 2, $anneeId);
         }
 
         // Bulletin - full calculations
@@ -78,9 +79,10 @@ class PortalController extends Controller
         return response()->json(['success' => true, 'data' => $result]);
     }
 
-    protected function getRawNotes($etudiantId, $filiereId, $semestre, $anneeId)
+    protected function getRawNotes($etudiantId, $filiereId, $niveauNumero, $semestre, $anneeId)
     {
         $unites = Unite::where('filiere_id', $filiereId)
+            ->where('numero_annee', $niveauNumero)
             ->where('semestre', $semestre)
             ->where('is_active', true)
             ->with('sequences.controles')

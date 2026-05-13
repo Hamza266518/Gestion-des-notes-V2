@@ -300,19 +300,17 @@ export default function GestionNotes() {
                                   onChange={e => setEditValue(e.target.value)}
                                   onBlur={() => handleSaveNote(note.id)}
                                   onKeyDown={e => { if (e.key === 'Enter') handleSaveNote(note.id); }}
-                                  disabled={saving || note.is_confirmed}
+                                  disabled={saving}
                                   autoFocus
                                 />
                               ) : (
                                 <span
-                                  style={{ cursor: note.is_confirmed ? 'default' : 'pointer', color: note.is_confirmed ? '#999' : 'inherit' }}
+                                  style={{ cursor: 'pointer' }}
                                   onClick={() => {
-                                    if (!note.is_confirmed) {
-                                      setEditingNote(note.id);
-                                      setEditValue(note.valeur ?? '');
-                                    }
+                                    setEditingNote(note.id);
+                                    setEditValue(note.valeur ?? '');
                                   }}
-                                  title={note.is_confirmed ? 'Confirmée' : 'Cliquer pour modifier'}
+                                  title="Cliquer pour modifier"
                                 >
                                   {note.valeur ?? '—'}
                                 </span>

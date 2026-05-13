@@ -44,49 +44,129 @@ export default function Notes() {
       .finally(() => setLoading(false));
   }, [selected.groupe_id, tableType]);
 
-  const handlePrint = () => {
-    const printContent = printRef.current;
-    if (!printContent) return;
+  const formatGrade = (v) => v !== null && v !== undefined ? v.toFixed(2).replace('.', ',') : '—';
 
+  const tableTitle = tableType === 'mpcc1' ? 'Tableau récapitulatif des résultats des contrôles continus Bloc 01'
+    : tableType === 'mpcc2' ? 'Tableau récapitulatif des résultats des contrôles continus Bloc 02'
+    : tableType === 'mpcc_global' ? 'Tableau récapitulatif des résultats des contrôles continus (Global)'
+    : tableType === 'mpefcf1' ? 'Tableau récapitulatif des résultats des examens théoriques Bloc 01'
+    : tableType === 'mpefcf2' ? 'Tableau récapitulatif des résultats des examens théoriques Bloc 02'
+    : tableType === 'mpefcfp1' ? 'Tableau récapitulatif des résultats des examens pratiques Bloc 01'
+    : tableType === 'mpefcfp2' ? 'Tableau récapitulatif des résultats des examens pratiques Bloc 02'
+    : tableType === 'nsti' ? 'Tableau récapitulatif des résultats de soutenance'
+    : 'Tableau récapitulatif des résultats';
+
+  const avgLabel = tableType === 'nf' ? 'NF' : tableType === 'nsti' ? 'NSTI'
+    : tableType.startsWith('mpefcfp') ? tableType.toUpperCase()
+    : tableType.startsWith('mpefcf') ? tableType.toUpperCase()
+    : tableType.startsWith('mpcc') ? tableType.toUpperCase() + '*' : 'MPCC';
+
+  const buildHeaderTable = (h) => `
+    <table class="t">
+      <tr>
+        <td class="c" style="width:50%"><b>Date :</b> ${h?.date || '___/___/______'}, <b>à :</b> ___h</td>
+        <td class="c" style="width:50%"><b>Lieu :</b> ${h?.lieu || 'Institut des formations paramédicales privé'}</td>
+      </tr>
+      <tr>
+        <td colspan="2" class="c" style="font-weight:bold;text-align:center">Membre de jury présents</td>
+      </tr>
+      <tr>
+        <td class="c" style="width:33%"><b>Membres professionnels :</b><br/>Président de jury : _________________<br/>Membres : 1. _________________<br/>2. _________________</td>
+        <td class="c" style="width:33%"><b>Membre de l'établissement :</b><br/>Formateur permanent :<br/>1. _________________</td>
+        <td class="c" style="width:33%"><b>Membre représentant :</b><br/>_________________</td>
+      </tr>
+      <tr>
+        <td class="c"><b>Filière :</b> ${h?.filiere || '—'}</td>
+        <td class="c"><b>Année Scolaire :</b> ${h?.annee_scolaire || currentAnnee?.label || '____/____'}</td>
+      </tr>
+      <tr>
+        <td class="c"><b>Section :</b> ${h?.section || '—'}</td>
+        <td class="c"><b>Année de formation :</b> ${h?.annee_formation || '____/____'}</td>
+      </tr>
+    </table>`;
+
+  const buildGradeTable = (data) => {
+    const { students, subjects, class_average } = data;
+    const cols = subjects.length;
+    const totalCols = 4 + cols;
+
+    let html = '<table class="t">';
+    html += `<tr><td colspan="${totalCols}" class="c" style="font-weight:bold;text-align:center">${tableTitle}</td></tr>`;
+    html += '<tr>';
+    html += '<th class="c">#</th>';
+    html += '<th class="c">Nom et Prénom</th>';
+    subjects.forEach(s => { html += `<th class="c">${s.nom}</th>`; });
+    html += `<th class="c">${avgLabel}</th>`;
+    html += '<th class="c">Observation</th>';
+    html += '</tr>';
+    html += '<tr class="coeff">';
+    html += '<td class="c"></td><td class="c"></td>';
+    subjects.forEach(s => { html += `<td class="c">Coef. ${s.coefficient}</td>`; });
+    html += '<td class="c"></td><td class="c"></td>';
+    html += '</tr>';
+
+    students.forEach((student, idx) => {
+      html += '<tr>';
+      html += `<td class="c">${idx + 1}</td>`;
+      html += `<td class="c" style="text-align:left">${student.nom_prenom}</td>`;
+      subjects.forEach(s => { html += `<td class="c">${formatGrade(student.notes?.[s.id])}</td>`; });
+      html += `<td class="c" style="font-weight:bold">${formatGrade(student.average)}</td>`;
+      html += '<td class="c"></td>';
+      html += '</tr>';
+    });
+
+    if (class_average) {
+      html += '<tr class="cavg">';
+      html += '<td class="c"></td>';
+      html += '<td class="c">Moyenne de la classe</td>';
+      subjects.forEach(s => { html += `<td class="c">${formatGrade(class_average.subjects?.[s.id])}</td>`; });
+      html += `<td class="c">${formatGrade(class_average.overall)}</td>`;
+      html += '<td class="c"></td>';
+      html += '</tr>';
+    }
+
+    html += '</table>';
+    return html;
+  };
+
+  const buildSignatureTable = () => `
+    <table class="t" style="margin-top:30px">
+      <tr>
+        <td class="c" style="height:50px;vertical-align:top;width:25%"><b>Signature de président de jury</b></td>
+        <td class="c" style="height:50px;vertical-align:top;width:25%"><b>Signature des membres de jury externe</b><br/>1. _________________<br/>2. _________________</td>
+        <td class="c" style="height:50px;vertical-align:top;width:25%"><b>Signature de membre de jury interne</b><br/>1. _________________<br/>2. _________________</td>
+        <td class="c" style="height:50px;vertical-align:top;width:25%"><b>Signature du représentant<br/>de la formation professionnelle</b></td>
+      </tr>
+    </table>`;
+
+  const handlePrint = () => {
+    if (!recapData) return;
+    const h = recapData.header;
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <html>
         <head>
           <title>Relevé de Notes - Jury</title>
           <style>
-            body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #333; padding: 6px 8px; text-align: center; }
-            th { background: #f0f0f0; font-weight: bold; }
-            .header-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
-            .student-name { text-align: left; font-weight: 500; }
-            .avg-cell { font-weight: bold; }
-            .class-avg-row { background: #e8f5e9; }
-            .class-avg-row td { font-weight: bold; }
-            .coeff { font-size: 10px; color: #666; }
-            .avg-header { background: #1B3A6B !important; color: white !important; }
-            @media print {
-              body { margin: 0; }
-              .no-print { display: none; }
-            }
+            @page { size: landscape; margin: 6mm; }
+            body { font-family: Arial, sans-serif; margin: 0; font-size: 9px; }
+            .t { width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 3px; }
+            .c { border: 1px solid #000; padding: 1px 2px; font-size: 8px; text-align: center; line-height: 1.1; }
+            th.c { background: #f0f0f0; font-weight: bold; }
+            .coeff { background: #fafafa; font-style: italic; }
+            .cavg { background: #eaf3ff; font-weight: bold; }
           </style>
         </head>
         <body>
-          ${printContent.innerHTML}
+          ${buildHeaderTable(h)}
+          ${buildGradeTable(recapData)}
+          ${buildSignatureTable()}
         </body>
       </html>
     `);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
-  };
-
-  const getAverageColumnLabel = () => {
-    if (tableType === 'nf') return 'NF';
-    return 'MPCC';
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 250);
   };
 
   const renderTable = () => {
@@ -95,66 +175,58 @@ export default function Notes() {
 
     return (
       <div ref={printRef} className="recap-table-wrap">
-        <div className="recap-header">
-          <div className="recap-header-row">
-            <span><strong>Date :</strong> {header?.date || '___/___/______'}</span>
-            <span><strong>Lieu :</strong> {header?.lieu || 'IFP Berkane'}</span>
-          </div>
-          <div className="recap-header-row">
-            <span><strong>Jury :</strong> {header?.jury || '________________________________'}</span>
-          </div>
-          <div className="recap-header-row">
-            <span><strong>Filière :</strong> {header?.filiere || '—'}</span>
-            <span><strong>Section :</strong> {header?.section || '—'}</span>
-          </div>
-          <div className="recap-header-row">
-            <span><strong>Année scolaire :</strong> {header?.annee_scolaire || currentAnnee?.label || '—'}</span>
-            <span><strong>Année de formation :</strong> {header?.annee_formation || '—'}</span>
-          </div>
+        <div style={{ marginBottom: 10, fontSize: 14 }}>
+          <div><strong>Filière :</strong> {header?.filiere || '—'} | <strong>Section :</strong> {header?.section || '—'}</div>
+          <div><strong>Année scolaire :</strong> {header?.annee_scolaire || currentAnnee?.label || '—'}</div>
         </div>
 
-        <table className="recap-table">
-          <thead>
-            <tr>
-              <th rowSpan="2">#</th>
-              <th rowSpan="2">Nom et Prénom</th>
-              {subjects?.map(s => (
-                <th key={s.id} className="subject-header">
-                  <div>{s.nom}</div>
-                  {s.coefficient && <div className="coeff">Coef. {s.coefficient}</div>}
-                </th>
+          <div style={{ overflowX: 'auto' }}>
+          <table className="recap-table" style={{ fontSize: 12, minWidth: subjects.length > 6 ? 900 : '100%' }}>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th style={{ whiteSpace: 'nowrap' }}>Nom et Prénom</th>
+                {subjects?.map(s => (
+                  <th key={s.id} style={{ whiteSpace: 'nowrap' }}>{s.nom}</th>
+                ))}
+                <th style={{ whiteSpace: 'nowrap' }}>{avgLabel}</th>
+                <th>Observation</th>
+              </tr>
+              <tr className="coeff-row">
+                <td></td>
+                <td></td>
+                {subjects?.map(s => <td key={s.id} style={{ textAlign: 'center' }}>Coef. {s.coefficient}</td>)}
+                <td></td>
+                <td></td>
+              </tr>
+            </thead>
+            <tbody>
+              {students?.map((student, idx) => (
+                <tr key={student.id}>
+                  <td>{idx + 1}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{student.nom_prenom}</td>
+                  {subjects?.map(s => (
+                    <td key={s.id} className={student.notes?.[s.id] < 10 ? 'note-fail' : ''} style={{ textAlign: 'center' }}>
+                      {formatGrade(student.notes?.[s.id])}
+                    </td>
+                  ))}
+                  <td style={{ fontWeight: 'bold', textAlign: 'center' }}>{formatGrade(student.average)}</td>
+                  <td></td>
+                </tr>
               ))}
-              <th rowSpan="2" className="avg-header">{getAverageColumnLabel()}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {students?.map((student, idx) => (
-              <tr key={student.id}>
-                <td>{idx + 1}</td>
-                <td className="student-name">{student.nom_prenom}</td>
-                {subjects?.map(s => (
-                  <td key={s.id} className={student.notes?.[s.id] < 10 ? 'note-fail' : ''}>
-                    {student.notes?.[s.id] ?? '—'}
-                  </td>
-                ))}
-                <td className="avg-cell">
-                  <strong>{student.average ?? '—'}</strong>
-                </td>
-              </tr>
-            ))}
-            {class_average !== undefined && (
-              <tr className="class-avg-row">
-                <td colSpan="2"><strong>Moyenne de la classe</strong></td>
-                {subjects?.map(s => (
-                  <td key={s.id}><strong>{class_average.subjects?.[s.id] ?? '—'}</strong></td>
-                ))}
-                <td className="avg-cell">
-                  <strong>{class_average.overall ?? '—'}</strong>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              {class_average && (
+                <tr className="class-avg-row">
+                  <td colSpan="2"><strong>Moyenne de la classe</strong></td>
+                  {subjects?.map(s => (
+                    <td key={s.id} style={{ textAlign: 'center' }}><strong>{formatGrade(class_average.subjects?.[s.id])}</strong></td>
+                  ))}
+                  <td style={{ fontWeight: 'bold', textAlign: 'center' }}><strong>{formatGrade(class_average.overall)}</strong></td>
+                  <td></td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   };

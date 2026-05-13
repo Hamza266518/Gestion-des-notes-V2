@@ -53,7 +53,6 @@ export default function MonBulletinView() {
       <div className="page-container">
         <div className="page-header">
           <h1>Mon Bulletin</h1>
-          {currentAnnee && <span className="form-select" style={{display:'inline-block', padding:'8px 12px', background:'#e8f5e9', color:'#2e7d32', fontWeight:'bold'}}>{currentAnnee.label}</span>}
         </div>
         <div className="empty-state">
           <p>Bulletin non publie pour le moment.</p>
@@ -72,7 +71,6 @@ export default function MonBulletinView() {
     <div className="page-container">
       <div className="page-header">
         <h1>Mon Bulletin</h1>
-        {currentAnnee && <span className="form-select" style={{display:'inline-block', padding:'8px 12px', background:'#e8f5e9', color:'#2e7d32', fontWeight:'bold'}}>{currentAnnee.label}</span>}
       </div>
 
       <div className="bulletin-card">

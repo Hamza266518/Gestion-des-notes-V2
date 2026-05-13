@@ -5,8 +5,6 @@ export const notesApi = {
         apiClient.get('/admin/notes', { params }),
     getRecapNotes: (params) =>
         apiClient.get('/admin/recap-notes', { params }),
-    createNote: (data) =>
-        apiClient.post('/admin/notes', data),
     updateNote: (id, valeur) =>
         apiClient.put(`/admin/notes/${id}`, { valeur }),
     getExamens: (params) =>

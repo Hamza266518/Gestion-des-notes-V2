@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AnneeAcademique;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class AnneeAcademiqueController extends Controller
 {
@@ -24,10 +25,36 @@ class AnneeAcademiqueController extends Controller
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'label' => 'required|string|max:255|unique:annees_academiques',
+            'label' => [
+                'required',
+                'string',
+                'max:255',
+                'unique:annees_academiques',
+                'regex:/^\d{4}\/\d{4}$/',
+            ],
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
+
+        // Validate second year = first year + 1
+        $parts = explode('/', $request->label);
+        $first = (int) $parts[0];
+        $second = (int) $parts[1];
+        if ($second !== $first + 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le format doit être année/année+1 (ex: 2025/2026)',
+            ], 422);
+        }
+
+        // Block creation if there's a non-archived current year
+        $currentYear = AnneeAcademique::where('is_current', true)->first();
+        if ($currentYear && !$currentYear->is_archived) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous devez archiver l\'année courante (' . $currentYear->label . ') avant d\'en créer une nouvelle.',
+            ], 422);
+        }
 
         $annee = AnneeAcademique::create([
             'label' => $request->label,
@@ -44,10 +71,19 @@ class AnneeAcademiqueController extends Controller
 
     public function setCurrent(Request $request, $id): JsonResponse
     {
-        AnneeAcademique::where('is_current', true)->update(['is_current' => false]);
-
         $annee = AnneeAcademique::findOrFail($id);
-        $annee->update(['is_current' => true]);
+
+        if ($annee->is_archived) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de définir une année archivée comme année courante.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($annee) {
+            AnneeAcademique::where('is_current', true)->update(['is_current' => false, 'is_archived' => true]);
+            $annee->update(['is_current' => true]);
+        });
 
         return response()->json([
             'success' => true,

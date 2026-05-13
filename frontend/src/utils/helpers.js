@@ -20,6 +20,20 @@ export function getMention(score) {
   return match || { label: 'Insuffisant', color: 'red' };
 }
 
+const ARABIC_MONTHS = [
+  'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+];
+
+export function toWesternDigits(text) {
+  return String(text).replace(/[\u0660-\u0669]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x0660 + 0x30));
+}
+
+export function toArabicDate(date) {
+  const d = new Date(date);
+  return `${d.getDate()} ${ARABIC_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 export function formatTimeAgo(date) {
   const d = new Date(date);
   const now = new Date();

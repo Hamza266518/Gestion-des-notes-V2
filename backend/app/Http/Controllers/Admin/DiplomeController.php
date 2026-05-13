@@ -24,6 +24,7 @@ class DiplomeController extends Controller
                 'etudiant.groupe.niveau.filiere',
                 'anneeAcademique'
             ])
+            ->whereHas('etudiant', fn($q) => $q->where('status', 'graduate'))
             ->when($request->annee_academique_id, fn($q) =>
                 $q->where('annee_academique_id', $request->annee_academique_id)
             )
@@ -44,9 +45,17 @@ class DiplomeController extends Controller
                 'semestre'            => 'required|integer|in:1,2',
             ]);
 
+            $etudiant = Etudiant::with('groupe.niveau.filiere')->findOrFail($request->etudiant_id);
+            $niveau = $etudiant->groupe?->niveau;
+            $filiere = $niveau?->filiere;
+
+            if (!$niveau || !$filiere || $niveau->numero !== $filiere->nombre_annees) {
+                return response()->json(['success' => false, 'message' => 'Seuls les étudiants en année diplômante peuvent obtenir un diplôme'], 400);
+            }
+
             $moyenne = $this->moyenneService->moyenneGenerale(
                 $request->etudiant_id,
-                $request->semestre,
+                null,
                 $request->annee_academique_id
             );
 
@@ -56,8 +65,10 @@ class DiplomeController extends Controller
 
             $diplome = Diplome::updateOrCreate(
                 ['etudiant_id' => $request->etudiant_id, 'annee_academique_id' => $request->annee_academique_id],
-                ['moyenne_generale' => $moyenne, 'mention' => $this->moyenneService->mention($moyenne)]
+                ['moyenne_generale' => $moyenne, 'mention' => $this->moyenneService->getMention($moyenne)]
             );
+
+            $etudiant->update(['status' => 'graduate']);
 
             return response()->json(['success' => true, 'data' => $diplome, 'message' => 'Diplôme généré']);
         } catch (\Exception $e) {
@@ -123,7 +134,7 @@ class DiplomeController extends Controller
                         ?? ($etudiant->date_inscription
                             ? \Carbon\Carbon::parse($etudiant->date_inscription)->format('d/m/Y') : ''),
                     'filiere_ar'            => $filiere?->nom_ar ?? '',
-                    'type_formation_ar'     => $filiere?->type_formation ?? '',
+                    'type_formation_ar'     => $filiere?->type_formation_ar ?? '',
                 ]
             ]);
         } catch (\Exception $e) {
@@ -140,13 +151,23 @@ class DiplomeController extends Controller
 
             $anneeId = $request->annee_academique_id;
 
-            $etudiants = Etudiant::where('annee_academique_id', $anneeId)->get();
+            $etudiants = Etudiant::with('groupe.niveau.filiere')
+                ->where('annee_academique_id', $anneeId)
+                ->get();
 
             $created = 0;
             $skipped = 0;
 
             foreach ($etudiants as $etudiant) {
                 try {
+                    $niveau = $etudiant->groupe?->niveau;
+                    $filiere = $niveau?->filiere;
+
+                    if (!$niveau || !$filiere || $niveau->numero !== $filiere->nombre_annees) {
+                        $skipped++;
+                        continue;
+                    }
+
                     $moyenne = $this->moyenneService->moyenneGenerale(
                         $etudiant->id,
                         null,
@@ -163,6 +184,7 @@ class DiplomeController extends Controller
                         ['moyenne_generale' => $moyenne, 'mention' => $this->moyenneService->getMention($moyenne)]
                     );
 
+                    $etudiant->update(['status' => 'graduate']);
                     $created++;
                 } catch (\Exception $e) {
                     $skipped++;
@@ -176,7 +198,7 @@ class DiplomeController extends Controller
                     'skipped' => $skipped,
                     'total'   => $etudiants->count(),
                 ],
-                'message' => "{$created} diplôme(s) généré(s) pour les étudiants admis, {$skipped} non-admis"
+                'message' => "{$created} diplôme(s) généré(s) pour les étudiants diplômés, {$skipped} non-admis/non-diplômables"
             ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);

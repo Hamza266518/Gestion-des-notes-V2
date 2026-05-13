@@ -31,4 +31,6 @@ export const formateursApi = {
     apiClient.get('/formateur/scan-data'),
   getNotes: (params) =>
     apiClient.get('/formateur/notes', { params }),
+  updateNote: (id, valeur) =>
+    apiClient.put(`/formateur/notes/${id}`, { valeur }),
 };

@@ -27,9 +27,11 @@ class ControleController extends Controller
             $request->validate([
                 'sequence_id' => 'required|exists:sequences,id',
                 'numero'      => 'required|integer',
+                'type'        => 'nullable|in:cc,theorique,pratique',
+                'nom'         => 'nullable|string',
                 'note_max'    => 'integer',
             ]);
-            $controle = Controle::create($request->all());
+            $controle = Controle::create($request->only(['sequence_id', 'numero', 'type', 'nom', 'note_max']));
             return response()->json(['success' => true, 'data' => $controle, 'message' => 'Contrôle créé']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors de la création du contrôle'], 500);
@@ -39,9 +41,19 @@ class ControleController extends Controller
     public function destroy($id)
     {
         try {
-            Controle::findOrFail($id)->delete();
+            $controle = Controle::withCount('notes')->findOrFail($id);
+
+            if ($controle->notes_count > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Impossible de supprimer : {$controle->notes_count} note(s) existent pour ce contrôle. Supprimez d'abord les notes."
+                ], 409);
+            }
+
+            $controle->delete();
             return response()->json(['success' => true, 'message' => 'Contrôle supprimé']);
         } catch (\Exception $e) {
+            \Log::error('ControleController::destroy error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Erreur lors de la suppression du contrôle'], 500);
         }
     }

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '../../api/admin';
+import { scanApi } from '../../api/scan';
 import { scanStudentList } from '../../api/gemini';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Spinner from '../../components/common/Spinner';
-import { formatNiveau } from '../../utils/helpers';
+import Badge from '../../components/common/Badge';
+import { formatNiveau, toArabicDate, toWesternDigits } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -82,11 +84,15 @@ export default function ScanCin() {
                 nom_ar: student.nom_ar ?? '',
                 cin: student.cin ?? '',
                 cin_ar: student.cin_ar ?? '',
+                date_naissance: student.date_naissance ?? '',
                 date_naissance_ar: student.date_naissance_ar ?? '',
+                lieu_naissance: student.lieu_naissance ?? '',
                 lieu_naissance_ar: student.lieu_naissance_ar ?? '',
+                nationalite: student.nationalite ?? '',
                 nationalite_ar: student.nationalite_ar ?? '',
+                date_inscription: new Date().toISOString().split('T')[0],
+                date_inscription_ar: student.date_inscription_ar || toArabicDate(new Date()),
                 numero_inscription_ar: student.numero_inscription_ar ?? '',
-                date_inscription_ar: student.date_inscription_ar ?? '',
                 numero_inscription: '',
                 groupe_id: selGroupe,
                 annee_academique_id: currentAnnee.id,
@@ -98,6 +104,24 @@ export default function ScanCin() {
       if (scanned.length === 0) {
         toast.error('Aucun étudiant trouvé. Vérifiez que les fichiers PDF sont lisibles.');
       } else {
+        // Check for existing CINs
+        try {
+          const cins = scanned.map(s => s.cin).filter(Boolean);
+          if (cins.length > 0) {
+            const existingRes = await scanApi.checkExistingCins(cins);
+            const existingMap = existingRes.data.data || {};
+            for (const s of scanned) {
+              if (existingMap[s.cin]) {
+                s.existing = true;
+                s.existing_student = existingMap[s.cin].nom_prenom;
+                s.existing_numero = existingMap[s.cin].numero_inscription;
+              }
+            }
+          }
+        } catch (e) {
+          // Non-blocking — if check fails, proceed without warnings
+          console.error('Failed to check existing CINs:', e);
+        }
         setResults(scanned);
         setStep(3);
       }
@@ -115,12 +139,16 @@ export default function ScanCin() {
       const res = await adminApi.confirmScanCin({
         stagiaires: results.map(r => ({
           ...r,
+          date_naissance: r.date_naissance || null,
           date_naissance_ar: r.date_naissance_ar || null,
+          lieu_naissance: r.lieu_naissance || null,
           lieu_naissance_ar: r.lieu_naissance_ar || null,
-          cin_ar: r.cin_ar || null,
+          nationalite: r.nationalite || null,
           nationalite_ar: r.nationalite_ar || null,
-          numero_inscription_ar: r.numero_inscription_ar || null,
+          date_inscription: r.date_inscription || null,
           date_inscription_ar: r.date_inscription_ar || null,
+          cin_ar: r.cin_ar || null,
+          numero_inscription_ar: r.numero_inscription_ar || null,
         })),
         filiere_code: filiereCode
       });
@@ -267,14 +295,20 @@ export default function ScanCin() {
                   <th>CIN</th>
                   <th>رقم البطاقة</th>
                   <th>تاريخ الميلاد</th>
+                  <th>Date naissance</th>
                   <th>مكان الميلاد</th>
+                  <th>Lieu naissance</th>
                   <th>الجنسية</th>
+                  <th>Nationalité</th>
+                  <th>Date inscription</th>
+                  <th>تاريخ التسجيل</th>
+                  <th>رقم التسجيل</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {results.length === 0 ? (
-                  <tr><td colSpan={8} className="table-empty">Aucun résultat</td></tr>
+                  <tr><td colSpan={14} className="table-empty">Aucun résultat</td></tr>
                 ) : results.map((r, i) => (
                   <tr key={i}>
                     <td>
@@ -287,48 +321,99 @@ export default function ScanCin() {
                     <td>
                       <input
                         className="form-input"
-                        value={r.nom_ar || ''}
-                        onChange={e => updateResult(i, 'nom_ar', e.target.value)}
+                        value={toWesternDigits(r.nom_ar || '')}
+                        onChange={e => updateResult(i, 'nom_ar', toWesternDigits(e.target.value))}
                         style={{ direction: 'rtl', textAlign: 'right' }}
                       />
                     </td>
                     <td>
-                      <input
-                        className="form-input"
-                        value={r.cin}
-                        onChange={e => updateResult(i, 'cin', e.target.value)}
-                        style={{ width: '120px' }}
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <input
+                          className="form-input"
+                          value={r.cin}
+                          onChange={e => updateResult(i, 'cin', e.target.value)}
+                          style={{ width: '100px' }}
+                        />
+                        {r.existing && <Badge label="Exist" color="red" />}
+                      </div>
                     </td>
                     <td>
                       <input
                         className="form-input"
-                        value={r.cin_ar || ''}
-                        onChange={e => updateResult(i, 'cin_ar', e.target.value)}
+                        value={toWesternDigits(r.cin_ar || '')}
+                        onChange={e => updateResult(i, 'cin_ar', toWesternDigits(e.target.value))}
                         style={{ direction: 'rtl', textAlign: 'right', width: '120px' }}
                       />
                     </td>
                     <td>
                       <input
                         className="form-input"
-                        value={r.date_naissance_ar || ''}
-                        onChange={e => updateResult(i, 'date_naissance_ar', e.target.value)}
+                        value={toWesternDigits(r.date_naissance_ar || '')}
+                        onChange={e => updateResult(i, 'date_naissance_ar', toWesternDigits(e.target.value))}
                         style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
                       />
                     </td>
                     <td>
                       <input
                         className="form-input"
-                        value={r.lieu_naissance_ar || ''}
-                        onChange={e => updateResult(i, 'lieu_naissance_ar', e.target.value)}
+                        value={r.date_naissance || ''}
+                        onChange={e => updateResult(i, 'date_naissance', e.target.value)}
+                        style={{ width: '130px' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-input"
+                        value={toWesternDigits(r.lieu_naissance_ar || '')}
+                        onChange={e => updateResult(i, 'lieu_naissance_ar', toWesternDigits(e.target.value))}
                         style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
                       />
                     </td>
                     <td>
                       <input
                         className="form-input"
-                        value={r.nationalite_ar || ''}
-                        onChange={e => updateResult(i, 'nationalite_ar', e.target.value)}
+                        value={r.lieu_naissance || ''}
+                        onChange={e => updateResult(i, 'lieu_naissance', e.target.value)}
+                        style={{ width: '130px' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-input"
+                        value={toWesternDigits(r.nationalite_ar || '')}
+                        onChange={e => updateResult(i, 'nationalite_ar', toWesternDigits(e.target.value))}
+                        style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-input"
+                        value={r.nationalite || ''}
+                        onChange={e => updateResult(i, 'nationalite', e.target.value)}
+                        style={{ width: '130px' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-input"
+                        value={r.date_inscription || ''}
+                        onChange={e => updateResult(i, 'date_inscription', e.target.value)}
+                        style={{ width: '130px' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-input"
+                        value={toWesternDigits(r.date_inscription_ar || '')}
+                        onChange={e => updateResult(i, 'date_inscription_ar', toWesternDigits(e.target.value))}
+                        style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="form-input"
+                        value={toWesternDigits(r.numero_inscription_ar || '')}
+                        onChange={e => updateResult(i, 'numero_inscription_ar', toWesternDigits(e.target.value))}
                         style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
                       />
                     </td>
@@ -343,11 +428,14 @@ export default function ScanCin() {
             </table>
           </div>
 
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button className="btn btn-outline" onClick={() => setStep(2)}>← Retour</button>
+            {results.some(r => r.existing) && (
+              <span style={{ color: 'var(--danger)', fontSize: 13 }}>Retirez les étudiants en double pour confirmer</span>
+            )}
             <button
               className="btn btn-primary"
-              disabled={results.length === 0 || saving}
+              disabled={results.length === 0 || saving || results.some(r => r.existing)}
               onClick={handleConfirm}
             >
               {saving ? 'Enregistrement...' : `Confirmer ${results.length} étudiant(s)`}

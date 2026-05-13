@@ -1,6 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
 import { formateursApi } from '../../api/formateurs';
-import { notesApi } from '../../api/notes';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Spinner from '../../components/common/Spinner';
@@ -73,7 +72,7 @@ export default function NotesList() {
   const handleSaveNote = async (noteId, valeur) => {
     setSaving(true);
     try {
-      await notesApi.updateNote(noteId, valeur);
+      await formateursApi.updateNote(noteId, valeur);
       showSuccess(toast, 'Note enregistree avec succes');
       if (selectedControle) {
         loadNotes(selectedControle);

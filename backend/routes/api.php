@@ -19,12 +19,13 @@ use App\Http\Controllers\Admin\DiplomeController;
 use App\Http\Controllers\Admin\ScanCinController;
 use App\Http\Controllers\Admin\ScanUnitesController;
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\ProgressionController;
 use App\Http\Controllers\Formateur\ScanController;
 use App\Http\Controllers\Formateur\NoteController;
 use App\Http\Controllers\Etudiant\PortalController;
 
 // Auth - public
-Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
 Route::get('/annee-academique/current', [AnneeAcademiqueController::class, 'current']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -70,6 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Scan CIN
         Route::post('/scan-cin', [ScanCinController::class, 'scan']);
         Route::post('/scan-cin/confirm', [ScanCinController::class, 'confirm']);
+        Route::post('/scan-cin/check-existing', [ScanCinController::class, 'checkExisting']);
 
         // Formateurs
         Route::get('/formateurs', [FormateurController::class, 'index']);
@@ -134,6 +136,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Activity logs
         Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+
+        // Progression
+        Route::get('/progression/check-redoublants', [ProgressionController::class, 'checkRedoublants']);
+        Route::post('/progression/confirm-redoublants', [ProgressionController::class, 'confirmRedoublants']);
+        Route::post('/progression/drop-redoublants', [ProgressionController::class, 'dropRedoublants']);
+        Route::post('/progression/promote-admis', [ProgressionController::class, 'promoteAdmis']);
+        Route::post('/progression/copy-groups', [ProgressionController::class, 'copyGroups']);
     });
 
     // ── FORMATEUR ──────────────────────────────────────────
@@ -141,6 +150,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/scan', [ScanController::class, 'scan']);
         Route::post('/confirm', [ScanController::class, 'confirm']);
         Route::get('/notes', [NoteController::class, 'index']);
+        Route::put('/notes/{id}', [NoteController::class, 'update']);
         Route::get('/sequences', [NoteController::class, 'mySequences']);
         Route::get('/scan-data', [NoteController::class, 'scanData']);
     });

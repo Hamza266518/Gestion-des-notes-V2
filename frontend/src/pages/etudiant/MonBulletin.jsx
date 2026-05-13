@@ -278,7 +278,7 @@ export default function MonBulletin() {
         <div>
           <SemesterToggle active={activeSemestre} onChange={setActiveSemestre} />
           <BulletinSemestre unites={bulletinData.semestres?.[activeSemestre]} />
-          {activeSemestre === 1 && bulletinData.moyenne_generale && (
+          {bulletinData.moyenne_generale && (
             <div className="card mt-4">
               <div className="card-body text-center">
                 <h4>Moyenne Generale: <strong>{bulletinData.moyenne_generale}/20</strong></h4>

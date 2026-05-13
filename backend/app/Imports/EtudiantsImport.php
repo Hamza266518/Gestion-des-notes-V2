@@ -40,15 +40,12 @@ class EtudiantsImport implements ToCollection, WithHeadingRow
                 : $this->numeroService->generate($this->filiere_code, $this->annee_academique_id);
 
             $email    = strtolower($cin) . '@ifp.ma';
-            $password = $numero . substr($cin, 0, 2);
+            $password = $numero . substr($cin, 0, 2) . '@';
 
             $user = User::where('email', $email)->first();
 
             if ($user) {
-                $user->update([
-                    'name'     => $nom,
-                    'password' => Hash::make($password),
-                ]);
+                $user->update(['name' => $nom]);
                 $this->updated++;
             } else {
                 $user = User::create([

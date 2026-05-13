@@ -33,17 +33,17 @@ class TestDataSeeder extends Seeder
 
             // ── Step 2: Filieres ──
             $filieres = [];
-            $filieres['AS'] = Filiere::firstOrCreate(
+            $filieres['AS'] = Filiere::updateOrCreate(
                 ['code' => 'AS'],
-                ['nom' => 'Aide-Soignant', 'section' => 'Qualification', 'nombre_annees' => 1]
+                ['nom' => 'Aide-Soignant', 'nom_ar' => 'مساعد معالج', 'section' => 'Qualification', 'type_formation' => 'Qualification', 'nombre_annees' => 1]
             );
-            $filieres['IA'] = Filiere::firstOrCreate(
+            $filieres['IA'] = Filiere::updateOrCreate(
                 ['code' => 'IA'],
-                ['nom' => 'Infirmier Auxiliaire', 'section' => 'Technicien', 'nombre_annees' => 2]
+                ['nom' => 'Infirmier Auxiliaire', 'nom_ar' => 'ممرض مساعد', 'section' => 'Technicien', 'type_formation' => 'Technicien', 'nombre_annees' => 2]
             );
-            $filieres['IP'] = Filiere::firstOrCreate(
+            $filieres['IP'] = Filiere::updateOrCreate(
                 ['code' => 'IP'],
-                ['nom' => 'Infirmier Polyvalent', 'section' => 'Technicien Specialise', 'nombre_annees' => 3]
+                ['nom' => 'Infirmier Polyvalent', 'nom_ar' => 'ممرض متعدد الاختصاصات', 'section' => 'Technicien Specialise', 'type_formation' => 'Specialisation', 'nombre_annees' => 3]
             );
 
             // ── Step 2: Niveaux ──

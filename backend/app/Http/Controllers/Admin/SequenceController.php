@@ -88,6 +88,19 @@ class SequenceController extends Controller
                         $ctrl->update(['type' => $this->getControleType($ctrl->numero, $newCount)]);
                     }
                 } elseif ($newCount < $oldCount) {
+                    $toDelete = Controle::where('sequence_id', $sequence->id)
+                        ->where('numero', '>', $newCount)
+                        ->withCount('notes')
+                        ->get();
+
+                    $totalNotes = $toDelete->sum('notes_count');
+                    if ($totalNotes > 0) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Impossible de réduire le nombre de contrôles : {$totalNotes} note(s) existent pour les contrôles à supprimer."
+                        ], 409);
+                    }
+
                     Controle::where('sequence_id', $sequence->id)
                         ->where('numero', '>', $newCount)
                         ->delete();

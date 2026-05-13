@@ -11,7 +11,7 @@ class GroupeController extends Controller
     public function index(Request $request)
     {
         try {
-            $groupes = Groupe::with(['niveau.filiere', 'anneeAcademique'])
+            $groupes = Groupe::with(['niveau.filiere', 'anneeAcademique'])->withCount('etudiants')
                 ->when($request->niveau_id, fn($q) => $q->where('niveau_id', $request->niveau_id))
                 ->when($request->annee_academique_id, fn($q) => $q->where('annee_academique_id', $request->annee_academique_id))
                 ->get();

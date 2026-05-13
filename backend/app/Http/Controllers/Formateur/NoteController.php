@@ -29,6 +29,22 @@ class NoteController extends Controller
         return response()->json(['success' => true, 'data' => $sequences]);
     }
 
+    public function update(Request $request, $id)
+    {
+        $formateur = auth()->user()->formateur;
+        $note = Note::with('controle.sequence')->findOrFail($id);
+
+        $hasAccess = $formateur->sequences()->where('sequence_id', $note->controle->sequence_id)->exists();
+        if (!$hasAccess) {
+            return response()->json(['success' => false, 'message' => 'Accès refusé'], 403);
+        }
+
+        $request->validate(['valeur' => 'required|numeric|min:0|max:20']);
+        $note->update(['valeur' => $request->valeur]);
+
+        return response()->json(['success' => true, 'data' => $note, 'message' => 'Note mise à jour']);
+    }
+
     public function scanData(Request $request)
     {
         $formateur = auth()->user()->formateur;

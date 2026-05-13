@@ -24,13 +24,14 @@ class FiliereController extends Controller
     {
         try {
             $request->validate([
-                'nom'           => 'required|string',
-                'code'          => 'required|string|unique:filieres,code',
-                'section'       => 'required|string',
-                'nombre_annees' => 'required|integer|min:1|max:5',
+                'nom'            => 'required|string',
+                'code'           => 'required|string|unique:filieres,code',
+                'section'        => 'required|string',
+                'type_formation' => 'required|in:Qualification,Technicien,Specialisation',
+                'nombre_annees'  => 'required|integer|min:1|max:5',
             ]);
 
-            $filiere = Filiere::create($request->all());
+            $filiere = Filiere::create($request->only(['nom', 'nom_ar', 'code', 'section', 'type_formation', 'nombre_annees']));
             return response()->json(['success' => true, 'data' => $filiere, 'message' => 'Filière créée']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors de la création de la filière'], 500);
@@ -44,7 +45,7 @@ class FiliereController extends Controller
             $request->validate([
                 'code' => 'string|unique:filieres,code,' . $id,
             ]);
-            $filiere->update($request->all());
+            $filiere->update($request->only(['nom', 'nom_ar', 'code', 'section', 'type_formation', 'nombre_annees']));
             return response()->json(['success' => true, 'data' => $filiere, 'message' => 'Filière mise à jour']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors de la mise à jour de la filière'], 500);

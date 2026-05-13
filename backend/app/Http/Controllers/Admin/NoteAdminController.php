@@ -39,7 +39,23 @@ class NoteAdminController extends Controller
     {
         try {
             $request->validate(['valeur' => 'required|numeric|min:0|max:20']);
-            $note = Note::findOrFail($id);
+            $note = Note::with(['controle.sequence.unite', 'etudiant'])->findOrFail($id);
+
+            $groupeId = $note->etudiant->groupe_id;
+            $semestre = $note->controle->sequence->unite->semestre;
+            $anneeAcademiqueId = $note->controle->sequence->annee_academique_id;
+
+            $types = $semestre === 1 ? ['notes_s1', 'bulletin'] : ['notes_s2', 'bulletin'];
+            $published = SemestrePublication::where('groupe_id', $groupeId)
+                ->where('annee_academique_id', $anneeAcademiqueId)
+                ->whereIn('type', $types)
+                ->where('is_published', true)
+                ->exists();
+
+            if ($published) {
+                return response()->json(['success' => false, 'message' => 'Impossible de modifier une note publiée'], 403);
+            }
+
             $note->update(['valeur' => $request->valeur]);
             return response()->json(['success' => true, 'data' => $note, 'message' => 'Note mise à jour']);
         } catch (\Exception $e) {
@@ -57,9 +73,23 @@ class NoteAdminController extends Controller
 
             $groupe = \App\Models\Groupe::with('niveau.filiere')->findOrFail($request->groupe_id);
             $filiereId = $groupe->niveau->filiere_id;
+            $niveauNumero = $groupe->niveau->numero;
+
+            $semestre = null;
+            $controleType = null;
+            if (preg_match('/^(mpcc|mpefcf|mpefcfp)(\d)$/', $request->type, $m)) {
+                $semestre = (int) $m[2];
+                if ($m[1] === 'mpcc') $controleType = 'cc';
+                elseif ($m[1] === 'mpefcf') $controleType = 'theorique';
+                elseif ($m[1] === 'mpefcfp') $controleType = 'pratique';
+            } elseif ($request->type === 'mpcc_global') {
+                $controleType = 'cc';
+            }
 
             $unites = Unite::where('filiere_id', $filiereId)
+                ->where('numero_annee', $niveauNumero)
                 ->where('is_active', true)
+                ->when($semestre, fn($q) => $q->where('semestre', $semestre))
                 ->with('sequences.controles')
                 ->orderBy('ordre')
                 ->get();
@@ -86,7 +116,7 @@ class NoteAdminController extends Controller
                 $totalCoef = 0;
 
                 foreach ($subjects as $subject) {
-                    $avg = $this->moyenneService->moyenneSequence($etudiant->id, $subject['id']);
+                    $avg = $this->moyenneService->moyenneSequence($etudiant->id, $subject['id'], $controleType);
                     $notes[$subject['id']] = $avg;
                     if ($avg !== null) {
                         $totalNote += $avg * $subject['coefficient'];

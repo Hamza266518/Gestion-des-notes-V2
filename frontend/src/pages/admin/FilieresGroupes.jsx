@@ -5,7 +5,7 @@ import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Modal from '../../components/common/Modal';
 import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
-import { formatNiveau } from '../../utils/helpers';
+import { formatNiveau, toWesternDigits } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -17,9 +17,10 @@ export default function FilieresGroupes() {
   const [niveaux, setNiveaux]     = useState([]);
   const [loading, setLoading]     = useState(true);
   const [selFiliere, setSelFiliere] = useState('');
-  const { annees } = useAnneeAcademique();
+  const { currentAnnee, annees } = useAnneeAcademique();
 
   const [openF, setOpenF]         = useState(false);
+  const [editingFiliere, setEditingFiliere] = useState(null);
   const [openN, setOpenN]         = useState(false);
   const [selectedFiliere, setSelectedFiliere] = useState(null);
   const [expanded, setExpanded]   = useState({});
@@ -123,18 +124,38 @@ export default function FilieresGroupes() {
   };
 
   // Filiere handlers
-  const handleCreateFiliere = async () => {
+  const openCreateFiliere = () => {
+    setEditingFiliere(null);
+    setFormF({ nom: '', nom_ar: '', code: '', section: '', type_formation: '', nombre_annees: 1 });
+    setErrors({});
+    setOpenF(true);
+  };
+
+  const openEditFiliere = (f) => {
+    setEditingFiliere(f);
+    setFormF({ nom: f.nom, nom_ar: f.nom_ar || '', code: f.code, section: f.section, type_formation: f.type_formation || '', nombre_annees: f.nombre_annees });
+    setErrors({});
+    setOpenF(true);
+  };
+
+  const handleSaveFiliere = async () => {
     if (!validateFiliere()) return;
     setSaving(true);
     try {
-      await adminApi.createFiliere(formF);
-      toast.success('Filière créée');
+      if (editingFiliere) {
+        await adminApi.updateFiliere(editingFiliere.id, formF);
+        toast.success('Filière modifiée');
+      } else {
+        await adminApi.createFiliere(formF);
+        toast.success('Filière créée');
+      }
       setOpenF(false);
+      setEditingFiliere(null);
       setFormF({ nom: '', nom_ar: '', code: '', section: '', type_formation: '', nombre_annees: 1 });
       setErrors({});
       load();
     } catch (e) {
-      console.error('Failed to create filiere:', e);
+      console.error('Failed to save filiere:', e);
       toast.error(e.response?.data?.message ?? 'Erreur');
     } finally {
       setSaving(false);
@@ -191,7 +212,7 @@ export default function FilieresGroupes() {
   // Groupe handlers
   const handleOpenGroupeModal = async () => {
     const autoName = await generateGroupName();
-    setFormG({ ...formG, nom: autoName });
+    setFormG({ ...formG, nom: autoName, annee_academique_id: currentAnnee?.id || formG.annee_academique_id });
     setErrors({});
     setOpenG(true);
   };
@@ -230,7 +251,7 @@ export default function FilieresGroupes() {
       {/* FILIERES SECTION */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '24px 0 12px' }}>
         <h3 style={{ fontSize: 18, margin: 0 }}>Filières</h3>
-        <button className="btn btn-accent" onClick={() => { setErrors({}); setOpenF(true); }}>
+        <button className="btn btn-accent" onClick={openCreateFiliere}>
           + Nouvelle filière
         </button>
       </div>
@@ -246,8 +267,9 @@ export default function FilieresGroupes() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{f.nom}</div>
-                    {f.nom_ar && <div style={{ fontSize: 13, color: 'var(--gray-500)', direction: 'rtl', marginBottom: 2 }}>{f.nom_ar}</div>}
-                    <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>{f.section} — {f.type_formation}</div>
+                    {f.nom_ar && <div style={{ fontSize: 13, color: 'var(--gray-500)', direction: 'rtl', marginBottom: 2 }}>{toWesternDigits(f.nom_ar)}</div>}
+                    <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>{f.type_formation_fr ?? f.type_formation}</div>
+                    {f.type_formation_ar && <div style={{ fontSize: 12, color: 'var(--gray-500)', direction: 'rtl' }}>{toWesternDigits(f.type_formation_ar)}</div>}
                   </div>
                   <Badge label={f.code} color="blue" />
                 </div>
@@ -277,8 +299,9 @@ export default function FilieresGroupes() {
                     </>
                   )}
                 </div>
-                <div style={{ borderTop: '1px solid var(--gray-100)', paddingTop: 10, marginTop: 10 }}>
-                  <button className="btn btn-sm btn-danger" onClick={() => handleDeleteFiliere(f.id)}>Supprimer filière</button>
+                <div style={{ borderTop: '1px solid var(--gray-100)', paddingTop: 10, marginTop: 10, display: 'flex', gap: 8 }}>
+                  <button className="btn btn-sm btn-primary" onClick={() => openEditFiliere(f)}>Modifier</button>
+                  <button className="btn btn-sm btn-danger" onClick={() => handleDeleteFiliere(f.id)}>Supprimer</button>
                 </div>
               </div>
             </div>
@@ -301,31 +324,34 @@ export default function FilieresGroupes() {
               <th>Filière</th>
               <th>Niveau</th>
               <th>Promotion</th>
-              <th>Année académique</th>
+              <th>Nbr étudiants</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {groupes.length === 0 ? (
+            {(() => {
+              const filtered = currentAnnee ? groupes.filter(g => g.annee_academique_id === currentAnnee.id) : groupes;
+              return filtered.length === 0 ? (
               <tr><td colSpan={6} className="table-empty">Aucun groupe</td></tr>
-            ) : groupes.map(g => (
+              ) : filtered.map(g => (
               <tr key={g.id}>
                 <td><strong>{g.nom}</strong></td>
                 <td>{g.niveau?.filiere?.nom ?? '—'}</td>
                 <td>{formatNiveau(g.niveau?.numero)}</td>
                 <td>{g.promotion}</td>
-                <td>{g.annee_academique?.label ?? '—'}</td>
+                <td>{g.etudiants_count ?? '0'}</td>
                 <td>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDeleteGroupe(g.id)}>Supprimer</button>
                 </td>
               </tr>
-            ))}
+              ));
+            })()}
           </tbody>
         </table>
       </div>
 
-      {/* Create Filiere Modal */}
-      <Modal open={openF} onClose={() => { setOpenF(false); setErrors({}); }} title="Nouvelle Filière">
+      {/* Create/Edit Filiere Modal */}
+      <Modal open={openF} onClose={() => { setOpenF(false); setEditingFiliere(null); setErrors({}); }} title={editingFiliere ? 'Modifier la Filière' : 'Nouvelle Filière'}>
         <div className="form-group">
           <label className="form-label">Nom</label>
           <input className="form-input" placeholder="Aide-Soignant" value={formF.nom} onChange={e => { setFormF(p => ({ ...p, nom: e.target.value })); setErrors(p => ({ ...p, nom: undefined })); }} />
@@ -364,8 +390,8 @@ export default function FilieresGroupes() {
           {errors.nombre_annees && <div className="form-error">{errors.nombre_annees}</div>}
         </div>
         <div className="modal-footer">
-          <button className="btn btn-outline" onClick={() => { setOpenF(false); setErrors({}); }}>Annuler</button>
-          <button className="btn btn-primary" onClick={handleCreateFiliere} disabled={saving}>{saving ? 'Création...' : 'Créer'}</button>
+          <button className="btn btn-outline" onClick={() => { setOpenF(false); setEditingFiliere(null); setErrors({}); }}>Annuler</button>
+          <button className="btn btn-primary" onClick={handleSaveFiliere} disabled={saving}>{saving ? 'Enregistrement...' : (editingFiliere ? 'Enregistrer' : 'Créer')}</button>
         </div>
       </Modal>
 

@@ -7,12 +7,13 @@ use App\Models\Unite;
 
 class MoyenneService
 {
-    public function moyenneSequence(int $etudiantId, int $sequenceId): ?float
+    public function moyenneSequence(int $etudiantId, int $sequenceId, ?string $controleType = null): ?float
     {
         $sequence = \App\Models\Sequence::with('controles')->findOrFail($sequenceId);
         $notes    = [];
 
         foreach ($sequence->controles as $controle) {
+            if ($controleType !== null && $controle->type !== $controleType) continue;
             $note = \App\Models\Note::where('etudiant_id', $etudiantId)
                 ->where('controle_id', $controle->id)
                 ->first();

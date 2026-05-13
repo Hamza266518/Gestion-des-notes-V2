@@ -16,26 +16,26 @@ const mentionColor = (m) => {
 };
 
 const FIELDS = [
-  { key: 'nom_prenom', x: 0.135, y: 0.489, size: 11, bold: true, group: 'fr' },
-  { key: 'date_naissance', x: 0.106, y: 0.515, size: 11, bold: false, group: 'fr' },
-  { key: 'lieu_naissance', x: 0.359, y: 0.508, size: 11, bold: false, group: 'fr' },
-  { key: 'cin', x: 0.178, y: 0.541, size: 11, bold: false, group: 'fr' },
-  { key: 'nationalite', x: 0.352, y: 0.541, size: 11, bold: false, group: 'fr' },
-  { key: 'numero_inscription', x: 0.246, y: 0.561, size: 11, bold: false, group: 'fr' },
-  { key: 'date_inscription', x: 0.436, y: 0.563, size: 11, bold: false, group: 'fr' },
-  { key: 'type_formation', x: 0.415, y: 0.585, size: 11, bold: true, group: 'fr' },
-  { key: 'filiere', x: 0.079, y: 0.611, size: 11, bold: true, group: 'fr' },
-  { key: 'promotion', x: 0.520, y: 0.632, size: 11, bold: true, group: 'fr' },
-  { key: 'date_delivrance', x: 0.472, y: 0.690, size: 11, bold: false, group: 'fr' },
-  { key: 'nom_ar', x: 0.872, y: 0.490, size: 11, bold: true, group: 'ar' },
-  { key: 'date_naissance_ar', x: 0.803, y: 0.515, size: 11, bold: false, group: 'ar' },
-  { key: 'lieu_naissance_ar', x: 0.568, y: 0.516, size: 11, bold: false, group: 'ar' },
-  { key: 'cin_ar', x: 0.789, y: 0.539, size: 11, bold: false, group: 'ar' },
-  { key: 'nationalite_ar', x: 0.569, y: 0.541, size: 11, bold: false, group: 'ar' },
-  { key: 'numero_inscription_ar', x: 0.750, y: 0.561, size: 11, bold: false, group: 'ar' },
-  { key: 'date_inscription_ar', x: 0.569, y: 0.566, size: 11, bold: false, group: 'ar' },
-  { key: 'type_formation_ar', x: 0.627, y: 0.586, size: 11, bold: true, group: 'ar' },
-  { key: 'filiere_ar', x: 0.875, y: 0.610, size: 11, bold: true, group: 'ar' }
+  { key: 'nom_prenom', x: 0.134, y: 0.491, size: 11, bold: true, group: 'fr' },
+  { key: 'date_naissance', x: 0.108, y: 0.515, size: 11, bold: false, group: 'fr' },
+  { key: 'lieu_naissance', x: 0.355, y: 0.515, size: 11, bold: false, group: 'fr' },
+  { key: 'cin', x: 0.182, y: 0.541, size: 11, bold: false, group: 'fr' },
+  { key: 'nationalite', x: 0.353, y: 0.539, size: 11, bold: false, group: 'fr' },
+  { key: 'numero_inscription', x: 0.246, y: 0.563, size: 11, bold: false, group: 'fr' },
+  { key: 'date_inscription', x: 0.441, y: 0.563, size: 11, bold: false, group: 'fr' },
+  { key: 'type_formation', x: 0.414, y: 0.587, size: 11, bold: true, group: 'fr' },
+  { key: 'filiere', x: 0.070, y: 0.609, size: 11, bold: true, group: 'fr' },
+  { key: 'promotion', x: 0.520, y: 0.635, size: 11, bold: true, group: 'fr' },
+  { key: 'date_delivrance', x: 0.472, y: 0.687, size: 11, bold: false, group: 'fr' },
+  { key: 'nom_ar', x: 0.894, y: 0.491, size: 11, bold: true, group: 'ar' },
+  { key: 'date_naissance_ar', x: 0.852, y: 0.517, size: 11, bold: false, group: 'ar' },
+  { key: 'lieu_naissance_ar', x: 0.612, y: 0.517, size: 11, bold: false, group: 'ar' },
+  { key: 'cin_ar', x: 0.814, y: 0.541, size: 11, bold: false, group: 'ar' },
+  { key: 'nationalite_ar', x: 0.612, y: 0.541, size: 11, bold: false, group: 'ar' },
+  { key: 'numero_inscription_ar', x: 0.802, y: 0.563, size: 11, bold: false, group: 'ar' },
+  { key: 'date_inscription_ar', x: 0.612, y: 0.565, size: 11, bold: false, group: 'ar' },
+  { key: 'type_formation_ar', x: 0.685, y: 0.593, size: 11, bold: true, group: 'ar' },
+  { key: 'filiere_ar', x: 0.918, y: 0.611, size: 11, bold: true, group: 'ar' }
 ];
 
 let arabicFontLoaded = false;
@@ -73,8 +73,15 @@ async function ensureArabicFont() {
   arabicFontLoaded = true;
 }
 
-function renderArabicToImage(text, fontSizePx, bold) {
-  const font = `${bold ? 'bold ' : ''}${fontSizePx}px 'Amiri', 'Arial', sans-serif`;
+function normalizeDigits(text) {
+  return text.replace(/[\u0660-\u0669]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x0660 + 0x30));
+}
+
+function renderArabicToImage(text, fontSizePx, bold, color = '#000000') {
+  text = normalizeDigits(String(text));
+  const scale = 4;
+  const scaledSize = fontSizePx * scale;
+  const font = `${bold ? 'bold ' : ''}${scaledSize}px 'Arial', 'Tahoma', 'Amiri', sans-serif`;
 
   const testCanvas = document.createElement('canvas');
   const testCtx = testCanvas.getContext('2d');
@@ -82,8 +89,8 @@ function renderArabicToImage(text, fontSizePx, bold) {
   testCtx.direction = 'rtl';
   const metrics = testCtx.measureText(text);
   const textW = metrics.width;
-  const ascent = metrics.actualBoundingBoxAscent || fontSizePx * 0.85;
-  const descent = metrics.actualBoundingBoxDescent || fontSizePx * 0.15;
+  const ascent = metrics.actualBoundingBoxAscent || scaledSize * 0.85;
+  const descent = metrics.actualBoundingBoxDescent || scaledSize * 0.15;
 
   const w = Math.max(Math.ceil(textW), 2);
   const h = Math.ceil(ascent + descent);
@@ -97,10 +104,10 @@ function renderArabicToImage(text, fontSizePx, bold) {
   ctx.direction = 'rtl';
   ctx.textBaseline = 'top';
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#000000';
+  ctx.fillStyle = color;
   ctx.fillText(text, w, 0);
 
-  return { dataUrl: canvas.toDataURL('image/png'), width: w, height: h, ascent };
+  return { dataUrl: canvas.toDataURL('image/png'), width: w / scale, height: h / scale, ascent: ascent / scale };
 }
 
 function CalibrationOverlay({ templateSrc, onFieldsChange }) {
@@ -241,6 +248,7 @@ export default function Diplomes() {
   const [genAllLoading, setGenAllLoading] = useState(false);
   const [calibrating, setCalibrating] = useState(false);
   const [calibFields, setCalibFields] = useState(FIELDS.map(f => ({ ...f })));
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const toast = useToast();
   const { currentAnnee, loading: anneeLoading } = useAnneeAcademique();
 
@@ -292,7 +300,7 @@ export default function Diplomes() {
         p.addFont('Amiri.ttf', 'Amiri', 'normal');
       }
 
-      for (const field of FIELDS) {
+      for (const field of calibFields) {
         const { key, x, y, size, bold, group } = field;
         const value = data[key];
         if (!value) continue;
@@ -302,11 +310,7 @@ export default function Diplomes() {
 
         if (group === 'fr') {
           if (key === 'filiere') {
-            // Combine type_formation + filiere: "Qualification Professionnelle En Aide-Soignant(e)"
-            const typeFormation = data.type_formation || '';
-            const filiereName = String(value);
-            const fullText = [typeFormation, filiereName].filter(Boolean).join(' ');
-            const words = fullText.split(' ');
+            const words = String(value).split(' ');
             let curX = x * pdfW;
             const yPos = y * pdfH;
             words.forEach((word) => {
@@ -321,7 +325,10 @@ export default function Diplomes() {
               curX += p.getTextWidth(word + ' ');
             });
           } else if (key === 'type_formation') {
-            // Skip - already handled via filiere
+            p.setFont('helvetica', bold ? 'bold' : 'normal');
+            p.setFontSize(size);
+            p.setTextColor(0, 150, 255);
+            p.text(String(value), x * pdfW, y * pdfH);
           } else {
             p.setFont('helvetica', bold ? 'bold' : 'normal');
             p.setFontSize(size);
@@ -331,10 +338,31 @@ export default function Diplomes() {
         } else {
           let textToRender;
           if (key === 'filiere_ar') {
-            const typeFormationAr = data.type_formation_ar || '';
-            const filiereNameAr = String(value);
-            textToRender = [typeFormationAr, filiereNameAr].filter(Boolean).join(' ');
+            const words = String(value).split(' ');
+            let curX = x * pdfW;
+            const yPos = y * pdfH;
+            const pxSize = size * 1.333;
+            words.forEach((word) => {
+              const color = word === 'في' ? '#000000' : '#0096ff';
+              const rendered = renderArabicToImage(word, pxSize, bold, color);
+              const mmPerPx = 25.4 / 96;
+              const imgW = rendered.width * mmPerPx;
+              const imgH = rendered.height * mmPerPx;
+              const imgX = curX - imgW;
+              const imgY = yPos - rendered.ascent * mmPerPx;
+              p.addImage(rendered.dataUrl, 'PNG', imgX, imgY, imgW, imgH);
+              curX -= (imgW + 1 * mmPerPx);
+            });
+            continue;
           } else if (key === 'type_formation_ar') {
+            const pxSize = size * 1.333;
+            const rendered = renderArabicToImage(String(value), pxSize, bold, '#0096ff');
+            const mmPerPx = 25.4 / 96;
+            const imgW = rendered.width * mmPerPx;
+            const imgH = rendered.height * mmPerPx;
+            const imgX = x * pdfW - imgW;
+            const imgY = y * pdfH - rendered.ascent * mmPerPx;
+            p.addImage(rendered.dataUrl, 'PNG', imgX, imgY, imgW, imgH);
             continue;
           } else {
             textToRender = String(value);
@@ -353,11 +381,8 @@ export default function Diplomes() {
 
       const blob = p.output('blob');
       const url  = URL.createObjectURL(blob);
-      setCalibFields(FIELDS.map(f => ({ ...f })));
-      setCalibrating(false);
       setPreviewing({ id: diplome.id, url, pdf: p, data });
     } catch (err) {
-      console.error('PDF generation error:', err);
       toast.error('Erreur lors de la génération du diplôme');
     } finally {
       setGenerating(null);
@@ -372,7 +397,6 @@ export default function Diplomes() {
       .catch(() => {});
     URL.revokeObjectURL(previewing.url);
     setPreviewing(null);
-    setCalibrating(false);
   };
 
   const handleMarkPrinted = async (id) => {
@@ -387,8 +411,11 @@ export default function Diplomes() {
 
   const handleGenerateAll = async () => {
     if (!currentAnnee) return;
-    if (!window.confirm(`Générer les diplômes pour tous les étudiants admis de la promotion ${currentAnnee.label} ?`)) return;
+    setShowConfirmModal(true);
+  };
 
+  const confirmGenerateAll = async () => {
+    setShowConfirmModal(false);
     setGenAllLoading(true);
     try {
       const res = await diplomesApi.generateAllDiplomes({
@@ -418,16 +445,34 @@ export default function Diplomes() {
       <div className="page-header">
         <h2 className="page-title">Diplômes</h2>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          {currentAnnee && (
-            <span style={{ padding: '8px 14px', background: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold', borderRadius: 6, fontSize: 14 }}>
-              {currentAnnee.label}
-            </span>
-          )}
           <button className="btn btn-primary" onClick={handleGenerateAll} disabled={genAllLoading || !currentAnnee}>
             {genAllLoading ? 'Génération...' : 'Générer tous les diplômes'}
           </button>
         </div>
       </div>
+
+      {showConfirmModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ background: '#fff', borderRadius: 10, padding: 24, width: '100%', maxWidth: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: 18 }}>Générer tous les diplômes</h3>
+            <p style={{ margin: '0 0 16px', color: '#6b7280', fontSize: 14, lineHeight: 1.5 }}>
+              Générer les diplômes pour tous les étudiants admis de la promotion <strong>{currentAnnee?.label}</strong>&nbsp;?
+              <br /><br />
+              <span style={{ color: '#dc2626', fontSize: 13 }}>
+                ⚠ Seuls les étudiants en année diplômante (dernière année) avec une moyenne ≥ 10 recevront un diplôme.
+              </span>
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button className="btn btn-outline" onClick={() => setShowConfirmModal(false)}>
+                Annuler
+              </button>
+              <button className="btn btn-primary" onClick={confirmGenerateAll}>
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {previewing && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -442,7 +487,7 @@ export default function Diplomes() {
                 >
                   {calibrating ? 'Quitter calibrage' : 'Mode calibrage'}
                 </button>
-                <button className="btn btn-outline" onClick={() => { URL.revokeObjectURL(previewing.url); setPreviewing(null); setCalibrating(false); }}>Fermer</button>
+                <button className="btn btn-outline" onClick={() => { URL.revokeObjectURL(previewing.url); setPreviewing(null); }}>Fermer</button>
               </div>
             </div>
 
@@ -456,7 +501,9 @@ export default function Diplomes() {
               ) : (
                 <CalibrationOverlay
                   templateSrc={previewing.data._templateSrc}
-                  onFieldsChange={(fields) => setCalibFields(fields.map(f => ({ ...f })))}
+                  onFieldsChange={(fields) => {
+                    setCalibFields(fields.map(f => ({ ...f })));
+                  }}
                 />
               )}
             </div>
@@ -476,11 +523,20 @@ export default function Diplomes() {
                 >
                   Copier les coordonnées
                 </button>
+                <button
+                  className="btn btn-sm"
+                  style={{ marginTop: 8, marginLeft: 8, background: '#ef4444', color: '#fff' }}
+                  onClick={() => {
+                    setCalibFields(FIELDS.map(f => ({ ...f })));
+                  }}
+                >
+                  Réinitialiser
+                </button>
               </div>
             )}
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button className="btn btn-outline" onClick={() => { URL.revokeObjectURL(previewing.url); setPreviewing(null); setCalibrating(false); }}>
+              <button className="btn btn-outline" onClick={() => { URL.revokeObjectURL(previewing.url); setPreviewing(null); }}>
                 Annuler
               </button>
               <button className="btn btn-primary" onClick={handleDownload}>

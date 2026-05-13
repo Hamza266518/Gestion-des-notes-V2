@@ -97,11 +97,13 @@ class ScanController extends Controller
             }
 
             foreach ($parsed as $item) {
-                $etudiant = Etudiant::whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . strtolower($item['nom']) . '%'])->first();
+                $safeName = str_replace(['%', '_'], ['\\%', '\\_'], strtolower($item['nom']));
+                $etudiant = Etudiant::whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $safeName . '%'])->first();
 
                 $results[] = [
                     'etudiant_id'  => $etudiant?->id,
                     'nom_prenom'   => $etudiant?->nom_prenom ?? $item['nom'],
+                    'nom_ar'       => $etudiant?->nom_ar ?? $item['nom_ar'] ?? '',
                     'controle_id'  => $controle->id,
                     'note'         => $item['note'],
                     'chemin_image' => $imagePath,

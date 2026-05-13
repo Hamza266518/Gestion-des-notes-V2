@@ -9,7 +9,7 @@ import Modal from '../../components/common/Modal';
 import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
 import handleApiError, { showSuccess, getFieldErrors } from '../../utils/errorHandler';
-import { formatNiveau } from '../../utils/helpers';
+import { formatNiveau, toArabicDate, toWesternDigits } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -27,10 +27,12 @@ export default function Etudiants() {
   const [scanResults, setScanResults] = useState([]);
   const [scanSaving, setScanSaving]   = useState(false);
   const [extracting, setExtracting]   = useState(false);
-  const [deleting, setDeleting]     = useState(null);
-  const [editOpen, setEditOpen]     = useState(false);
-  const [editData, setEditData]     = useState(null);
-  const [editSaving, setEditSaving] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(null);
+  const [deleting, setDeleting]       = useState(null);
+  const [editOpen, setEditOpen]       = useState(false);
+  const [editData, setEditData]       = useState(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editSaving, setEditSaving]   = useState(false);
   const toast = useToast();
   const [printMode, setPrintMode] = useState(false);
   const [printFiliere, setPrintFiliere] = useState('');
@@ -94,11 +96,16 @@ export default function Etudiants() {
   }, [printGroupe]);
 
   const handleDelete = async (id, nomPrenom) => {
-    if (!window.confirm(`Supprimer l'étudiant ${nomPrenom} ? Cette action est irréversible.`)) return;
-    setDeleting(id);
+    setDeleteModal({ id, nomPrenom });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal) return;
+    setDeleting(deleteModal.id);
     try {
-      await etudiantsApi.deleteEtudiant(id);
+      await etudiantsApi.deleteEtudiant(deleteModal.id);
       showSuccess(toast, 'Étudiant supprimé');
+      setDeleteModal(null);
       load();
     } catch (err) {
       const errorInfo = handleApiError(err, toast, { showToast: false });
@@ -113,6 +120,7 @@ export default function Etudiants() {
   };
 
   const handleEdit = async (etudiant) => {
+    setEditLoading(true);
     try {
       const res = await adminApi.getGroupes({ annee_academique_id: currentAnnee?.id || '' });
       const allGroupes = res.data.data || [];
@@ -140,6 +148,7 @@ export default function Etudiants() {
         niveau_id: niveauId,
         niveaux: niveaux,
         groupe_nom: groupe?.nom || '',
+        nom_ar: etudiant.nom_ar || '',
         date_naissance_ar: etudiant.date_naissance_ar || '',
         lieu_naissance_ar: etudiant.lieu_naissance_ar || '',
         cin_ar: etudiant.cin_ar || '',
@@ -150,6 +159,8 @@ export default function Etudiants() {
       setEditOpen(true);
     } catch (err) {
       handleApiError(err, toast);
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -165,6 +176,7 @@ export default function Etudiants() {
         nationalite: editData.nationalite || 'Marocaine',
         date_inscription: editData.date_inscription || null,
         groupe_id: editData.groupe_id,
+        nom_ar: editData.nom_ar || null,
         date_naissance_ar: editData.date_naissance_ar || null,
         lieu_naissance_ar: editData.lieu_naissance_ar || null,
         cin_ar: editData.cin_ar || null,
@@ -197,9 +209,11 @@ export default function Etudiants() {
     fd.append('annee_academique_id', currentAnnee.id);
     fd.append('filiere_code', filieres.find(f => f.id == scanFiliere)?.code ?? '');
     try {
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0];
       const res = await scanApi.scanCin(fd);
       const results = res.data.data.resultats || [];
-      setScanResults(results.map(r => ({ ...r, editable: true })));
+      setScanResults(results.map(r => ({ ...r, date_inscription: r.date_inscription || dateStr, date_inscription_ar: r.date_inscription_ar || toArabicDate(today), editable: true })));
     } catch (err) {
       console.error('Scan error:', err);
       const fieldErrors = getFieldErrors(err);
@@ -236,6 +250,9 @@ export default function Etudiants() {
           nom_ar: r.nom_ar || null,
           cin: r.cin,
           date_naissance: r.date_naissance || null,
+          lieu_naissance: r.lieu_naissance || null,
+          nationalite: r.nationalite || null,
+          date_inscription: r.date_inscription || null,
           numero_inscription: r.numero_inscription,
           groupe_id: scanGroupe,
           annee_academique_id: currentAnnee.id,
@@ -249,7 +266,8 @@ export default function Etudiants() {
         filiere_code: filieres.find(f => f.id == scanFiliere)?.code ?? '',
       });
       const data = res.data.data;
-      showSuccess(toast, `${data.crees} étudiants créés, ${data.mis_a_jour} mis à jour`);
+      const msg = data.ignores > 0 ? `${data.crees} créé(s), ${data.ignores} ignoré(s)` : `${data.crees} étudiant(s) créé(s)`;
+      showSuccess(toast, msg);
       setScanOpen(false);
       setScanResults([]);
       load();
@@ -282,6 +300,7 @@ export default function Etudiants() {
 
   return (
     <div className="page">
+      <style>{`@media print { .navbar, .page-header { display: none !important; } }`}</style>
       <div className="page-main">
       <div className="page-header">
         <h2 className="page-title">Étudiants</h2>
@@ -372,7 +391,7 @@ export default function Etudiants() {
               </button>
             </div>
           ) : (
-            <div className="table-wrap" style={{ fontSize: '15px' }}>
+            <div className="table-wrap" style={{ fontSize: '15px', overflowX: 'auto' }}>
               <table>
                 <thead>
                   <tr>
@@ -414,6 +433,7 @@ export default function Etudiants() {
                           <button
                             className="btn btn-sm btn-outline"
                             onClick={() => handleEdit(e)}
+                            disabled={editLoading || editSaving}
                           >
                             Modifier
                           </button>
@@ -422,7 +442,7 @@ export default function Etudiants() {
                             onClick={() => handleDelete(e.id, e.nom_prenom)}
                             disabled={deleting === e.id}
                           >
-                            {deleting === e.id ? 'Suppression...' : 'Supprimer'}
+                            {deleting === e.id ? <><span className="btn-spinner" />Suppression...</> : 'Supprimer'}
                           </button>
                         </div>
                       </td>
@@ -514,6 +534,41 @@ export default function Etudiants() {
         toast={toast}
       />
 
+      {extracting && (
+        <div className="loading-overlay">
+          <div className="spinner" />
+          <span className="loading-overlay-label">Extraction en cours...</span>
+        </div>
+      )}
+
+      {scanSaving && (
+        <div className="loading-overlay">
+          <div className="spinner" />
+          <span className="loading-overlay-label">Enregistrement...</span>
+        </div>
+      )}
+
+      {editLoading && (
+        <div className="loading-overlay">
+          <div className="spinner" />
+          <span className="loading-overlay-label">Chargement...</span>
+        </div>
+      )}
+
+      {editSaving && (
+        <div className="loading-overlay">
+          <div className="spinner" />
+          <span className="loading-overlay-label">Enregistrement...</span>
+        </div>
+      )}
+
+      {deleting && (
+        <div className="loading-overlay">
+          <div className="spinner" />
+          <span className="loading-overlay-label">Suppression...</span>
+        </div>
+      )}
+
       <EditModal
         open={editOpen}
         onClose={() => { setEditOpen(false); setEditData(null); }}
@@ -523,6 +578,27 @@ export default function Etudiants() {
         saving={editSaving}
         onUpdate={setEditData}
       />
+
+      <Modal open={deleteModal !== null} onClose={() => !deleting && setDeleteModal(null)} title="Confirmer la suppression">
+        {deleteModal && (
+          <>
+            <p style={{ margin: 0, marginBottom: 16 }}>
+              Êtes-vous sûr de vouloir supprimer l'étudiant <strong>{deleteModal.nomPrenom}</strong> ?
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--danger)', marginBottom: 20, padding: '8px 12px', background: 'var(--danger-light)', borderRadius: 6 }}>
+              Cette action est irréversible.
+            </p>
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setDeleteModal(null)} disabled={deleting}>
+                Annuler
+              </button>
+              <button className="btn btn-danger" onClick={confirmDelete} disabled={deleting}>
+                {deleting ? <><span className="btn-spinner" />Suppression...</> : 'Supprimer'}
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
     </div>
   );
 }
@@ -654,53 +730,72 @@ function ScanModal({ open, onClose, filieres, scanResults, extracting, scanSavin
 
       {scanResults.length > 0 && (
         <div style={{ overflowX: 'auto', marginTop: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-          <table style={{ fontSize: '14px', minWidth: '1200px', width: '100%' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f9fafb' }}>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '160px' }}>Nom</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '130px' }}>الاسم</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>CIN</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>رقم البطاقة</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Date naiss.</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>تاريخ الميلاد</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>مكان الميلاد</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>الجنسية</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '110px' }}>N° Inscription</th>
-                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '80px' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {scanResults.map((r, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '8px 12px' }}>
-                    <input className="form-input" value={r.nom_prenom} onChange={e => onUpdateResult(idx, 'nom_prenom', e.target.value)} style={{ minWidth: '140px', padding: '6px 10px', fontSize: '14px' }} />
-                  </td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <input className="form-input" value={r.nom_ar || ''} onChange={e => onUpdateResult(idx, 'nom_ar', e.target.value)} style={{ minWidth: '110px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
-                  </td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <input className="form-input" value={r.cin} onChange={e => onUpdateResult(idx, 'cin', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px' }} />
-                  </td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <input className="form-input" value={r.cin_ar || ''} onChange={e => onUpdateResult(idx, 'cin_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
-                  </td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <input className="form-input" type="date" value={r.date_naissance} onChange={e => onUpdateResult(idx, 'date_naissance', e.target.value)} style={{ minWidth: '100px', padding: '6px 10px', fontSize: '14px' }} />
-                  </td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <input className="form-input" value={r.date_naissance_ar || ''} onChange={e => onUpdateResult(idx, 'date_naissance_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
-                  </td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <input className="form-input" value={r.lieu_naissance_ar || ''} onChange={e => onUpdateResult(idx, 'lieu_naissance_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
-                  </td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <input className="form-input" value={r.nationalite_ar || ''} onChange={e => onUpdateResult(idx, 'nationalite_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
-                  </td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <input className="form-input" value={r.numero_inscription} disabled style={{ minWidth: '100px', padding: '6px 10px', fontSize: '14px', backgroundColor: '#f3f4f6' }} />
-                  </td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <button className="btn btn-sm btn-danger" onClick={() => onRemoveResult(idx)}>Supprimer</button>
+          <table style={{ fontSize: '14px', minWidth: '1800px', width: '100%' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f9fafb' }}>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '160px' }}>Nom</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '130px' }}>الاسم</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>CIN</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>رقم البطاقة</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Date naiss.</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>تاريخ الميلاد</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Lieu naiss.</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>مكان الميلاد</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Nationalité</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>الجنسية</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '110px' }}>Date ins.</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>تاريخ التسجيل</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '110px' }}>N° Inscription</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, minWidth: '80px' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scanResults.map((r, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="form-input" value={r.nom_prenom} onChange={e => onUpdateResult(idx, 'nom_prenom', e.target.value)} style={{ minWidth: '140px', padding: '6px 10px', fontSize: '14px' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="form-input" value={r.nom_ar || ''} onChange={e => onUpdateResult(idx, 'nom_ar', e.target.value)} style={{ minWidth: '110px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <input className="form-input" value={r.cin} onChange={e => onUpdateResult(idx, 'cin', e.target.value)} style={{ minWidth: '80px', padding: '6px 10px', fontSize: '14px' }} />
+                        {r.existing && <Badge label="Exist" color="red" />}
+                      </div>
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="form-input" value={r.cin_ar || ''} onChange={e => onUpdateResult(idx, 'cin_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="form-input" type="date" value={r.date_naissance} onChange={e => onUpdateResult(idx, 'date_naissance', e.target.value)} style={{ minWidth: '100px', padding: '6px 10px', fontSize: '14px' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="form-input" value={r.date_naissance_ar || ''} onChange={e => onUpdateResult(idx, 'date_naissance_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="form-input" value={r.lieu_naissance || ''} onChange={e => onUpdateResult(idx, 'lieu_naissance', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="form-input" value={r.lieu_naissance_ar || ''} onChange={e => onUpdateResult(idx, 'lieu_naissance_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="form-input" value={r.nationalite || ''} onChange={e => onUpdateResult(idx, 'nationalite', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="form-input" value={r.nationalite_ar || ''} onChange={e => onUpdateResult(idx, 'nationalite_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="form-input" value={r.date_inscription || ''} onChange={e => onUpdateResult(idx, 'date_inscription', e.target.value)} style={{ minWidth: '100px', padding: '6px 10px', fontSize: '14px' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="form-input" value={r.date_inscription_ar || ''} onChange={e => onUpdateResult(idx, 'date_inscription_ar', e.target.value)} style={{ minWidth: '90px', padding: '6px 10px', fontSize: '14px', direction: 'rtl', textAlign: 'right' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <input className="form-input" value={r.numero_inscription} disabled style={{ minWidth: '100px', padding: '6px 10px', fontSize: '14px', backgroundColor: '#f3f4f6' }} />
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <button className="btn btn-sm btn-danger" onClick={() => onRemoveResult(idx)}>Supprimer</button>
                   </td>
                 </tr>
               ))}
@@ -711,7 +806,10 @@ function ScanModal({ open, onClose, filieres, scanResults, extracting, scanSavin
 
       <div className="modal-footer" style={{ marginTop: 16 }}>
         <button className="btn btn-outline" onClick={onClose}>Annuler</button>
-        <button className="btn btn-primary" onClick={handleConfirm} disabled={scanSaving || scanResults.length === 0}>
+        {scanResults.some(r => r.existing) && (
+          <span style={{ color: 'var(--danger)', fontSize: 13, marginRight: 12 }}>Retirez les étudiants en double pour confirmer</span>
+        )}
+        <button className="btn btn-primary" onClick={handleConfirm} disabled={scanSaving || scanResults.length === 0 || scanResults.some(r => r.existing)}>
           {scanSaving ? (
             <><Spinner /> Enregistrement...</>
           ) : `Confirmer ${scanResults.length} étudiant(s)`}
@@ -806,8 +904,8 @@ function EditModal({ open, onClose, editData, filieres, onSave, saving, onUpdate
             <label className="form-label">الاسم الكامل</label>
             <input
               className="form-input"
-              value={editData.nom_ar || ''}
-              onChange={e => onUpdate({ ...editData, nom_ar: e.target.value })}
+              value={toWesternDigits(editData.nom_ar || '')}
+              onChange={e => onUpdate({ ...editData, nom_ar: toWesternDigits(e.target.value) })}
               style={{ direction: 'rtl', textAlign: 'right' }}
             />
           </div>
@@ -817,8 +915,8 @@ function EditModal({ open, onClose, editData, filieres, onSave, saving, onUpdate
               <label className="form-label">تاريخ الميلاد</label>
               <input
                 className="form-input"
-                value={editData.date_naissance_ar || ''}
-                onChange={e => onUpdate({ ...editData, date_naissance_ar: e.target.value })}
+                value={toWesternDigits(editData.date_naissance_ar || '')}
+                onChange={e => onUpdate({ ...editData, date_naissance_ar: toWesternDigits(e.target.value) })}
                 style={{ direction: 'rtl', textAlign: 'right' }}
               />
             </div>
@@ -827,8 +925,8 @@ function EditModal({ open, onClose, editData, filieres, onSave, saving, onUpdate
               <label className="form-label">مكان الميلاد</label>
               <input
                 className="form-input"
-                value={editData.lieu_naissance_ar || ''}
-                onChange={e => onUpdate({ ...editData, lieu_naissance_ar: e.target.value })}
+                value={toWesternDigits(editData.lieu_naissance_ar || '')}
+                onChange={e => onUpdate({ ...editData, lieu_naissance_ar: toWesternDigits(e.target.value) })}
                 style={{ direction: 'rtl', textAlign: 'right' }}
               />
             </div>
@@ -839,8 +937,8 @@ function EditModal({ open, onClose, editData, filieres, onSave, saving, onUpdate
               <label className="form-label">رقم البطاقة</label>
               <input
                 className="form-input"
-                value={editData.cin_ar || ''}
-                onChange={e => onUpdate({ ...editData, cin_ar: e.target.value })}
+                value={toWesternDigits(editData.cin_ar || '')}
+                onChange={e => onUpdate({ ...editData, cin_ar: toWesternDigits(e.target.value) })}
                 style={{ direction: 'rtl', textAlign: 'right' }}
               />
             </div>
@@ -849,8 +947,8 @@ function EditModal({ open, onClose, editData, filieres, onSave, saving, onUpdate
               <label className="form-label">الجنسية</label>
               <input
                 className="form-input"
-                value={editData.nationalite_ar || ''}
-                onChange={e => onUpdate({ ...editData, nationalite_ar: e.target.value })}
+                value={toWesternDigits(editData.nationalite_ar || '')}
+                onChange={e => onUpdate({ ...editData, nationalite_ar: toWesternDigits(e.target.value) })}
                 style={{ direction: 'rtl', textAlign: 'right' }}
               />
             </div>
@@ -861,8 +959,8 @@ function EditModal({ open, onClose, editData, filieres, onSave, saving, onUpdate
               <label className="form-label">رقم التسجيل</label>
               <input
                 className="form-input"
-                value={editData.numero_inscription_ar || ''}
-                onChange={e => onUpdate({ ...editData, numero_inscription_ar: e.target.value })}
+                value={toWesternDigits(editData.numero_inscription_ar || '')}
+                onChange={e => onUpdate({ ...editData, numero_inscription_ar: toWesternDigits(e.target.value) })}
                 style={{ direction: 'rtl', textAlign: 'right' }}
               />
             </div>
@@ -871,8 +969,8 @@ function EditModal({ open, onClose, editData, filieres, onSave, saving, onUpdate
               <label className="form-label">تاريخ التسجيل</label>
               <input
                 className="form-input"
-                value={editData.date_inscription_ar || ''}
-                onChange={e => onUpdate({ ...editData, date_inscription_ar: e.target.value })}
+                value={toWesternDigits(editData.date_inscription_ar || '')}
+                onChange={e => onUpdate({ ...editData, date_inscription_ar: toWesternDigits(e.target.value) })}
                 style={{ direction: 'rtl', textAlign: 'right' }}
               />
             </div>
@@ -913,7 +1011,7 @@ function EditModal({ open, onClose, editData, filieres, onSave, saving, onUpdate
       <div className="modal-footer" style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--gray-200)' }}>
         <button className="btn btn-outline" onClick={onClose}>Annuler</button>
         <button className="btn btn-primary" onClick={onSave} disabled={saving}>
-          {saving ? 'Enregistrement...' : 'Enregistrer'}
+          {saving ? <><span className="btn-spinner" />Enregistrement...</> : 'Enregistrer'}
         </button>
       </div>
     </Modal>

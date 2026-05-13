@@ -126,8 +126,8 @@ function SequenceRow({ sequence, allControlNums, isOpen, onToggle }) {
     if (editValue === '' || editValue === null) return;
     setSaving(true);
     try {
-      const { notesApi } = await import('../../api/notes');
-      await notesApi.updateNote(noteId, parseFloat(editValue));
+      const { formateursApi } = await import('../../api/formateurs');
+      await formateursApi.updateNote(noteId, parseFloat(editValue));
       showSuccess(toast, 'Note enregistree');
       setEditingNote(null);
       setEditValue('');

@@ -22,6 +22,8 @@ export const scanApi = {
       }),
   confirmScanCin: (data) =>
       apiClient.post('/admin/scan-cin/confirm', data),
+  checkExistingCins: (cins) =>
+      apiClient.post('/admin/scan-cin/check-existing', { cins }),
 
   // admin scans unites document
   scanUnitesDocument: (file, filiereId, semestre) => {

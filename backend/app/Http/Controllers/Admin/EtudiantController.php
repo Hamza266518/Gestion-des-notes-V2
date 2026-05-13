@@ -7,6 +7,7 @@ use App\Models\Etudiant;
 use App\Models\User;
 use App\Services\NumeroInscriptionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class EtudiantController extends Controller
@@ -67,48 +68,50 @@ class EtudiantController extends Controller
                 'annee_academique_id' => 'required|exists:annees_academiques,id',
             ]);
 
-            $filiereCode = \App\Models\Groupe::with('niveau.filiere')
-                ->findOrFail($request->groupe_id)
-                ->niveau->filiere->code;
+            return DB::transaction(function () use ($request) {
+                $filiereCode = \App\Models\Groupe::with('niveau.filiere')
+                    ->findOrFail($request->groupe_id)
+                    ->niveau->filiere->code;
 
-            $numero = $this->numeroService->generate(
-                $filiereCode,
-                $request->annee_academique_id
-            );
+                $numero = $this->numeroService->generate(
+                    $filiereCode,
+                    $request->annee_academique_id
+                );
 
-            $email = strtolower($request->cin) . '@ifp.ma';
-            $password = str_replace(' ', '', $numero) . substr($request->cin, 0, 2);
+                $email = strtolower($request->cin) . '@ifp.ma';
+                $password = str_replace(' ', '', $numero) . substr($request->cin, 0, 2) . '@';
 
-            $user = User::firstOrCreate(
-                ['email' => $email],
-                [
-                    'name'     => $request->nom_prenom,
-                    'password' => Hash::make($password),
-                    'role'     => 'etudiant',
-                ]
-            );
+                $user = User::firstOrCreate(
+                    ['email' => $email],
+                    [
+                        'name'     => $request->nom_prenom,
+                        'password' => Hash::make($password),
+                        'role'     => 'etudiant',
+                    ]
+                );
 
-            $etudiant = Etudiant::updateOrCreate(
-                ['cin' => strtoupper($request->cin)],
-                [
-                    'user_id'             => $user->id,
-                    'groupe_id'           => $request->groupe_id,
-                    'annee_academique_id' => $request->annee_academique_id,
-                    'nom_prenom'          => $request->nom_prenom,
-                    'cin'                 => strtoupper($request->cin),
-                    'date_naissance'      => $request->date_naissance,
-                    'numero_inscription'  => $numero,
-                    'status'              => 'active',
-                    'date_naissance_ar'   => $request->date_naissance_ar,
-                    'lieu_naissance_ar'   => $request->lieu_naissance_ar,
-                    'cin_ar'              => $request->cin_ar,
-                    'nationalite_ar'      => $request->nationalite_ar,
-                    'numero_inscription_ar'=> $request->numero_inscription_ar,
-                    'date_inscription_ar' => $request->date_inscription_ar,
-                ]
-            );
+                $etudiant = Etudiant::updateOrCreate(
+                    ['cin' => strtoupper($request->cin)],
+                    [
+                        'user_id'             => $user->id,
+                        'groupe_id'           => $request->groupe_id,
+                        'annee_academique_id' => $request->annee_academique_id,
+                        'nom_prenom'          => $request->nom_prenom,
+                        'cin'                 => strtoupper($request->cin),
+                        'date_naissance'      => $request->date_naissance,
+                        'numero_inscription'  => $numero,
+                        'status'              => 'active',
+                        'date_naissance_ar'   => $request->date_naissance_ar,
+                        'lieu_naissance_ar'   => $request->lieu_naissance_ar,
+                        'cin_ar'              => $request->cin_ar,
+                        'nationalite_ar'      => $request->nationalite_ar,
+                        'numero_inscription_ar'=> $request->numero_inscription_ar,
+                        'date_inscription_ar' => $request->date_inscription_ar,
+                    ]
+                );
 
-            return response()->json(['success' => true, 'data' => $etudiant->load('groupe.niveau.filiere'), 'message' => 'Étudiant créé']);
+                return response()->json(['success' => true, 'data' => $etudiant->load('groupe.niveau.filiere'), 'message' => 'Étudiant créé']);
+            });
         } catch (\Exception $e) {
             \Log::error('EtudiantController::store error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Erreur lors de la création de l\'étudiant'], 500);
@@ -126,6 +129,7 @@ class EtudiantController extends Controller
                 'lieu_naissance'     => 'nullable|string',
                 'nationalite'        => 'nullable|string',
                 'date_inscription'   => 'nullable|date',
+                'nom_ar'             => 'nullable|string',
                 'date_naissance_ar'  => 'nullable|string',
                 'lieu_naissance_ar'  => 'nullable|string',
                 'cin_ar'             => 'nullable|string',
@@ -146,6 +150,7 @@ class EtudiantController extends Controller
                 'nationalite'        => $request->nationalite,
                 'date_inscription'   => $request->date_inscription,
                 'groupe_id'          => $request->groupe_id,
+                'nom_ar'             => $request->nom_ar,
                 'date_naissance_ar'  => $request->date_naissance_ar,
                 'lieu_naissance_ar'  => $request->lieu_naissance_ar,
                 'cin_ar'             => $request->cin_ar,
@@ -155,10 +160,11 @@ class EtudiantController extends Controller
             ]);
 
             if ($etudiant->user) {
-                $etudiant->user->update([
-                    'name'  => $request->nom_prenom,
-                    'email' => $newEmail,
-                ]);
+                $updates = ['name' => $request->nom_prenom];
+                if ($etudiant->user->email !== $newEmail) {
+                    $updates['email'] = $newEmail;
+                }
+                $etudiant->user->update($updates);
             }
 
             return response()->json(['success' => true, 'data' => $etudiant->load('groupe.niveau.filiere'), 'message' => 'Étudiant modifié']);
@@ -170,10 +176,12 @@ class EtudiantController extends Controller
     public function destroy($id)
     {
         try {
-            $etudiant = Etudiant::with('user')->findOrFail($id);
+            $etudiant = Etudiant::with('user.formateur')->findOrFail($id);
             $user = $etudiant->user;
             $etudiant->delete();
-            if ($user) $user->delete();
+            if ($user && !$user->formateur) {
+                $user->delete();
+            }
             return response()->json(['success' => true, 'message' => 'Stagiaire supprimé']);
         } catch (\Exception $e) {
             \Log::error('EtudiantController::destroy error: ' . $e->getMessage());

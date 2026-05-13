@@ -63,4 +63,15 @@ export const adminApi = {
 
     confirmScanCin: (data) =>
         apiClient.post('/admin/scan-cin/confirm', data),
+
+    checkRedoublants: (params) =>
+        apiClient.get('/admin/progression/check-redoublants', { params }),
+    confirmRedoublants: (data) =>
+        apiClient.post('/admin/progression/confirm-redoublants', data),
+    dropRedoublants: (data) =>
+        apiClient.post('/admin/progression/drop-redoublants', data),
+    promoteAdmis: (data) =>
+        apiClient.post('/admin/progression/promote-admis', data),
+    copyGroups: (data) =>
+        apiClient.post('/admin/progression/copy-groups', data),
 };

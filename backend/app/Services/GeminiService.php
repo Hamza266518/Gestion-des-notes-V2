@@ -6,29 +6,16 @@ use Illuminate\Support\Facades\Http;
 
 class GeminiService
 {
-    private string $apiKeyNotes;
+    private string $apiKeyFormateur;
     private string $apiKeyStudents;
     private string $apiKeyUnites;
     private string $baseUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
 
     public function __construct()
     {
-        // Use env() directly to avoid cached config issues
-        // Key for Formateur scanning notes (Scanner.jsx)
-        $this->apiKeyFormateur = env('VITE_GEMINI_KEY_FORMATEURS', '');
-        // Key for Admin scanning CIN (ScanCin.jsx)
-        $this->apiKeyStudents  = env('VITE_GEMINI_KEY_STUDENTS', '');
-        // Key for Admin scanning unites (Unites.jsx)
-        $this->apiKeyUnites    = env('VITE_GEMINI_KEY_UNITES', '');
-        // Key for Notes scan (to be provided later)
-        $this->apiKeyNotes     = env('VITE_GEMINI_KEY_NOTES_TWO', '');
-        
-        \Log::info('GeminiService keys loaded', [
-            'formateur' => $this->apiKeyFormateur ? 'yes' : 'no',
-            'students'  => $this->apiKeyStudents ? 'yes' : 'no',
-            'unites'    => $this->apiKeyUnites ? 'yes' : 'no',
-            'notes'     => $this->apiKeyNotes ? 'yes' : 'no',
-        ]);
+        $this->apiKeyFormateur = config('services.gemini.key_formateur', '');
+        $this->apiKeyStudents  = config('services.gemini.key_students', '');
+        $this->apiKeyUnites    = config('services.gemini.key_unites', '');
     }
 
     public function scanNotes(string $base64Pdf): string
@@ -102,14 +89,16 @@ Rules:
                         [
                             'text' => 'You are reading a PDF document containing a list of students from a Moroccan nursing school (Institut de Formation aux Professions Paramédicales).
 Extract ALL students from this document.
-Return ONLY a valid JSON array like: [{"nom_prenom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","cin":"AB123456","date_naissance":"1998-05-15","cin_ar":"AB123456","date_naissance_ar":"1998-05-15","lieu_naissance_ar":"","nationalite_ar":"","numero_inscription_ar":"","date_inscription_ar":""}]
+Return ONLY a valid JSON array like: [{"nom_prenom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","cin":"AB123456","date_naissance":"1998-05-15","lieu_naissance":"CASABLANCA","nationalite":"MAROCAINE","cin_ar":"AB123456","date_naissance_ar":"15 مايو 1998","lieu_naissance_ar":"الدار البيضاء","nationalite_ar":"مغربية","numero_inscription_ar":"12345","date_inscription_ar":"15 سبتمبر 2023"}]
 Rules:
 - nom_prenom: full name in French/Latin script, CAPITAL LETTERS exactly as written in the PDF
 - nom_ar: full name in Arabic script as written in the PDF. If no Arabic name is present, use an empty string ""
 - cin: CIN code exactly as written (alphanumeric, typically 8 characters). If not found use ""
 - date_naissance: date of birth in YYYY-MM-DD format if found. If not found use ""
-- cin_ar: CIN code in Arabic numerals if present, otherwise same as cin
-- date_naissance_ar: date of birth in Arabic if present, otherwise empty string ""
+- lieu_naissance: place of birth in Latin script. If not found use ""
+- nationalite: nationality in Latin script. If not found use ""
+- cin_ar: CIN code in Arabic script if present, otherwise same as cin
+- date_naissance_ar: date of birth in Arabic if found, otherwise empty string ""
 - lieu_naissance_ar: place of birth in Arabic if found, otherwise empty string ""
 - nationalite_ar: nationality in Arabic if found, otherwise empty string ""
 - numero_inscription_ar: registration number in Arabic if found, otherwise empty string ""

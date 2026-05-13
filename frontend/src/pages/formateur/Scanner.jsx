@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { FiX } from 'react-icons/fi';
 import { formateursApi } from '../../api/formateurs';
-import { notesApi } from '../../api/notes';
-import { scanNotesPaper } from '../../api/gemini';
+import { scanApi } from '../../api/scan';
 import { useToast } from '../../context/ToastContext';
 import Spinner from '../../components/common/Spinner';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
+import { toWesternDigits } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -23,6 +23,7 @@ export default function Scanner() {
   const [results, setResults] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [savingResults, setSavingResults] = useState(false);
+  const [pdfUrls, setPdfUrls] = useState([]);
 
   const toast = useToast();
 
@@ -53,8 +54,6 @@ export default function Scanner() {
     ? (sequences.find(s => s.id == sel.sequence_id)?.controles || [])
     : [];
 
-  const [pdfUrls, setPdfUrls] = useState([]);
-
   const handleFiles = (e) => {
     const files = Array.from(e.target.files);
     setPdfs(files);
@@ -67,32 +66,36 @@ export default function Scanner() {
       toast.warning('Veuillez sélectionner au moins un fichier PDF');
       return;
     }
+    if (!sel.controle_id) {
+      toast.warning('Veuillez sélectionner un contrôle');
+      return;
+    }
 
     setScanning(true);
     setResults([]);
 
     try {
-      const scanned = [];
+      const formData = new FormData();
+      pdfs.forEach(pdf => formData.append('pdfs[]', pdf));
+      formData.append('controle_id', sel.controle_id);
 
-      for (const pdf of pdfs) {
-        try {
-          const data = await scanNotesPaper(pdf);
-          if (Array.isArray(data)) {
-            for (const row of data) {
-              if (row.nom && row.note !== undefined) {
-                scanned.push({
-                  nom: row.nom,
-                  nom_ar: row.nom_ar || '',
-                  note: row.note,
-                  confidence: 'high'
-                });
-              }
-            }
-          }
-        } catch (pdfError) {
-          // Continue with other files
-        }
+      const res = await scanApi.scan(formData);
+      const data = res.data;
+
+      if (!data.success) {
+        toast.error(data.message || 'Erreur lors du scan');
+        setScanning(false);
+        return;
       }
+
+      const scanned = (data.data?.resultats || []).map(r => ({
+        nom: r.nom_prenom || '',
+        nom_ar: r.nom_ar || '',
+        note: r.note,
+        etudiant_id: r.etudiant_id || null,
+        found: r.found || false,
+        confidence: r.found ? 'high' : 'low'
+      }));
 
       if (scanned.length === 0) {
         toast.error('Aucun résultat trouvé. Vérifiez que le fichier PDF est lisible.');
@@ -127,17 +130,22 @@ export default function Scanner() {
   const handleConfirm = async () => {
     if (results.length === 0 || !sel.controle_id) return;
 
+    const missing = results.filter(r => !r.etudiant_id);
+    if (missing.length > 0) {
+      toast.warning(`${missing.length} étudiant(s) non reconnu(s). Corrigez les noms ou retirez-les.`);
+      return;
+    }
+
     setSavingResults(true);
     try {
-      for (const r of results) {
-        await notesApi.createNote({
-          controle_id: sel.controle_id,
-          etudiant_nom: r.nom,
-          nom_ar: r.nom_ar || null,
-          valeur: r.note,
-        });
-      }
-      showSuccess(toast, `${results.length} note(s) enregistrée(s)`);
+      const notes = results.map(r => ({
+        etudiant_id: r.etudiant_id,
+        controle_id: parseInt(sel.controle_id),
+        valeur: r.note,
+      }));
+
+      await scanApi.confirm({ notes });
+      showSuccess(toast, `${notes.length} note(s) enregistrée(s)`);
       setStep(1);
       setPdfs([]);
       setResults([]);
@@ -314,6 +322,7 @@ export default function Scanner() {
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '220px' }}>Nom</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '180px' }}>الاسم بالعربية</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Note /20</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '140px' }}>Statut</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Actions</th>
                       </tr>
                     </thead>
@@ -331,8 +340,8 @@ export default function Scanner() {
                           <td style={{ padding: '12px 16px' }}>
                             <input
                               className="form-input"
-                              value={r.nom_ar || ''}
-                              onChange={e => updateResult(i, 'nom_ar', e.target.value)}
+                              value={toWesternDigits(r.nom_ar || '')}
+                              onChange={e => updateResult(i, 'nom_ar', toWesternDigits(e.target.value))}
                               style={{ minWidth: '160px', width: '100%', padding: '8px 12px', fontSize: '15px', direction: 'rtl', textAlign: 'right' }}
                             />
                           </td>
@@ -346,6 +355,13 @@ export default function Scanner() {
                               max={20}
                               onChange={e => updateResult(i, 'note', Number(e.target.value))}
                             />
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            {r.etudiant_id ? (
+                              <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: 13 }}>✓ Reconnu</span>
+                            ) : (
+                              <span style={{ color: 'var(--warning)', fontWeight: 600, fontSize: 13 }}>⚠ Non reconnu</span>
+                            )}
                           </td>
                           <td style={{ padding: '12px 16px' }}>
                             <button className="btn btn-sm btn-danger" onClick={() => removeResult(i)}>Retirer</button>
@@ -368,12 +384,18 @@ export default function Scanner() {
       {/* Step 4: Review */}
       {step === 4 && (
         <div>
+          {results.some(r => !r.etudiant_id) && (
+            <div className="alert alert-danger" style={{ marginBottom: 16 }}>
+              <strong>Étudiants non reconnus :</strong> certains étudiants n'ont pas pu être identifiés.
+              Corrigez les noms et ressayez le scan, ou retirez-les de la liste.
+            </div>
+          )}
           <div className="alert alert-warning" style={{ marginBottom: 16 }}>
             <strong>Confirmez pour enregistrer les notes</strong> — toute modification sera impossible après.
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-outline" onClick={() => setStep(3)}>← Retour</button>
-            <button className="btn btn-primary" disabled={savingResults} onClick={handleConfirm}>
+            <button className="btn btn-primary" disabled={savingResults || results.some(r => !r.etudiant_id)} onClick={handleConfirm}>
               {savingResults ? (
                 <>
                   <Spinner /> Enregistrement...

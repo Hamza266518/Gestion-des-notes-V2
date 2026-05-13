@@ -94,11 +94,20 @@ export const scanStudentList = async (file) => {
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
   const prompt = `You are reading a PDF document containing a list of students from a Moroccan nursing school (Institut de Formation aux Professions Paramédicales).
 Extract ALL students from this document.
-Return ONLY a valid JSON array: [{"nom_prenom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","cin":"AB123456"}]
+Return ONLY a valid JSON array: [{"nom_prenom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","cin":"AB123456","date_naissance":"1998-05-15","lieu_naissance":"CASABLANCA","nationalite":"MAROCAINE","cin_ar":"AB123456","date_naissance_ar":"15 مايو 1998","lieu_naissance_ar":"الدار البيضاء","nationalite_ar":"مغربية","numero_inscription_ar":"12345","date_inscription_ar":"15 سبتمبر 2023"}]
 Rules:
 - nom_prenom: full name in French/Latin script, CAPITAL LETTERS exactly as written
 - nom_ar: full name in Arabic script as written. If no Arabic name is present, use empty string ""
 - cin: alphanumeric CIN code exactly as written. If not found use ""
+- date_naissance: date of birth in YYYY-MM-DD format if found. If not found use ""
+- lieu_naissance: place of birth in Latin script. If not found use ""
+- nationalite: nationality in Latin script. If not found use ""
+- cin_ar: CIN code in Arabic script if present, otherwise same as cin
+- date_naissance_ar: date of birth in Arabic script if found, otherwise empty string ""
+- lieu_naissance_ar: place of birth in Arabic script if found, otherwise empty string ""
+- nationalite_ar: nationality in Arabic script if found, otherwise empty string ""
+- numero_inscription_ar: registration number in Arabic if found, otherwise empty string ""
+- date_inscription_ar: registration date in Arabic if found, otherwise empty string ""
 - If multiple students appear in the PDF, extract ALL of them
 - Read carefully both French and Arabic sections of the document
 - If the PDF contains a table, extract each row as a student
