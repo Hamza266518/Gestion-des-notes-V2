@@ -5,16 +5,19 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Diplome;
 use App\Models\Etudiant;
+use App\Services\BulletinService;
 use App\Services\MoyenneService;
 use Illuminate\Http\Request;
 
 class DiplomeController extends Controller
 {
     protected $moyenneService;
+    protected $bulletinService;
 
-    public function __construct(MoyenneService $moyenneService)
+    public function __construct(MoyenneService $moyenneService, BulletinService $bulletinService)
     {
         $this->moyenneService = $moyenneService;
+        $this->bulletinService = $bulletinService;
     }
 
     public function index(Request $request)
@@ -53,11 +56,12 @@ class DiplomeController extends Controller
                 return response()->json(['success' => false, 'message' => 'Seuls les étudiants en année diplômante peuvent obtenir un diplôme'], 400);
             }
 
-            $moyenne = $this->moyenneService->moyenneGenerale(
+            $bulletin = $this->bulletinService->calculateBulletin(
                 $request->etudiant_id,
-                null,
                 $request->annee_academique_id
             );
+
+            $moyenne = $bulletin['moyenne_generale'];
 
             if (!$moyenne) {
                 return response()->json(['success' => false, 'message' => 'Notes incomplètes'], 400);
@@ -65,7 +69,7 @@ class DiplomeController extends Controller
 
             $diplome = Diplome::updateOrCreate(
                 ['etudiant_id' => $request->etudiant_id, 'annee_academique_id' => $request->annee_academique_id],
-                ['moyenne_generale' => $moyenne, 'mention' => $this->moyenneService->getMention($moyenne)]
+                ['moyenne_generale' => $moyenne, 'mention' => $this->bulletinService->getMention($moyenne)['label']]
             );
 
             $etudiant->update(['status' => 'graduate']);
@@ -168,11 +172,12 @@ class DiplomeController extends Controller
                         continue;
                     }
 
-                    $moyenne = $this->moyenneService->moyenneGenerale(
+                    $bulletin = $this->bulletinService->calculateBulletin(
                         $etudiant->id,
-                        null,
                         $anneeId
                     );
+
+                    $moyenne = $bulletin['moyenne_generale'];
 
                     if (!$moyenne || $moyenne < 10) {
                         $skipped++;
@@ -181,7 +186,7 @@ class DiplomeController extends Controller
 
                     Diplome::updateOrCreate(
                         ['etudiant_id' => $etudiant->id, 'annee_academique_id' => $anneeId],
-                        ['moyenne_generale' => $moyenne, 'mention' => $this->moyenneService->getMention($moyenne)]
+                        ['moyenne_generale' => $moyenne, 'mention' => $this->bulletinService->getMention($moyenne)['label']]
                     );
 
                     $etudiant->update(['status' => 'graduate']);

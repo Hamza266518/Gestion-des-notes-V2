@@ -30,6 +30,7 @@ export default function GestionNotes() {
   const [editingNote, setEditingNote] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [editingExam, setEditingExam] = useState(null); // { etudiant_id, type }
+  const [examenBloc, setExamenBloc] = useState(1);
   const [editExamValue, setEditExamValue] = useState('');
   const [saving, setSaving] = useState(false);
   const toast = useToast();
@@ -172,7 +173,7 @@ export default function GestionNotes() {
       await notesApi.saveBulkExamens({
         examens: [{ etudiant_id: editingExam.etudiant_id, valeur: parseFloat(editExamValue) }],
         unite_id: selectedUniteId,
-        bloc: 1,
+        bloc: examenBloc,
         type: type,
         semestre: unite.semestre || 1,
         annee_academique_id: selected.annee_academique_id || currentAnnee?.id || 1,
@@ -255,7 +256,15 @@ export default function GestionNotes() {
           <div className="card-header">
             <h5 className="mb-0">
               Notes — {sequences.find(s => s.id === selectedSequenceId)?.nom || ''}
-              {showExamCols && <span className="ml-2" style={{ fontSize: 12, color: '#666', marginLeft: 8 }}>(Examens inclus)</span>}
+              {showExamCols && (
+                <span className="ml-2" style={{ fontSize: 12, color: '#666', marginLeft: 8 }}>
+                  (Examens inclus — Bloc:
+                  <select value={examenBloc} onChange={e => setExamenBloc(Number(e.target.value))} style={{ marginLeft: 4, fontSize: 11, padding: '1px 4px' }}>
+                    <option value={1}>Session 1</option>
+                    <option value={2}>Session 2</option>
+                  </select>)
+                </span>
+              )}
             </h5>
           </div>
           <div className="card-body p-0">

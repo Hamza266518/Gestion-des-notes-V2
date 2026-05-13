@@ -26,7 +26,7 @@ const tdStyle = {
 };
 
 const printStyles = `
-  @page { size: A4; margin: 12mm; }
+  @page { size: A4; margin: 12mm 12mm 20mm 12mm; }
   .print-only { display: none; }
   .screen-only { display: block; }
   @media print {
@@ -47,7 +47,7 @@ const printStyles = `
     .ps-right table { width: auto; margin-left: 90px; border-collapse: collapse; }
     .ps-right td { border: 1px solid #000; padding: 4px 8px; font-size: 10px; }
     .ps-right p { font-weight: 700; text-align: right; padding: 12px; margin: 0 0 50px 0; }
-    .print-footer { text-align: center; font-size: 9px; margin-top: 330px; color: #666; }
+    .print-footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 9px; color: #666; padding: 4px 12mm; border-top: 0.5px solid #ccc; }
     .bulletin-info { font-size: 11px !important; line-height: 1.6 !important; margin-top: 10px !important; margin-bottom: 60px !important; }
     .bulletin-header h2 { font-size: 16px; margin: 0; }
     .bulletin-header h3 { font-size: 13px; margin: 6px 0; }
@@ -213,7 +213,7 @@ export default function Bulletins() {
                 {(() => {
                   const niv = bulletin.student.groupe?.niveau?.numero;
                   const ord = ['première', 'deuxième', 'troisième'];
-                  const label = niv && ord[niv - 1] ? `Bulletins de passage de la ${ord[niv - 1]} année à la ${ord[niv] || '...'} année` : '';
+                  const label = niv && ord[niv - 1] ? (ord[niv] ? `Bulletins de passage de la ${ord[niv - 1]} année à la ${ord[niv]} année` : 'Bulletin de fin de formation') : '';
                   return label ? <h3 className="print-only">{label}</h3> : null;
                 })()}
               </div>
@@ -268,15 +268,15 @@ export default function Bulletins() {
                   <tbody>
                     <tr><td colSpan="2" style={{fontWeight: 700, fontSize: 14, padding: '8px 12px', borderBottom: '2px solid #333'}}>Moyenne de note obtenue</td></tr>
                     <tr>
-                      <td style={{padding: '6px 12px'}}>Contrôle continu (36,66%)</td>
-                      <td style={{padding: '6px 12px', textAlign: 'right', fontWeight: 600}}>{fg(bulletin.moyenne_cc)}</td>
-                    </tr>
-                    <tr>
-                      <td style={{padding: '6px 12px'}}>Examen théorique (26,66%)</td>
-                      <td style={{padding: '6px 12px', textAlign: 'right', fontWeight: 600}}>{fg(bulletin.moyenne_theorique)}</td>
-                    </tr>
-                    <tr>
-                      <td style={{padding: '6px 12px'}}>Examen pratique (36,66%)</td>
+                        <td style={{padding: '6px 12px'}}>Contrôle continu (36,67%)</td>
+                        <td style={{padding: '6px 12px', textAlign: 'right', fontWeight: 600}}>{fg(bulletin.moyenne_cc)}</td>
+                      </tr>
+                      <tr>
+                        <td style={{padding: '6px 12px'}}>Examen théorique (26,66%)</td>
+                        <td style={{padding: '6px 12px', textAlign: 'right', fontWeight: 600}}>{fg(bulletin.moyenne_theorique)}</td>
+                      </tr>
+                      <tr>
+                        <td style={{padding: '6px 12px'}}>Examen pratique (36,67%)</td>
                       <td style={{padding: '6px 12px', textAlign: 'right', fontWeight: 600}}>{fg(bulletin.moyenne_pratique)}</td>
                     </tr>
                     <tr style={{borderTop: '2px solid #333'}}>
@@ -298,7 +298,7 @@ export default function Bulletins() {
                       <tbody>
                         <tr><td colSpan="2" style={{fontWeight: 700, fontSize: 14, padding: '6px 12px'}}>Moyenne de note obtenue</td></tr>
                         <tr>
-                          <td style={{padding: '6px 12px'}}>Contrôle continu (36,66%)</td>
+                          <td style={{padding: '6px 12px'}}>Contrôle continu (36,67%)</td>
                           <td style={{padding: '6px 12px', textAlign: 'right', fontWeight: 600}}>{fg(bulletin.moyenne_cc)}</td>
                         </tr>
                         <tr>
@@ -306,7 +306,7 @@ export default function Bulletins() {
                           <td style={{padding: '6px 12px', textAlign: 'right', fontWeight: 600}}>{fg(bulletin.moyenne_theorique)}</td>
                         </tr>
                         <tr>
-                          <td style={{padding: '6px 12px'}}>Examen pratique (36,66%)</td>
+                          <td style={{padding: '6px 12px'}}>Examen pratique (36,67%)</td>
                           <td style={{padding: '6px 12px', textAlign: 'right', fontWeight: 600}}>{fg(bulletin.moyenne_pratique)}</td>
                         </tr>
                       </tbody>

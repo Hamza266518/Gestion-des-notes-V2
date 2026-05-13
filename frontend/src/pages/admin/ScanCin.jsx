@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '../../api/admin';
 import { scanApi } from '../../api/scan';
-import { scanStudentList } from '../../api/gemini';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
-import { formatNiveau, toArabicDate, toWesternDigits } from '../../utils/helpers';
+import { formatNiveau, toWesternDigits } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -70,58 +69,22 @@ export default function ScanCin() {
   };
 
   const handleScan = async () => {
-    if (images.length === 0 || !currentAnnee?.id) return;
+    if (images.length === 0 || !currentAnnee?.id || !selGroupe) return;
     setScanning(true);
-    const scanned = [];
     try {
-      for (const img of images) {
-        const data = await scanStudentList(img);
-        if (Array.isArray(data)) {
-          for (const student of data) {
-            if (student.nom_prenom) {
-              scanned.push({
-                nom_prenom: student.nom_prenom ?? '',
-                nom_ar: student.nom_ar ?? '',
-                cin: student.cin ?? '',
-                cin_ar: student.cin_ar ?? '',
-                date_naissance: student.date_naissance ?? '',
-                date_naissance_ar: student.date_naissance_ar ?? '',
-                lieu_naissance: student.lieu_naissance ?? '',
-                lieu_naissance_ar: student.lieu_naissance_ar ?? '',
-                nationalite: student.nationalite ?? '',
-                nationalite_ar: student.nationalite_ar ?? '',
-                date_inscription: new Date().toISOString().split('T')[0],
-                date_inscription_ar: student.date_inscription_ar || toArabicDate(new Date()),
-                numero_inscription_ar: student.numero_inscription_ar ?? '',
-                numero_inscription: '',
-                groupe_id: selGroupe,
-                annee_academique_id: currentAnnee.id,
-              });
-            }
-          }
-        }
-      }
+      const fd = new FormData();
+      images.forEach(img => fd.append('pdfs[]', img));
+      fd.append('groupe_id', selGroupe);
+      fd.append('annee_academique_id', currentAnnee.id);
+      fd.append('filiere_code', filiereCode);
+
+      const res = await scanApi.scanCin(fd);
+      const data = res.data.data || {};
+      const scanned = data.resultats || [];
+
       if (scanned.length === 0) {
         toast.error('Aucun étudiant trouvé. Vérifiez que les fichiers PDF sont lisibles.');
       } else {
-        // Check for existing CINs
-        try {
-          const cins = scanned.map(s => s.cin).filter(Boolean);
-          if (cins.length > 0) {
-            const existingRes = await scanApi.checkExistingCins(cins);
-            const existingMap = existingRes.data.data || {};
-            for (const s of scanned) {
-              if (existingMap[s.cin]) {
-                s.existing = true;
-                s.existing_student = existingMap[s.cin].nom_prenom;
-                s.existing_numero = existingMap[s.cin].numero_inscription;
-              }
-            }
-          }
-        } catch (e) {
-          // Non-blocking — if check fails, proceed without warnings
-          console.error('Failed to check existing CINs:', e);
-        }
         setResults(scanned);
         setStep(3);
       }

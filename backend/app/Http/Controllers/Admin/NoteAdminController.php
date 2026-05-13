@@ -43,7 +43,7 @@ class NoteAdminController extends Controller
 
             $groupeId = $note->etudiant->groupe_id;
             $semestre = $note->controle->sequence->unite->semestre;
-            $anneeAcademiqueId = $note->controle->sequence->annee_academique_id;
+            $anneeAcademiqueId = $note->etudiant->annee_academique_id;
 
             $types = $semestre === 1 ? ['notes_s1', 'bulletin'] : ['notes_s2', 'bulletin'];
             $published = SemestrePublication::where('groupe_id', $groupeId)

@@ -95,11 +95,11 @@ class BulletinService
                     'nom' => $seq->nom,
                     'coefficient' => $seq->coefficient,
                     'controles' => $controlesData,
-                    'moyenneSeq' => $this->moyenneService->moyenneSequence($etudiantId, $seq->id),
+                    'moyenneSeq' => $this->moyenneService->moyenneSequence($etudiantId, $seq->id, null, $anneeAcademiqueId),
                 ];
             }
 
-            $moyenneUnite = $this->moyenneService->moyenneUnite($etudiantId, $unite->id);
+            $moyenneUnite = $this->moyenneService->moyenneUnite($etudiantId, $unite->id, $anneeAcademiqueId);
 
             $unitesData[] = [
                 'id' => $unite->id,
@@ -120,10 +120,26 @@ class BulletinService
 
         $moyenneGenerale = null;
         if ($moyenneCC !== null || $moyenneTheo !== null || $moyennePra !== null) {
+            $wCC = self::WEIGHT_CC;
+            $wTheo = self::WEIGHT_THEORIQUE;
+            $wPra = self::WEIGHT_PRATIQUE;
+
+            $totalAvailable = 0;
+            if ($moyenneCC !== null) $totalAvailable += $wCC;
+            if ($moyenneTheo !== null) $totalAvailable += $wTheo;
+            if ($moyennePra !== null) $totalAvailable += $wPra;
+
+            if ($totalAvailable > 0 && $totalAvailable < 1) {
+                $scale = 1 / $totalAvailable;
+                if ($moyenneCC !== null) $wCC *= $scale;
+                if ($moyenneTheo !== null) $wTheo *= $scale;
+                if ($moyennePra !== null) $wPra *= $scale;
+            }
+
             $moyenneGenerale = 0;
-            if ($moyenneCC !== null) $moyenneGenerale += $moyenneCC * self::WEIGHT_CC;
-            if ($moyenneTheo !== null) $moyenneGenerale += $moyenneTheo * self::WEIGHT_THEORIQUE;
-            if ($moyennePra !== null) $moyenneGenerale += $moyennePra * self::WEIGHT_PRATIQUE;
+            if ($moyenneCC !== null) $moyenneGenerale += $moyenneCC * $wCC;
+            if ($moyenneTheo !== null) $moyenneGenerale += $moyenneTheo * $wTheo;
+            if ($moyennePra !== null) $moyenneGenerale += $moyennePra * $wPra;
             $moyenneGenerale = round($moyenneGenerale, 2);
         }
 

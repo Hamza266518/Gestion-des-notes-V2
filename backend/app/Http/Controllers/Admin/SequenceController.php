@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Controle;
 use App\Models\Sequence;
+use App\Traits\HasControleType;
 use Illuminate\Http\Request;
 
 class SequenceController extends Controller
 {
+    use HasControleType;
     public function index(Request $request)
     {
         try {
@@ -168,17 +170,4 @@ class SequenceController extends Controller
         }
     }
 
-    private function getControleType(int $numero, int $total): string
-    {
-        if ($total <= 2) {
-            return 'cc';
-        }
-        if ($numero === $total - 1) {
-            return 'theorique';
-        }
-        if ($numero === $total) {
-            return 'pratique';
-        }
-        return 'cc';
-    }
 }

@@ -3,7 +3,6 @@ import { adminApi } from '../../api/admin';
 import { formateursApi } from '../../api/formateurs';
 import { unitesApi } from '../../api/unites';
 import { sequencesApi } from '../../api/sequences';
-import { scanFormateurSequencesDocument, scanFormateursList } from '../../api/gemini';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../../components/common/Modal';
 import Spinner from '../../components/common/Spinner';
@@ -308,43 +307,8 @@ export default function Formateurs() {
       toast.warning('Veuillez sélectionner au moins une image');
       return;
     }
-
-    setBulkExtracting(true);
-    setBulkResults([]);
-
-    try {
-      const scanned = [];
-
-      for (const img of bulkImages) {
-        try {
-          const data = await scanFormateursList(img);
-          if (Array.isArray(data)) {
-            for (const f of data) {
-              if (f.name) {
-                scanned.push({
-                  name: f.name,
-                  email: f.email || '',
-                });
-              }
-            }
-          }
-        } catch (imgError) {
-          // Continue with other images
-        }
-      }
-
-      if (scanned.length === 0) {
-        toast.warning('Aucun formateur détecté');
-      } else {
-        showSuccess(toast, `${scanned.length} formateur(s) détecté(s)`);
-      }
-      setBulkResults(scanned);
-    } catch (error) {
-      handleApiError(error, toast);
-      setBulkResults([]);
-    } finally {
-      setBulkExtracting(false);
-    }
+    toast.info('La lecture automatique est en cours de migration vers le serveur. Veuillez saisir les formateurs manuellement.');
+    setBulkImages([]);
   };
 
   const updateBulkResult = (i, key, val) => {

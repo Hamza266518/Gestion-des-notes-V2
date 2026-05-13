@@ -6,12 +6,14 @@ use App\Models\Filiere;
 use App\Models\Unite;
 use App\Models\Sequence;
 use App\Models\Controle;
+use App\Traits\HasControleType;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Support\Collection;
 
 class UnitesImport implements ToCollection, WithHeadingRow
 {
+    use HasControleType;
     protected $filiere_id;
     public $created = 0;
     public $errors  = [];
@@ -66,11 +68,13 @@ class UnitesImport implements ToCollection, WithHeadingRow
             );
 
             // create controles automatically
-            for ($i = 1; $i <= $row['sequence_controles']; $i++) {
+            $totalControles = (int) $row['sequence_controles'];
+            for ($i = 1; $i <= $totalControles; $i++) {
                 Controle::firstOrCreate([
                     'sequence_id' => $sequence->id,
                     'numero'      => $i,
                 ], [
+                    'type'     => $this->getControleType($i, $totalControles),
                     'note_max' => 20,
                 ]);
             }

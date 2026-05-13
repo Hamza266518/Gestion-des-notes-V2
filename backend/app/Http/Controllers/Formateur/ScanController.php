@@ -130,9 +130,18 @@ class ScanController extends Controller
             'notes.*.chemin_image'   => 'nullable|string',
         ]);
 
+        $formateur = auth()->user()->formateur;
         $saved = [];
 
         foreach ($request->notes as $item) {
+            $controle = Controle::find($item['controle_id']);
+            if (!$controle) continue;
+
+            $sequence = $controle->sequence;
+            $hasAccess = $formateur->sequences()->where('sequence_id', $sequence->id)->exists();
+
+            if (!$hasAccess) continue;
+
             $existing = Note::where('etudiant_id', $item['etudiant_id'])
                 ->where('controle_id', $item['controle_id'])
                 ->where('is_confirmed', true)

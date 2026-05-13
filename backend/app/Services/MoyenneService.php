@@ -7,16 +7,19 @@ use App\Models\Unite;
 
 class MoyenneService
 {
-    public function moyenneSequence(int $etudiantId, int $sequenceId, ?string $controleType = null): ?float
+    public function moyenneSequence(int $etudiantId, int $sequenceId, ?string $controleType = null, ?int $anneeAcademiqueId = null): ?float
     {
         $sequence = \App\Models\Sequence::with('controles')->findOrFail($sequenceId);
         $notes    = [];
 
         foreach ($sequence->controles as $controle) {
             if ($controleType !== null && $controle->type !== $controleType) continue;
-            $note = \App\Models\Note::where('etudiant_id', $etudiantId)
-                ->where('controle_id', $controle->id)
-                ->first();
+            $query = \App\Models\Note::where('etudiant_id', $etudiantId)
+                ->where('controle_id', $controle->id);
+            if ($anneeAcademiqueId !== null) {
+                $query->whereHas('etudiant', fn($q) => $q->where('annee_academique_id', $anneeAcademiqueId));
+            }
+            $note = $query->first();
             if ($note) $notes[] = $note->valeur;
         }
 
@@ -24,14 +27,14 @@ class MoyenneService
         return round(array_sum($notes) / count($notes), 2);
     }
 
-    public function moyenneUnite(int $etudiantId, int $uniteId): ?float
+    public function moyenneUnite(int $etudiantId, int $uniteId, ?int $anneeAcademiqueId = null): ?float
     {
         $unite      = \App\Models\Unite::with('sequences')->findOrFail($uniteId);
         $totalPoids = 0;
         $totalNote  = 0;
 
         foreach ($unite->sequences as $sequence) {
-            $moy = $this->moyenneSequence($etudiantId, $sequence->id);
+            $moy = $this->moyenneSequence($etudiantId, $sequence->id, null, $anneeAcademiqueId);
             if ($moy !== null) {
                 $totalNote  += $moy * $sequence->coefficient;
                 $totalPoids += $sequence->coefficient;
@@ -56,7 +59,7 @@ class MoyenneService
         $totalNote  = 0;
 
         foreach ($unites as $unite) {
-            $moy = $this->moyenneUnite($etudiantId, $unite->id);
+            $moy = $this->moyenneUnite($etudiantId, $unite->id, $anneeAcademiqueId);
             if ($moy !== null) {
                 $totalNote  += $moy * $unite->coefficient;
                 $totalPoids += $unite->coefficient;
