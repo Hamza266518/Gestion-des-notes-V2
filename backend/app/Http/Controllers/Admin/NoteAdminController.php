@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Etudiant;
+use App\Models\Examen;
 use App\Models\Note;
 use App\Models\SemestrePublication;
 use App\Models\Unite;
@@ -77,11 +78,20 @@ class NoteAdminController extends Controller
 
             $semestre = null;
             $controleType = null;
+            $examType = null;
+            $examBloc = null;
+
             if (preg_match('/^(mpcc|mpefcf|mpefcfp)(\d)$/', $request->type, $m)) {
                 $semestre = (int) $m[2];
-                if ($m[1] === 'mpcc') $controleType = 'cc';
-                elseif ($m[1] === 'mpefcf') $controleType = 'theorique';
-                elseif ($m[1] === 'mpefcfp') $controleType = 'pratique';
+                if ($m[1] === 'mpcc') {
+                    $controleType = 'cc';
+                } elseif ($m[1] === 'mpefcf') {
+                    $examType = 'theorique';
+                    $examBloc = $semestre;
+                } elseif ($m[1] === 'mpefcfp') {
+                    $examType = 'pratique';
+                    $examBloc = $semestre;
+                }
             } elseif ($request->type === 'mpcc_global') {
                 $controleType = 'cc';
             }
@@ -89,8 +99,7 @@ class NoteAdminController extends Controller
             $unites = Unite::where('filiere_id', $filiereId)
                 ->where('numero_annee', $niveauNumero)
                 ->where('is_active', true)
-                ->when($semestre, fn($q) => $q->where('semestre', $semestre))
-                ->with('sequences.controles')
+                ->when($semestre && !$examType, fn($q) => $q->where('semestre', $semestre))
                 ->orderBy('ordre')
                 ->get();
 
@@ -98,14 +107,26 @@ class NoteAdminController extends Controller
                 ->orderBy('nom_prenom')
                 ->get();
 
+            // Build one subject per unite (not per sequence)
             $subjects = [];
             foreach ($unites as $unite) {
-                foreach ($unite->sequences as $seq) {
-                    $subjects[] = [
-                        'id' => $seq->id,
-                        'nom' => $seq->nom . ' (' . $unite->nom . ')',
-                        'coefficient' => $seq->coefficient,
-                    ];
+                $subjects[] = [
+                    'id' => 'u_' . $unite->id,
+                    'nom' => $unite->nom,
+                    'coefficient' => $unite->coefficient,
+                ];
+            }
+
+            // Preload examens for mpefcf/mpefcfp types
+            $examensByEtudiant = [];
+            if ($examType && $examBloc) {
+                $examRows = Examen::whereIn('etudiant_id', $etudiants->pluck('id'))
+                    ->whereIn('unite_id', $unites->pluck('id'))
+                    ->where('bloc', $examBloc)
+                    ->where('type', $examType)
+                    ->get();
+                foreach ($examRows as $ex) {
+                    $examensByEtudiant[$ex->etudiant_id][$ex->unite_id] = $ex->valeur;
                 }
             }
 
@@ -116,7 +137,17 @@ class NoteAdminController extends Controller
                 $totalCoef = 0;
 
                 foreach ($subjects as $subject) {
-                    $avg = $this->moyenneService->moyenneSequence($etudiant->id, $subject['id'], $controleType);
+                    $uniteId = (int) substr($subject['id'], 2);
+                    $avg = null;
+
+                    if ($controleType !== null) {
+                        // MPCC: compute weighted CC average across all sequences in the unite
+                        $avg = $this->moyenneService->moyenneUnite($etudiant->id, $uniteId, $controleType);
+                    } elseif ($examType && $examBloc) {
+                        // MPEFCF/MPEFCFP: read from examens table
+                        $avg = $examensByEtudiant[$etudiant->id][$uniteId] ?? null;
+                    }
+
                     $notes[$subject['id']] = $avg;
                     if ($avg !== null) {
                         $totalNote += $avg * $subject['coefficient'];
@@ -160,7 +191,7 @@ class NoteAdminController extends Controller
                     'filiere' => $groupe->niveau->filiere->nom ?? '',
                     'section' => $groupe->nom ?? '',
                     'annee_scolaire' => $groupe->annee_academique_id ? \App\Models\AnneeAcademique::find($groupe->annee_academique_id)?->label : '',
-                    'annee_formation' => '',
+                    'annee_formation' => $groupe->promotion ?? '',
                 ],
             ]]);
         } catch (\Exception $e) {

@@ -13,7 +13,7 @@
 }
 
 /* Header Section */
-.page-header {
+.mes-notes-page .page-header {
   margin-bottom: 2rem;
 }
 
@@ -24,7 +24,7 @@
   margin-bottom: 0.5rem;
 }
 
-.page-title {
+.mes-notes-page .page-title {
   font-size: 1.5rem;
   font-weight: 700;
   color: #1a1a2e;

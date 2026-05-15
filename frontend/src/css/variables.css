@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+/* Fallback: system-ui metrics-match Plus Jakarta Sans closely on modern OS */
 
 :root {
   --primary: #1B3A6B;
@@ -35,7 +36,7 @@
   --shadow-sm: 0 1px 4px rgba(0,0,0,0.07), 0 0 1px rgba(0,0,0,0.04);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 0 1px rgba(0,0,0,0.05);
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.1), 0 0 1px rgba(0,0,0,0.06);
-  --font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font: 'Plus Jakarta Sans', system-ui, -apple-system, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --transition: 0.15s ease;
 }
 

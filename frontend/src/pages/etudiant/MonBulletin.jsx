@@ -5,8 +5,8 @@ import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { handleApiError } from '../../utils/errorHandler';
 import { formatNiveau } from '../../utils/helpers';
-import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
+import { SkeletonTable } from '../../components/common/Skeleton';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -218,7 +218,7 @@ export default function MonBulletin() {
     loadBulletin();
   }, [loadBulletin]);
 
-  if (loading) return <Spinner />;
+  if (loading) return <SkeletonTable rows={5} cols={4} />;
 
   if (error) {
     return (

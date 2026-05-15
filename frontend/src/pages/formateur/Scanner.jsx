@@ -5,7 +5,7 @@ import { scanApi } from '../../api/scan';
 import { useToast } from '../../context/ToastContext';
 import Spinner from '../../components/common/Spinner';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
-import { toWesternDigits } from '../../utils/helpers';
+
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -91,16 +91,24 @@ export default function Scanner() {
       const scanned = (data.data?.resultats || []).map(r => ({
         nom: r.nom_prenom || '',
         nom_ar: r.nom_ar || '',
+        numero_inscription: r.numero_inscription || '',
+        groupe: r.groupe || '',
         note: r.note,
         etudiant_id: r.etudiant_id || null,
         found: r.found || false,
+        already_confirmed: r.already_confirmed || false,
         confidence: r.found ? 'high' : 'low'
       }));
 
       if (scanned.length === 0) {
         toast.error('Aucun résultat trouvé. Vérifiez que le fichier PDF est lisible.');
       } else {
-        showSuccess(toast, `${scanned.length} note(s) détectée(s)`);
+        const confirmedCount = scanned.filter(r => r.already_confirmed).length;
+        const unrecCount = scanned.filter(r => !r.found).length;
+        let msg = `${scanned.length} note(s) détectée(s)`;
+        if (confirmedCount > 0) msg += `, ${confirmedCount} déjà confirmée(s)`;
+        if (unrecCount > 0) msg += `, ${unrecCount} non reconnue(s)`;
+        showSuccess(toast, msg);
       }
 
       setResults(scanned);
@@ -132,7 +140,14 @@ export default function Scanner() {
 
     const missing = results.filter(r => !r.etudiant_id);
     if (missing.length > 0) {
-      toast.warning(`${missing.length} étudiant(s) non reconnu(s). Corrigez les noms ou retirez-les.`);
+      toast.warning(`${missing.length} étudiant(s) non reconnu(s) dans la base. Retirez-les de la liste.`);
+      return;
+    }
+
+    const alreadyConfirmed = results.filter(r => r.already_confirmed);
+    if (alreadyConfirmed.length > 0) {
+      const names = alreadyConfirmed.map(r => r.nom).join(', ');
+      toast.warning(`${alreadyConfirmed.length} étudiant(s) ont déjà une note confirmée : ${names}. Contactez l'administrateur si vous devez modifier ces notes.`);
       return;
     }
 
@@ -144,13 +159,28 @@ export default function Scanner() {
         valeur: r.note,
       }));
 
-      await scanApi.confirm({ notes });
-      showSuccess(toast, `${notes.length} note(s) enregistrée(s)`);
+      const res = await scanApi.confirm({ notes });
+      const data = res.data;
+
+      let msg = data.message || `${notes.length} note(s) enregistrée(s)`;
+      if (data.already_confirmed?.length > 0) {
+        const names = data.already_confirmed.map(r => r.nom_prenom).join(', ');
+        msg += ` — ${data.already_confirmed.length} ignorée(s) (déjà confirmée(s)) : ${names}. Contactez l'admin pour les modifier.`;
+        toast.warning(msg);
+      } else {
+        showSuccess(toast, msg);
+      }
       setStep(1);
       setPdfs([]);
       setResults([]);
     } catch (err) {
-      handleApiError(err, toast);
+      const resp = err.response?.data;
+      if (resp?.already_confirmed?.length > 0) {
+        const names = resp.already_confirmed.map(r => r.nom_prenom).join(', ');
+        toast.warning(`Impossible d'enregistrer : ${names} — notes déjà confirmées. Contactez l'administrateur.`);
+      } else {
+        handleApiError(err, toast);
+      }
     } finally {
       setSavingResults(false);
     }
@@ -179,6 +209,7 @@ export default function Scanner() {
       )}
 
       {/* Steps */}
+      <div className="step-mobile">Étape {step} sur 5 : {['Sélection', 'PDF', 'Résultats', 'Vérification', 'Confirmer'][step - 1]}</div>
       <div className="steps" style={{ marginBottom: 28 }}>
         {['Sélection', 'PDF', 'Résultats', 'Vérification', 'Confirmer'].map((label, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
@@ -192,7 +223,7 @@ export default function Scanner() {
               }}>
                 {step > i + 1 ? '✓' : i + 1}
               </div>
-              <span style={{ fontSize: 13, color: step === i + 1 ? 'var(--primary)' : 'var(--gray-400)' }}>
+              <span className="step-label" style={{ fontSize: 13, color: step === i + 1 ? 'var(--primary)' : 'var(--gray-400)' }}>
                 {label}
               </span>
             </div>
@@ -246,11 +277,11 @@ export default function Scanner() {
                   <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb', background: '#f9fafb', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <embed src={src} type="application/pdf" style={{ width: '100%', height: '100%' }} />
                     <div style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(239,68,68,0.92)', color: '#fff', border: 'none', borderRadius: 6, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }} onClick={() => removePdf(i)}>
-                      <FiX size={18} />
-                    </div>
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', padding: '4px 8px', fontSize: 12, textAlign: 'center' }}>
-                      Page {i + 1}
-                    </div>
+                        <FiX size={18} aria-label="Retirer ce fichier" />
+                      </div>
+                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', padding: '4px 8px', fontSize: 12, textAlign: 'center' }}>
+                        Page {i + 1}
+                      </div>
                   </div>
                 ))}
               </div>
@@ -275,7 +306,7 @@ export default function Scanner() {
       {step === 3 && (
         <div style={{ maxWidth: 1400, width: '95vw', margin: '0 auto' }}>
           <div className="alert alert-info" style={{ marginBottom: 16 }}>
-            Vérifiez les résultats avant de confirmer. Vous pouvez modifier les noms et notes si nécessaire.
+            Vérifiez les résultats avant de confirmer. Seule la note est modifiable.
           </div>
           {results.length === 0 ? (
             <div className="text-center" style={{ padding: 40 }}>
@@ -316,11 +347,12 @@ export default function Scanner() {
               </div>
               <div>
                 <div style={{ overflowX: 'auto', marginBottom: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                  <table style={{ fontSize: '15px', minWidth: '500px', width: '100%' }}>
+                  <table style={{ fontSize: '15px', minWidth: '700px', width: '100%' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f9fafb' }}>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '220px' }}>Nom</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '180px' }}>الاسم بالعربية</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '200px' }}>Nom</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '120px' }}>N Inscription</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Groupe</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Note /20</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '140px' }}>Statut</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Actions</th>
@@ -330,37 +362,36 @@ export default function Scanner() {
                       {results.map((r, i) => (
                         <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
                           <td style={{ padding: '12px 16px' }}>
-                            <input
-                              className="form-input"
-                              value={r.nom}
-                              onChange={e => updateResult(i, 'nom', e.target.value)}
-                              style={{ minWidth: '200px', width: '100%', padding: '8px 12px', fontSize: '15px' }}
-                            />
+                            <span style={{ padding: '8px 12px', display: 'block' }}>{r.nom}</span>
                           </td>
                           <td style={{ padding: '12px 16px' }}>
-                            <input
-                              className="form-input"
-                              value={toWesternDigits(r.nom_ar || '')}
-                              onChange={e => updateResult(i, 'nom_ar', toWesternDigits(e.target.value))}
-                              style={{ minWidth: '160px', width: '100%', padding: '8px 12px', fontSize: '15px', direction: 'rtl', textAlign: 'right' }}
-                            />
+                            <span style={{ padding: '8px 12px', display: 'block' }}>{r.numero_inscription}</span>
                           </td>
                           <td style={{ padding: '12px 16px' }}>
-                            <input
-                              type="number"
-                              className="form-input"
-                              style={{ width: 70, padding: '8px 12px', fontSize: '15px' }}
-                              value={r.note}
-                              min={0}
-                              max={20}
-                              onChange={e => updateResult(i, 'note', Number(e.target.value))}
-                            />
+                            <span style={{ padding: '8px 12px', display: 'block' }}>{r.groupe}</span>
                           </td>
                           <td style={{ padding: '12px 16px' }}>
-                            {r.etudiant_id ? (
+                            {r.already_confirmed || !r.etudiant_id ? (
+                              <span style={{ padding: '8px 12px', display: 'block', color: '#999' }}>{r.note}</span>
+                            ) : (
+                              <input
+                                type="number"
+                                className="form-input"
+                                style={{ width: 70, padding: '8px 12px', fontSize: '15px' }}
+                                value={r.note}
+                                min={0}
+                                max={20}
+                                onChange={e => updateResult(i, 'note', Number(e.target.value))}
+                              />
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            {r.already_confirmed ? (
+                              <span style={{ color: 'var(--warning)', fontWeight: 600, fontSize: 13 }}>🔒 Déjà confirmé</span>
+                            ) : r.etudiant_id ? (
                               <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: 13 }}>✓ Reconnu</span>
                             ) : (
-                              <span style={{ color: 'var(--warning)', fontWeight: 600, fontSize: 13 }}>⚠ Non reconnu</span>
+                              <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 13 }}>✗ Introuvable</span>
                             )}
                           </td>
                           <td style={{ padding: '12px 16px' }}>
@@ -386,8 +417,14 @@ export default function Scanner() {
         <div>
           {results.some(r => !r.etudiant_id) && (
             <div className="alert alert-danger" style={{ marginBottom: 16 }}>
-              <strong>Étudiants non reconnus :</strong> certains étudiants n'ont pas pu être identifiés.
-              Corrigez les noms et ressayez le scan, ou retirez-les de la liste.
+              <strong>Étudiants introuvables :</strong> certains étudiants ne sont pas dans la base de données.
+              Retirez-les de la liste.
+            </div>
+          )}
+          {results.some(r => r.already_confirmed) && (
+            <div className="alert alert-danger" style={{ marginBottom: 16 }}>
+              <strong>Notes déjà confirmées :</strong> certains étudiants ont déjà une note confirmée.
+              Contactez l'administrateur pour les modifier.
             </div>
           )}
           <div className="alert alert-warning" style={{ marginBottom: 16 }}>
@@ -395,7 +432,7 @@ export default function Scanner() {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-outline" onClick={() => setStep(3)}>← Retour</button>
-            <button className="btn btn-primary" disabled={savingResults || results.some(r => !r.etudiant_id)} onClick={handleConfirm}>
+            <button className="btn btn-primary" disabled={savingResults || results.some(r => !r.etudiant_id || r.already_confirmed)} onClick={handleConfirm}>
               {savingResults ? (
                 <>
                   <Spinner /> Enregistrement...

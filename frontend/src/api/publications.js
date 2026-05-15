@@ -5,6 +5,8 @@ export const publicationsApi = {
         apiClient.get('/admin/publications', { params }),
     publish: (data) =>
         apiClient.post('/admin/publications/publish', data),
+    publishAll: (data) =>
+        apiClient.post('/admin/publications/publish-all', data),
     unpublish: (data) =>
         apiClient.post('/admin/publications/unpublish', data),
 };

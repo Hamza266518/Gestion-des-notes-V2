@@ -6,6 +6,7 @@ import ActivityLog from '../../components/common/ActivityLog';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import handleApiError from '../../utils/errorHandler';
+import { SkeletonDashboard } from '../../components/common/Skeleton';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -88,13 +89,7 @@ export default function Dashboard() {
     };
   }, [currentAnnee, anneeLoading]);
 
-  if (loading) {
-    return (
-      <div className="text-center mt-5">
-        <p className="text-muted">Chargement du tableau de bord...</p>
-      </div>
-    );
-  }
+  if (loading) return <SkeletonDashboard />;
 
   if (error) {
     return (

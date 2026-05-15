@@ -53,7 +53,7 @@
   .navbar { left: 0 !important; padding: 0 14px; }
   .navbar-hamburger { display: flex; }
   .navbar-user { display: none; }
-  .navbar-year { display: none; }
+  .navbar-year { display: flex; }
   .navbar-role { font-size: 10px; padding: 2px 8px; }
 }
 

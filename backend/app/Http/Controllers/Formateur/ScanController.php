@@ -97,17 +97,60 @@ class ScanController extends Controller
             }
 
             foreach ($parsed as $item) {
-                $safeName = str_replace(['%', '_'], ['\\%', '\\_'], strtolower($item['nom']));
-                $etudiant = Etudiant::whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $safeName . '%'])->first();
+                $etudiant = null;
+                $searchName = trim($item['nom']);
+                if (!empty($searchName)) {
+                    $safeName = str_replace(['%', '_'], ['\\%', '\\_'], strtolower($searchName));
+                    $safeName = preg_replace('/\s+/', ' ', $safeName);
+                    $words = array_filter(explode(' ', $safeName));
+
+                    // Try 1: full name as substring
+                    $etudiant = Etudiant::with('groupe')
+                        ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $safeName . '%'])
+                        ->first();
+
+                    // Try 2: all words must appear in the name (handles reversed order)
+                    if (!$etudiant && count($words) >= 2) {
+                        $q = Etudiant::with('groupe');
+                        foreach ($words as $w) {
+                            if (strlen($w) > 1) {
+                                $q->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $w . '%']);
+                            }
+                        }
+                        $etudiant = $q->first();
+                    }
+
+                    // Try 3: first word + last word (handles middle name variations)
+                    if (!$etudiant && count($words) >= 2) {
+                        $first = reset($words);
+                        $last  = end($words);
+                        if (strlen($first) > 1 && strlen($last) > 1) {
+                            $etudiant = Etudiant::with('groupe')
+                                ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $first . '%'])
+                                ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $last . '%'])
+                                ->first();
+                        }
+                    }
+                }
+
+                $alreadyConfirmed = $etudiant
+                    ? Note::where('etudiant_id', $etudiant->id)
+                        ->where('controle_id', $controle->id)
+                        ->where('is_confirmed', true)
+                        ->exists()
+                    : false;
 
                 $results[] = [
-                    'etudiant_id'  => $etudiant?->id,
-                    'nom_prenom'   => $etudiant?->nom_prenom ?? $item['nom'],
-                    'nom_ar'       => $etudiant?->nom_ar ?? $item['nom_ar'] ?? '',
-                    'controle_id'  => $controle->id,
-                    'note'         => $item['note'],
-                    'chemin_image' => $imagePath,
-                    'found'        => $etudiant !== null,
+                    'etudiant_id'       => $etudiant?->id,
+                    'nom_prenom'        => $etudiant?->nom_prenom ?? $item['nom'],
+                    'nom_ar'            => $etudiant?->nom_ar ?? $item['nom_ar'] ?? '',
+                    'numero_inscription'=> $etudiant?->numero_inscription ?? '',
+                    'groupe'            => $etudiant?->groupe?->nom ?? '',
+                    'controle_id'       => $controle->id,
+                    'note'              => $item['note'],
+                    'chemin_image'      => $imagePath,
+                    'found'             => $etudiant !== null,
+                    'already_confirmed' => $alreadyConfirmed,
                 ];
             }
 
@@ -131,9 +174,32 @@ class ScanController extends Controller
         ]);
 
         $formateur = auth()->user()->formateur;
+
+        $alreadyConfirmed = [];
+
+        foreach ($request->notes as $item) {
+            $existing = Note::where('etudiant_id', $item['etudiant_id'])
+                ->where('controle_id', $item['controle_id'])
+                ->where('is_confirmed', true)
+                ->first();
+
+            if ($existing) {
+                $etudiant = \App\Models\Etudiant::find($item['etudiant_id']);
+                $alreadyConfirmed[] = [
+                    'etudiant_id' => $item['etudiant_id'],
+                    'nom_prenom'  => $etudiant?->nom_prenom ?? 'Inconnu',
+                    'note_actuelle' => $existing->valeur,
+                ];
+            }
+        }
+
+        $alreadyIds = collect($alreadyConfirmed)->pluck('etudiant_id')->toArray();
+
         $saved = [];
 
         foreach ($request->notes as $item) {
+            if (in_array($item['etudiant_id'], $alreadyIds)) continue;
+
             $controle = Controle::find($item['controle_id']);
             if (!$controle) continue;
 
@@ -141,13 +207,6 @@ class ScanController extends Controller
             $hasAccess = $formateur->sequences()->where('sequence_id', $sequence->id)->exists();
 
             if (!$hasAccess) continue;
-
-            $existing = Note::where('etudiant_id', $item['etudiant_id'])
-                ->where('controle_id', $item['controle_id'])
-                ->where('is_confirmed', true)
-                ->first();
-
-            if ($existing) continue; // already confirmed skip
 
             $note = Note::updateOrCreate(
                 ['etudiant_id' => $item['etudiant_id'], 'controle_id' => $item['controle_id']],
@@ -161,10 +220,25 @@ class ScanController extends Controller
             $saved[] = $note;
         }
 
+        if (count($alreadyConfirmed) > 0 && count($saved) === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tous les étudiants ont déjà des notes confirmées pour ce contrôle. Contactez l\'administrateur pour les modifier.',
+                'already_confirmed' => $alreadyConfirmed,
+                'data' => [],
+            ], 409);
+        }
+
+        $msg = count($saved) . ' note(s) confirmée(s)';
+        if (count($alreadyConfirmed) > 0) {
+            $msg .= '. ' . count($alreadyConfirmed) . ' étudiant(s) déjà confirmé(s) ignoré(s) — contactez l\'administrateur pour les modifier.';
+        }
+
         return response()->json([
             'success' => true,
             'data'    => $saved,
-            'message' => count($saved) . ' notes confirmées',
+            'already_confirmed' => $alreadyConfirmed,
+            'message' => $msg,
         ]);
     }
 }

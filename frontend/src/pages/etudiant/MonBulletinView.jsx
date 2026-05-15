@@ -5,7 +5,7 @@ import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { handleApiError } from '../../utils/errorHandler';
 import { formatNiveau } from '../../utils/helpers';
 import Badge from '../../components/common/Badge';
-import Spinner from '../../components/common/Spinner';
+import { SkeletonBulletin } from '../../components/common/Skeleton';
 import '../../css/components.css';
 import '../../css/layout.css';
 import '../../css/pages.css';
@@ -35,7 +35,7 @@ export default function MonBulletinView() {
     loadBulletin();
   }, [loadBulletin]);
 
-  if (loading) return <Spinner />;
+  if (loading) return <SkeletonBulletin />;
 
   if (error) {
     return (

@@ -29,10 +29,10 @@ export default function GestionNotes() {
   const [error, setError] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
   const [editValue, setEditValue] = useState('');
-  const [editingExam, setEditingExam] = useState(null); // { etudiant_id, type }
-  const [examenBloc, setExamenBloc] = useState(1);
+  const [editingExam, setEditingExam] = useState(null);
   const [editExamValue, setEditExamValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [filtersApplied, setFiltersApplied] = useState(false);
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
 
@@ -87,29 +87,12 @@ export default function GestionNotes() {
     }
   }, [selectedUniteId]);
 
-  useEffect(() => {
-    if (selectedSequenceId && selected.groupe_id) {
-      loadNotesForSequence();
-    } else {
-      setNotesByControl({});
-    }
-  }, [selectedSequenceId, selected.groupe_id]);
-
-  useEffect(() => {
-    if (selectedUniteId && selected.groupe_id) {
-      loadExamens();
-    } else {
-      setExamens({});
-    }
-  }, [selectedUniteId, selected.groupe_id]);
-
   const loadNotesForSequence = useCallback(async () => {
     const seq = sequences.find(s => s.id === selectedSequenceId);
     if (!seq) return;
     const ctrlIds = seq.controles?.map(c => c.id) || [];
     if (ctrlIds.length === 0) return;
 
-    setLoading(true);
     setError(null);
     try {
       const responses = await Promise.all(
@@ -123,8 +106,6 @@ export default function GestionNotes() {
     } catch (err) {
       const info = handleApiError(err, toast, { showToast: false });
       setError(info.message);
-    } finally {
-      setLoading(false);
     }
   }, [selectedSequenceId, selected.groupe_id, sequences]);
 
@@ -145,6 +126,24 @@ export default function GestionNotes() {
       setError(info.message);
     }
   }, [selectedUniteId, selected.groupe_id]);
+
+  const handleLoad = useCallback(async () => {
+    if (!selected.groupe_id) {
+      toast.warning('Veuillez sélectionner un groupe');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setFiltersApplied(true);
+    const promises = [];
+    if (selectedSequenceId) promises.push(loadNotesForSequence());
+    if (selectedUniteId) promises.push(loadExamens());
+    try {
+      await Promise.all(promises);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedSequenceId, selectedUniteId, selected.groupe_id, loadNotesForSequence, loadExamens]);
 
   const handleSaveNote = async (noteId) => {
     if (editValue === '' || editValue === null) return;
@@ -173,7 +172,7 @@ export default function GestionNotes() {
       await notesApi.saveBulkExamens({
         examens: [{ etudiant_id: editingExam.etudiant_id, valeur: parseFloat(editExamValue) }],
         unite_id: selectedUniteId,
-        bloc: examenBloc,
+        bloc: 1,
         type: type,
         semestre: unite.semestre || 1,
         annee_academique_id: selected.annee_academique_id || currentAnnee?.id || 1,
@@ -212,7 +211,14 @@ export default function GestionNotes() {
           <select
             className="form-select"
             value={selectedUniteId}
-            onChange={e => setSelectedUniteId(e.target.value)}
+            onChange={e => {
+              setSelectedUniteId(e.target.value);
+              setSelectedSequenceId('');
+              setSequences([]);
+              setNotesByControl({});
+              setExamens({});
+              setFiltersApplied(false);
+            }}
           >
             <option value="">Toutes les unités</option>
             {unites.map(u => (
@@ -222,7 +228,11 @@ export default function GestionNotes() {
           <select
             className="form-select"
             value={selectedSequenceId}
-            onChange={e => setSelectedSequenceId(e.target.value)}
+            onChange={e => {
+              setSelectedSequenceId(e.target.value);
+              setNotesByControl({});
+              setFiltersApplied(false);
+            }}
             disabled={!selectedUniteId || sequences.length === 0}
           >
             {sequences.length === 0 ? (
@@ -235,8 +245,11 @@ export default function GestionNotes() {
               ))
             )}
           </select>
+          <button className="btn btn-primary" onClick={handleLoad} disabled={!selected.groupe_id}>
+            Afficher
+          </button>
           {!selected.groupe_id && (
-            <span className="form-select" style={{ display: 'inline-block', padding: '8px 12px', background: '#fef9c3', color: '#a16207', fontWeight: 'bold', width: 'auto' }}>
+            <span className="alert alert-warning" style={{ margin: 0 }}>
               Sélectionnez un groupe
             </span>
           )}
@@ -251,18 +264,14 @@ export default function GestionNotes() {
         <EmptyState message="Sélectionnez une filière, un niveau et un groupe pour commencer." />
       )}
 
-      {etudiants.length > 0 && !loading && (
+      {filtersApplied && etudiants.length > 0 && !loading && (
         <div className="card">
           <div className="card-header">
             <h5 className="mb-0">
               Notes — {sequences.find(s => s.id === selectedSequenceId)?.nom || ''}
               {showExamCols && (
                 <span className="ml-2" style={{ fontSize: 12, color: '#666', marginLeft: 8 }}>
-                  (Examens inclus — Bloc:
-                  <select value={examenBloc} onChange={e => setExamenBloc(Number(e.target.value))} style={{ marginLeft: 4, fontSize: 11, padding: '1px 4px' }}>
-                    <option value={1}>Session 1</option>
-                    <option value={2}>Session 2</option>
-                  </select>)
+                  (Examens inclus)
                 </span>
               )}
             </h5>
@@ -407,7 +416,7 @@ export default function GestionNotes() {
         </div>
       )}
 
-      {selectedSequenceId && etudiants.length === 0 && !loading && selected.groupe_id && (
+      {filtersApplied && etudiants.length === 0 && !loading && selected.groupe_id && (
         <EmptyState message="Aucune note trouvée pour cette séquence et ce groupe." />
       )}
     </div>

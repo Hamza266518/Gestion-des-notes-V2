@@ -27,14 +27,14 @@ class MoyenneService
         return round(array_sum($notes) / count($notes), 2);
     }
 
-    public function moyenneUnite(int $etudiantId, int $uniteId, ?int $anneeAcademiqueId = null): ?float
+    public function moyenneUnite(int $etudiantId, int $uniteId, ?string $controleType = null, ?int $anneeAcademiqueId = null): ?float
     {
         $unite      = \App\Models\Unite::with('sequences')->findOrFail($uniteId);
         $totalPoids = 0;
         $totalNote  = 0;
 
         foreach ($unite->sequences as $sequence) {
-            $moy = $this->moyenneSequence($etudiantId, $sequence->id, null, $anneeAcademiqueId);
+            $moy = $this->moyenneSequence($etudiantId, $sequence->id, $controleType, $anneeAcademiqueId);
             if ($moy !== null) {
                 $totalNote  += $moy * $sequence->coefficient;
                 $totalPoids += $sequence->coefficient;

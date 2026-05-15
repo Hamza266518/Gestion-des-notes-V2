@@ -1,39 +1,34 @@
 import { createContext, useContext, useState, useCallback } from 'react';
+import '../css/components.css';
 
 const ToastContext = createContext(null);
 
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
+  const removeToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   const addToast = useCallback((message, type) => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3000);
-  }, []);
+    setTimeout(() => removeToast(id), 4000);
+  }, [removeToast]);
 
   const success = (msg) => addToast(msg, 'success');
   const error = (msg) => addToast(msg, 'error');
+  const warning = (msg) => addToast(msg, 'warning');
+  const info = (msg) => addToast(msg, 'info');
 
   return (
-    <ToastContext.Provider value={{ toasts, success, error }}>
+    <ToastContext.Provider value={{ toasts, success, error, warning, info, removeToast }}>
       {children}
-      <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+      <div className="toast-container">
         {toasts.map(toast => (
-          <div
-            key={toast.id}
-            style={{
-              background: toast.type === 'error' ? '#DC2626' : '#16A34A',
-              color: 'white',
-              padding: '12px 20px',
-              marginBottom: 8,
-              borderRadius: 8,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              minWidth: 260,
-            }}
-          >
+          <div key={toast.id} className={`toast toast-${toast.type}`}>
             <span>{toast.message}</span>
+            <button className="toast-close" onClick={() => removeToast(toast.id)} aria-label="Fermer">×</button>
           </div>
         ))}
       </div>

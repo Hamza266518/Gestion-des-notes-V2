@@ -3,8 +3,8 @@ import { formateursApi } from '../../api/formateurs';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
-import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
+import { SkeletonTable } from '../../components/common/Skeleton';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -44,7 +44,7 @@ export default function MesNotesList() {
     loadSequences();
   }, [loadSequences]);
 
-  if (loading) return <Spinner />;
+  if (loading) return <SkeletonTable rows={5} cols={4} />;
 
   if (error) {
     return (

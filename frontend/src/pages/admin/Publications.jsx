@@ -29,6 +29,7 @@ export default function Publications() {
   const [publications, setPublications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(null);
+  const [bulkProcessing, setBulkProcessing] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null);
   const { currentAnnee } = useAnneeAcademique();
 
@@ -72,6 +73,20 @@ export default function Publications() {
       handleApiError(error, toast);
     } finally {
       setProcessing(null);
+      setConfirmModal(null);
+    }
+  };
+
+  const handlePublishAll = async (type) => {
+    setBulkProcessing(type);
+    try {
+      const res = await publicationsApi.publishAll({ annee_academique_id: currentAnnee.id, type });
+      showSuccess(toast, res.data.message);
+      loadData();
+    } catch (error) {
+      handleApiError(error, toast);
+    } finally {
+      setBulkProcessing(null);
       setConfirmModal(null);
     }
   };
@@ -141,6 +156,30 @@ export default function Publications() {
         )}
       </div>
 
+      <div className="filter-bar" style={{ marginBottom: 20 }}>
+        <button
+          className="btn btn-accent"
+          onClick={() => setConfirmModal({ type: 'bulk', bulkType: 'notes_s1' })}
+          disabled={bulkProcessing !== null || !currentAnnee}
+        >
+          {bulkProcessing === 'notes_s1' ? 'Publication...' : 'Publier toutes les Notes S1'}
+        </button>
+        <button
+          className="btn btn-accent"
+          onClick={() => setConfirmModal({ type: 'bulk', bulkType: 'notes_s2' })}
+          disabled={bulkProcessing !== null || !currentAnnee}
+        >
+          {bulkProcessing === 'notes_s2' ? 'Publication...' : 'Publier toutes les Notes S2'}
+        </button>
+        <button
+          className="btn btn-accent"
+          onClick={() => setConfirmModal({ type: 'bulk', bulkType: 'bulletin' })}
+          disabled={bulkProcessing !== null || !currentAnnee}
+        >
+          {bulkProcessing === 'bulletin' ? 'Publication...' : 'Publier tous les Bulletins'}
+        </button>
+      </div>
+
       {groupes.length === 0 ? (
         <div className="pub-empty-state">
           <h4 className="pub-empty-title">Aucun groupe trouvé</h4>
@@ -189,10 +228,15 @@ export default function Publications() {
       <Modal
         open={!!confirmModal}
         onClose={() => setConfirmModal(null)}
-        title={confirmModal?.type === 'publish' ? 'Confirmer la publication' : 'Confirmer la dépublication'}
+        title={
+          confirmModal?.type === 'bulk' ? 'Confirmer la publication en masse' :
+          confirmModal?.type === 'publish' ? 'Confirmer la publication' : 'Confirmer la dépublication'
+        }
       >
         <p className="pub-confirm-text">
-          {confirmModal?.type === 'publish'
+          {confirmModal?.type === 'bulk'
+            ? `Cette action publiera ${TYPE_LABELS[confirmModal?.bulkType]} pour TOUS les groupes. Les étudiants pourront voir ces informations. Continuer ?`
+            : confirmModal?.type === 'publish'
             ? `Cette action publiera ${TYPE_LABELS[confirmModal?.publicationType]} pour le groupe "${confirmModal?.groupe?.nom}". Les étudiants pourront voir ces informations. Continuer ?`
             : `Cette action dépubliera ${TYPE_LABELS[confirmModal?.pub?.type]} pour le groupe "${confirmModal?.pub?.groupe?.nom || confirmModal?.groupe?.nom}". Les étudiants ne pourront plus voir ces informations. Continuer ?`
           }
@@ -200,14 +244,15 @@ export default function Publications() {
         <div className="modal-footer">
           <button className="btn btn-outline" onClick={() => setConfirmModal(null)}>Annuler</button>
           <button
-            className={`btn ${confirmModal?.type === 'publish' ? 'btn-accent' : 'btn-danger'}`}
+            className={`btn ${confirmModal?.type === 'unpublish' ? 'btn-danger' : 'btn-accent'}`}
             onClick={() => {
               if (confirmModal.type === 'publish') handlePublish(confirmModal.groupe, confirmModal.publicationType);
+              else if (confirmModal.type === 'bulk') handlePublishAll(confirmModal.bulkType);
               else handleUnpublish(confirmModal.pub);
             }}
-            disabled={processing !== null}
+            disabled={processing !== null || bulkProcessing !== null}
           >
-            {confirmModal?.type === 'publish' ? 'Publier' : 'Dépublier'}
+            {confirmModal?.type === 'unpublish' ? 'Dépublier' : 'Publier'}
           </button>
         </div>
       </Modal>

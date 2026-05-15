@@ -67,9 +67,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle, onCloseMobile
               alt="IFP Logo" 
               className="sidebar-logo-img" 
             />
-            {!collapsed && (
-              <div className="sidebar-logo-sub">Institut des Formations Paramédicales Privé</div>
-            )}
+
           </div>
           <button className="sidebar-toggle desktop-toggle" onClick={onToggle} aria-label="Toggle sidebar">
             {collapsed ? <FiChevronRight size={18} /> : <FiChevronLeft size={18} />}

@@ -6,7 +6,6 @@
   transition: margin-left 0.25s ease;
   min-height: 100vh;
   width: calc(100% - var(--sidebar-width));
-  overflow-x: hidden;
 }
 
 .admin-content.sidebar-collapsed {

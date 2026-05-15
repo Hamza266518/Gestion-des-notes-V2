@@ -15,8 +15,6 @@ const TABLE_TYPES = [
   { value: 'mpefcf2', label: 'MPEFCFT2 (théorique Bloc 2)' },
   { value: 'mpefcfp1', label: 'MPEFCFP1 (pratique Bloc 1)' },
   { value: 'mpefcfp2', label: 'MPEFCFP2 (pratique Bloc 2)' },
-  { value: 'nsti', label: 'NSTI (soutenance)' },
-  { value: 'nf', label: 'NF (note finale)' },
 ];
 
 export default function Notes() {
@@ -53,11 +51,9 @@ export default function Notes() {
     : tableType === 'mpefcf2' ? 'Tableau récapitulatif des résultats des examens théoriques Bloc 02'
     : tableType === 'mpefcfp1' ? 'Tableau récapitulatif des résultats des examens pratiques Bloc 01'
     : tableType === 'mpefcfp2' ? 'Tableau récapitulatif des résultats des examens pratiques Bloc 02'
-    : tableType === 'nsti' ? 'Tableau récapitulatif des résultats de soutenance'
     : 'Tableau récapitulatif des résultats';
 
-  const avgLabel = tableType === 'nf' ? 'NF' : tableType === 'nsti' ? 'NSTI'
-    : tableType.startsWith('mpefcfp') ? tableType.toUpperCase()
+  const avgLabel = tableType.startsWith('mpefcfp') ? tableType.toUpperCase()
     : tableType.startsWith('mpefcf') ? tableType.toUpperCase()
     : tableType.startsWith('mpcc') ? tableType.toUpperCase() + '*' : 'MPCC';
 
