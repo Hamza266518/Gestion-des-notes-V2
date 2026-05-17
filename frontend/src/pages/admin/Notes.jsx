@@ -142,7 +142,7 @@ export default function Notes() {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Relevé de Notes - Jury</title>
+          <title>Relevé de Notes</title>
           <style>
             @page { size: landscape; margin: 6mm; }
             body { font-family: Arial, sans-serif; margin: 0; font-size: 9px; }
@@ -229,15 +229,6 @@ export default function Notes() {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <h2 className="page-title">Relevé de Notes - Jury</h2>
-        {recapData && (
-          <button className="btn btn-primary" onClick={handlePrint}>
-            Imprimer
-          </button>
-        )}
-      </div>
-
       <div className="filter-bar">
         <FiliereCascade selected={selected} onChange={setSelected} />
         <select
@@ -257,6 +248,11 @@ export default function Notes() {
         >
           {loading ? 'Chargement...' : 'Afficher'}
         </button>
+        {recapData && (
+          <button className="btn btn-primary" onClick={handlePrint} style={{ marginLeft: 'auto' }}>
+            Imprimer
+          </button>
+        )}
       </div>
 
       {loading && <Spinner />}

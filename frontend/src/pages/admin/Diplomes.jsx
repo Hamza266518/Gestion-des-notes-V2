@@ -269,7 +269,7 @@ export default function Diplomes() {
       await ensureArabicFont();
 
       const { jsPDF } = await import('jspdf');
-      const diplomaTemplate = (await import('../../assets/diplome_template.jpg')).default;
+      const diplomaTemplate = (await import('../../assets/diplome_template.png')).default;
 
       const res  = await diplomesApi.downloadDiplome(diplome.id);
       const data = res.data.data;
@@ -438,12 +438,11 @@ export default function Diplomes() {
     navigator.clipboard.writeText(code).then(() => toast.success('Coordonnées copiées !'));
   };
 
-  if (loading) return <Spinner />;
+  if (loading) return <div className="text-center mt-5"><Spinner /></div>;
 
   return (
     <div className="page">
       <div className="page-header">
-        <h2 className="page-title">Diplômes</h2>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <button className="btn btn-primary" onClick={handleGenerateAll} disabled={genAllLoading || !currentAnnee}>
             {genAllLoading ? 'Génération...' : 'Générer tous les diplômes'}

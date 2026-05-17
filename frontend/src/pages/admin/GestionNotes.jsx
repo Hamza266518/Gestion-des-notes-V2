@@ -196,10 +196,6 @@ export default function GestionNotes() {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <h2 className="page-title">Saisie des Notes</h2>
-      </div>
-
       <FiliereCascade selected={selected} onChange={setSelected} />
 
       {error && <div className="alert alert-error">{error}</div>}

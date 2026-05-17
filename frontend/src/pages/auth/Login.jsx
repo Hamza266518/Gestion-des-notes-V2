@@ -18,9 +18,35 @@ export default function Login() {
   const navigate = useNavigate();
   const passwordRef = useRef(null);
 
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    if (!email.trim()) {
+      setError('Veuillez entrer votre adresse email');
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      setError('Veuillez entrer une adresse email valide');
+      return;
+    }
+    
+    if (!password) {
+      setError('Veuillez entrer votre mot de passe');
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await authApi.login(email, password);
@@ -61,8 +87,14 @@ export default function Login() {
       </div>
 
       <div className="login-left">
-        <div className="login-left-content">
-          <img src={logoIFP} alt="IFP Logo" className="login-brand-logo" />
+          <div className="login-left-content">
+          <div className="login-brand-block">
+            <img src={logoIFP} alt="IFP Logo" className="login-brand-logo" />
+            <div className="login-brand-text">
+              <span className="login-brand-name">Institut des Formations Paramédicales</span>
+              <span className="login-brand-subtitle">Plateforme académique</span>
+            </div>
+          </div>
           <div className="login-left-footer">
             © 2026 IFP — Tous droits réservés
           </div>
@@ -74,8 +106,8 @@ export default function Login() {
           <img src={logoIFP} alt="IFP Logo" className="login-brand-logo-mobile" />
           <div className="login-card">
             <div className="login-card-header">
-              <h2>Bonjour !</h2>
-              <p>Connectez-vous à votre espace</p>
+              <h2>Accédez à votre espace</h2>
+              <div className="login-card-accent" />
             </div>
 
             {error && (
@@ -151,7 +183,7 @@ export default function Login() {
                     <FiLoader className="login-btn-spinner" /> Connexion en cours...
                   </>
                 ) : (
-                  'Se connecter'
+                  <span>Se connecter</span>
                 )}
               </button>
             </form>

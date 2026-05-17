@@ -142,7 +142,6 @@ export default function Publications() {
     return (
       <div className="text-center mt-5">
         <Spinner />
-        <p className="mt-2 text-muted">Chargement des publications...</p>
       </div>
     );
   }
@@ -150,7 +149,6 @@ export default function Publications() {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1>Publications</h1>
         {currentAnnee && (
           <Badge label={`Année: ${currentAnnee.label}`} color="blue" />
         )}

@@ -292,7 +292,6 @@ export default function Etudiants() {
       <div className="page">
         <div className="text-center mt-5">
           <Spinner />
-          <p className="mt-2 text-muted">Chargement...</p>
         </div>
       </div>
     );
@@ -303,7 +302,6 @@ export default function Etudiants() {
       <style>{`@media print { .navbar, .page-header { display: none !important; } }`}</style>
       <div className="page-main">
       <div className="page-header">
-        <h2 className="page-title">Étudiants</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             className="btn btn-outline"
@@ -370,7 +368,6 @@ export default function Etudiants() {
       {loading ? (
         <div className="text-center mt-5">
           <Spinner />
-          <p className="mt-2 text-muted">Chargement des étudiants...</p>
         </div>
       ) : (
         <>
@@ -415,18 +412,19 @@ export default function Etudiants() {
                       <td>{e.date_naissance ?? '—'}</td>
                       <td><Badge label={e.numero_inscription} color="blue" /></td>
                       <td style={{ fontSize: 12 }}>{e.user?.email ?? '—'}</td>
-                      <td><code style={{ fontSize: 12, background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 4 }}>password</code></td>
+                      <td><code style={{ fontSize: 12, background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 4 }}>{e.user?.password_plain || '—'}</code></td>
                       <td>{e.groupe?.nom ?? '—'}</td>
                       <td className="no-print">
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap' }}>
                           <button
                             className="btn btn-sm btn-outline"
                             onClick={() => {
-                              const text = `${e.user?.email ?? ''}:password`;
+                              const pwd = e.user?.password_plain || '';
+                              const text = `${e.user?.email ?? ''}:${pwd}`;
                               navigator.clipboard.writeText(text);
-                              toast.success('Identifiants copiés');
+                              toast.success(pwd ? 'Identifiants copiés' : 'Mot de passe non disponible');
                             }}
-                            title="Copier email:password"
+                            title="Copier email:mot_de_passe"
                           >
                             Copier
                           </button>
@@ -481,7 +479,7 @@ export default function Etudiants() {
             </select>
           </div>
           {printLoading ? (
-            <div className="text-center mt-5"><Spinner /><p className="mt-2 text-muted">Chargement...</p></div>
+            <div className="text-center mt-5"><Spinner /></div>
           ) : printGroupe && printEtudiants.length === 0 ? (
             <div className="text-center mt-5" style={{ padding: 40 }}>
               <FiClipboard size={48} style={{ marginBottom: 16, color: 'var(--color-muted)' }} />
@@ -506,7 +504,7 @@ export default function Etudiants() {
                       <td><strong>{e.nom_prenom}</strong></td>
                       <td>{e.numero_inscription}</td>
                       <td style={{ fontSize: 12 }}>{e.user?.email ?? '—'}</td>
-                      <td><code style={{ fontSize: 12, background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 4 }}>password</code></td>
+                      <td><code style={{ fontSize: 12, background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 4 }}>{e.user?.password_plain || '—'}</code></td>
                     </tr>
                   ))}
                 </tbody>

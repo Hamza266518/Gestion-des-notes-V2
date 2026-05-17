@@ -240,14 +240,10 @@ export default function FilieresGroupes() {
     setDeleteConfirm({ type: 'groupe', id });
   };
 
-  if (loading) return <Spinner />;
+  if (loading) return <div className="text-center mt-5"><Spinner /></div>;
 
   return (
     <div className="page">
-      <div className="page-header">
-        <h2 className="page-title">Filières & Groupes</h2>
-      </div>
-
       {/* FILIERES SECTION */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '24px 0 12px' }}>
         <h3 style={{ fontSize: 18, margin: 0 }}>Filières</h3>

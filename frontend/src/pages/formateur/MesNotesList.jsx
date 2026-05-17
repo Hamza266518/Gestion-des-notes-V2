@@ -4,7 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
 import Badge from '../../components/common/Badge';
-import { SkeletonTable } from '../../components/common/Skeleton';
+import Spinner from '../../components/common/Spinner';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -44,7 +44,7 @@ export default function MesNotesList() {
     loadSequences();
   }, [loadSequences]);
 
-  if (loading) return <SkeletonTable rows={5} cols={4} />;
+  if (loading) return <Spinner />;
 
   if (error) {
     return (
@@ -162,13 +162,13 @@ function SequenceRow({ sequence, allControlNums, isOpen, onToggle }) {
         style={{ cursor: 'pointer' }}
         onClick={onToggle}
       >
-        <h6 className="mb-0 d-flex justify-content-between align-items-center">
+        <div className="d-flex justify-content-between align-items-center" style={{ fontSize: 15, fontWeight: 600 }}>
           <span>
             {sequence.unite?.nom} — {sequence.nom}
             <Badge color="info" className="ml-2">Coef: {sequence.coefficient}</Badge>
           </span>
           <span className="chevron">{isOpen ? '▲' : '▼'}</span>
-        </h6>
+        </div>
       </div>
       {isOpen && (
         <div className="card-body p-0">
@@ -216,6 +216,8 @@ function SequenceRow({ sequence, allControlNums, isOpen, onToggle }) {
                                   disabled={saving}
                                   autoFocus
                                 />
+                              ) : note.is_confirmed ? (
+                                <span><strong>{note.valeur ?? '—'}</strong>/20</span>
                               ) : (
                                 <span
                                   style={{ cursor: 'pointer' }}

@@ -6,7 +6,7 @@ import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { handleApiError } from '../../utils/errorHandler';
 import { formatNiveau } from '../../utils/helpers';
 import Badge from '../../components/common/Badge';
-import { SkeletonTable } from '../../components/common/Skeleton';
+import Spinner from '../../components/common/Spinner';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -20,10 +20,10 @@ function UniteAccordion({ uniteNom, sequences, allControlNums }) {
         style={{ cursor: 'pointer' }}
         onClick={() => setOpen(prev => !prev)}
       >
-        <h6 className="mb-0 d-flex justify-content-between align-items-center">
+        <h4 className="mb-0 d-flex justify-content-between align-items-center">
           <span>{uniteNom}</span>
           <span className="chevron">{open ? '▲' : '▼'}</span>
-        </h6>
+        </h4>
       </div>
       {open && (
         <div className="card-body p-0">
@@ -96,7 +96,6 @@ function NotesTable({ notes }) {
 
 function BulletinUniteAccordion({ unite }) {
   const [open, setOpen] = useState(false);
-  const ctrlCount = unite.sequences[0]?.controles?.length || 0;
 
   return (
     <div className="card mb-2">
@@ -105,13 +104,13 @@ function BulletinUniteAccordion({ unite }) {
         style={{ cursor: 'pointer' }}
         onClick={() => setOpen(prev => !prev)}
       >
-        <h6 className="mb-0 d-flex justify-content-between align-items-center">
+        <h4 className="mb-0 d-flex justify-content-between align-items-center">
           <span>
             {unite.nom}
-            <Badge color="primary" className="ml-2">Coef: {unite.coefficient}</Badge>
+            <Badge label={`Coef: ${unite.coefficient}`} color="primary" className="ml-2" />
           </span>
           <span className="chevron">{open ? '▲' : '▼'}</span>
-        </h6>
+        </h4>
       </div>
       {open && (
         <div className="card-body p-0">
@@ -124,29 +123,19 @@ function BulletinUniteAccordion({ unite }) {
                   {unite.sequences[0]?.controles?.map((ctrl, cIdx) => (
                     <th key={cIdx}>C{ctrl.numero}</th>
                   ))}
-                  <th>Moyenne</th>
                 </tr>
               </thead>
               <tbody>
                 {unite.sequences?.map((seq, sIdx) => (
                   <tr key={sIdx}>
                     <td>{seq.nom}</td>
-                    <td><Badge color="info">{seq.coefficient}</Badge></td>
+                    <td><Badge label={seq.coefficient ?? unite.coefficient} color="info" /></td>
                     {seq.controles?.map((ctrl, cIdx) => (
                       <td key={cIdx}><strong>{ctrl.valeur ?? '—'}</strong></td>
                     ))}
-                    <td></td>
                   </tr>
                 ))}
               </tbody>
-              {unite.moyenne && (
-                <tfoot>
-                  <tr>
-                    <td colSpan={2 + ctrlCount}><strong>Moyenne Unite</strong></td>
-                    <td><strong>{unite.moyenne}/20</strong></td>
-                  </tr>
-                </tfoot>
-              )}
             </table>
           </div>
         </div>
@@ -218,7 +207,7 @@ export default function MonBulletin() {
     loadBulletin();
   }, [loadBulletin]);
 
-  if (loading) return <SkeletonTable rows={5} cols={4} />;
+  if (loading) return <Spinner />;
 
   if (error) {
     return (
@@ -246,7 +235,6 @@ export default function MonBulletin() {
   return (
     <div className="page">
       <div className="page-header">
-        <h2 className="page-title">Mes Notes</h2>
         <button className="btn btn-primary" onClick={() => navigate('/etudiant/mon-bulletin')}>
           Mon Bulletin
         </button>
@@ -268,24 +256,11 @@ export default function MonBulletin() {
         </div>
       </div>
 
-      {(!publications || (!publications.notes_s1 && !publications.notes_s2 && !publications.bulletin)) && (
-        <div className="alert alert-info">
-          <p>Aucun bulletin n'est publie pour le moment.</p>
-        </div>
-      )}
 
       {publications?.bulletin && bulletinData ? (
         <div>
           <SemesterToggle active={activeSemestre} onChange={setActiveSemestre} />
           <BulletinSemestre unites={bulletinData.semestres?.[activeSemestre]} />
-          {bulletinData.moyenne_generale && (
-            <div className="card mt-4">
-              <div className="card-body text-center">
-                <h4>Moyenne Generale: <strong>{bulletinData.moyenne_generale}/20</strong></h4>
-                {bulletinData.mention && <p className="mt-2"><Badge color="primary">{bulletinData.mention}</Badge></p>}
-              </div>
-            </div>
-          )}
         </div>
       ) : (
         <div>

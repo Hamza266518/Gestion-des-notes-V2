@@ -9,12 +9,12 @@ const roleLabels = {
   etudiant:  'Etudiant',
 };
 
-export default function Navbar({ title, collapsed, onToggleSidebar }) {
+export default function Navbar({ title, onToggleSidebar }) {
   const { user, role } = useAuth();
   const { currentAnnee } = useAnneeAcademique();
 
   return (
-    <div className={`navbar${collapsed ? ' sidebar-collapsed' : ''}`}>
+    <div className="navbar">
       <button className="navbar-hamburger" onClick={onToggleSidebar} aria-label="Toggle menu">
         <FiMenu size={22} />
       </button>

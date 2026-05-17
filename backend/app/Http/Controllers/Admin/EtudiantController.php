@@ -7,8 +7,10 @@ use App\Models\Etudiant;
 use App\Models\User;
 use App\Services\NumeroInscriptionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class EtudiantController extends Controller
 {
@@ -50,6 +52,7 @@ class EtudiantController extends Controller
             }
 
             $etudiants = $query->orderBy('nom_prenom')->get();
+            $etudiants->each(fn($e) => $e->user?->append('password_plain'));
             return response()->json(['success' => true, 'data' => $etudiants]);
         } catch (\Exception $e) {
             \Log::error('EtudiantController::index error: ' . $e->getMessage());
@@ -79,14 +82,15 @@ class EtudiantController extends Controller
                 );
 
                 $email = strtolower($request->cin) . '@ifp.ma';
-                $password = str_replace(' ', '', $numero) . substr($request->cin, 0, 2) . '@';
+                $password = Str::random(12);
 
                 $user = User::firstOrCreate(
                     ['email' => $email],
                     [
-                        'name'     => $request->nom_prenom,
-                        'password' => Hash::make($password),
-                        'role'     => 'etudiant',
+                        'name'               => $request->nom_prenom,
+                        'password'           => Hash::make($password),
+                        'password_encrypted' => Crypt::encryptString($password),
+                        'role'               => 'etudiant',
                     ]
                 );
 

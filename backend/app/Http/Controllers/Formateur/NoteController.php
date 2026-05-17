@@ -39,6 +39,10 @@ class NoteController extends Controller
             return response()->json(['success' => false, 'message' => 'Accès refusé'], 403);
         }
 
+        if ($note->is_confirmed) {
+            return response()->json(['success' => false, 'message' => 'Note déjà confirmée, modification impossible'], 403);
+        }
+
         $request->validate(['valeur' => 'required|numeric|min:0|max:20']);
         $note->update(['valeur' => $request->valeur]);
 

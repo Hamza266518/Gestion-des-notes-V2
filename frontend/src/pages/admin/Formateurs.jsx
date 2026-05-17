@@ -147,7 +147,7 @@ export default function Formateurs() {
   };
 
   const handleCopyCredentials = async (formateur) => {
-    const text = `Email: ${formateur.user?.email}\nMot de passe: ${formateur.user?.password || '(non disponible)'}`;
+    const text = `Email: ${formateur.user?.email}\nMot de passe: ${formateur.user?.password_plain || '(non disponible)'}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopiedId(formateur.id);
@@ -181,6 +181,7 @@ export default function Formateurs() {
       await formateursApi.updatePassword(selectedFormateur.id, passwordForm.password);
       showSuccess(toast, 'Mot de passe mis à jour');
       setOpenPassword(false);
+      load();
     } catch (error) {
       handleApiError(error, toast);
     } finally {
@@ -364,14 +365,12 @@ export default function Formateurs() {
   if (loading) return (
     <div className="text-center mt-5">
       <Spinner />
-      <p className="mt-2 text-muted">Chargement des formateurs...</p>
     </div>
   );
 
   return (
     <div className="page">
       <div className="page-header">
-        <h2 className="page-title">Formateurs</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-outline" onClick={() => { setOpenBulkScan(true); setBulkResults([]); setBulkImages([]); }}>
             Scanner
@@ -427,7 +426,7 @@ export default function Formateurs() {
                   <td>{f.user?.email ?? '—'}</td>
                   <td>
                     <span style={{ fontFamily: 'monospace', fontSize: '13px' }}>
-                      •••••••
+                      {f.user?.password_plain || '—'}
                     </span>
                   </td>
                   <td><Badge label={`${f.sequences?.length ?? 0} séquence(s)`} color="teal" /></td>

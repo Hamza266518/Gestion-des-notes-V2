@@ -290,14 +290,12 @@ export default function Unites() {
   if (loading) return (
     <div className="text-center mt-5">
       <Spinner />
-      <p className="mt-2 text-muted">Chargement des unités...</p>
     </div>
   );
 
   return (
     <div className="page">
       <div className="page-header">
-        <h2 className="page-title">Unités & Séquences</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             className="btn btn-outline"

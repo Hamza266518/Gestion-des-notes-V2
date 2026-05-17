@@ -9,6 +9,7 @@ use App\Models\Sequence;
 use App\Models\User;
 use App\Services\GeminiService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -25,6 +26,7 @@ class FormateurController extends Controller
     {
         try {
             $formateurs = Formateur::with(['user', 'sequences.unite.filiere'])->get();
+            $formateurs->each(fn($f) => $f->user?->append('password_plain'));
             return response()->json(['success' => true, 'data' => $formateurs]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors du chargement des formateurs'], 500);
@@ -41,17 +43,19 @@ class FormateurController extends Controller
             ]);
 
             $user = User::create([
-                'name'     => $request->name,
-                'email'    => $request->email,
-                'password' => Hash::make($request->password),
-                'role'     => 'formateur',
+                'name'               => $request->name,
+                'email'              => $request->email,
+                'password'           => Hash::make($request->password),
+                'password_encrypted' => Crypt::encryptString($request->password),
+                'role'               => 'formateur',
             ]);
 
             $formateur = Formateur::create(['user_id' => $user->id]);
+            $formateur->load('user')->user->append('password_plain');
 
             return response()->json([
                 'success' => true,
-                'data'    => $formateur->load('user'),
+                'data'    => $formateur,
                 'message' => 'Formateur créé',
             ]);
         } catch (\Exception $e) {
@@ -288,11 +292,15 @@ class FormateurController extends Controller
 
             $formateur = Formateur::with('user')->findOrFail($id);
             $formateur->user->update([
-                'password' => Hash::make($request->password),
+                'password'           => Hash::make($request->password),
+                'password_encrypted' => Crypt::encryptString($request->password),
             ]);
+
+            $formateur->user->append('password_plain');
 
             return response()->json([
                 'success' => true,
+                'data'    => $formateur,
                 'message' => 'Mot de passe mis à jour',
             ]);
         } catch (\Exception $e) {

@@ -6,7 +6,7 @@ import ActivityLog from '../../components/common/ActivityLog';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import handleApiError from '../../utils/errorHandler';
-import { SkeletonDashboard } from '../../components/common/Skeleton';
+import Spinner from '../../components/common/Spinner';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -89,7 +89,13 @@ export default function Dashboard() {
     };
   }, [currentAnnee, anneeLoading]);
 
-  if (loading) return <SkeletonDashboard />;
+  if (loading) return (
+    <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+      <div className="text-center">
+        <Spinner />
+      </div>
+    </div>
+  );
 
   if (error) {
     return (
@@ -107,7 +113,6 @@ export default function Dashboard() {
 
   return (
     <div>
-      <h2 className="page-title dashboard-title">Tableau de bord</h2>
 
       <div className="stats-grid">
         {STAT_CONFIGS.map((stat, i) => (

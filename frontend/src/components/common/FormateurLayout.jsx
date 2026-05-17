@@ -17,15 +17,15 @@ export default function FormateurLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="admin-layout">
+    <div className={`admin-layout${collapsed ? ' sidebar-collapsed-layout' : ''}`}>
       <Sidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}
         onToggle={() => setCollapsed(p => !p)}
         onCloseMobile={() => setMobileOpen(false)}
       />
-      <div className={`admin-content${collapsed ? ' sidebar-collapsed' : ''}`}>
-        <Navbar title={title} collapsed={collapsed} onToggleSidebar={() => setMobileOpen(true)} />
+      <div className="admin-content">
+        <Navbar title={title} onToggleSidebar={() => setMobileOpen(true)} />
         <div className="page-content">
           <Outlet />
         </div>

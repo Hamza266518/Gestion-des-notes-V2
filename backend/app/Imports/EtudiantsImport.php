@@ -8,6 +8,7 @@ use App\Services\NumeroInscriptionService;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 
 class EtudiantsImport implements ToCollection, WithHeadingRow
@@ -49,10 +50,11 @@ class EtudiantsImport implements ToCollection, WithHeadingRow
                 $this->updated++;
             } else {
                 $user = User::create([
-                    'name'     => $nom,
-                    'email'    => $email,
-                    'password' => Hash::make($password),
-                    'role'     => 'etudiant',
+                    'name'               => $nom,
+                    'email'              => $email,
+                    'password'           => Hash::make($password),
+                    'password_encrypted' => Crypt::encryptString($password),
+                    'role'               => 'etudiant',
                 ]);
                 $this->created++;
             }

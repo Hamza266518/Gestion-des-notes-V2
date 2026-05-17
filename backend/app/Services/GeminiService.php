@@ -10,12 +10,25 @@ class GeminiService
     private string $apiKeyStudents;
     private string $apiKeyUnites;
     private string $baseUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent';
+    private int $timeout;
 
     public function __construct()
     {
         $this->apiKeyFormateur = config('services.gemini.key_formateur', '');
         $this->apiKeyStudents  = config('services.gemini.key_students', '');
         $this->apiKeyUnites    = config('services.gemini.key_unites', '');
+        $this->timeout         = (int) env('GEMINI_API_TIMEOUT', 90);
+        
+        // Warn if API keys are missing
+        if (empty($this->apiKeyFormateur)) {
+            \Log::warning('Gemini API key for formateurs is not configured');
+        }
+        if (empty($this->apiKeyStudents)) {
+            \Log::warning('Gemini API key for students is not configured');
+        }
+        if (empty($this->apiKeyUnites)) {
+            \Log::warning('Gemini API key for unites is not configured');
+        }
     }
 
     public function scanNotes(string $base64Pdf): string
@@ -28,7 +41,7 @@ class GeminiService
         \Log::info('Calling Gemini API for notes scan (PDF)...');
 
         try {
-            $response = Http::timeout(90)->post($this->baseUrl . '?key=' . $this->apiKeyFormateur, [
+            $response = Http::timeout($this->timeout)->post($this->baseUrl . '?key=' . $this->apiKeyFormateur, [
                 'contents' => [[
                     'parts' => [
                         [
@@ -83,7 +96,7 @@ Rules:
         \Log::info('Calling Gemini API for CIN scan (PDF)...');
 
         try {
-            $response = Http::timeout(90)->post($this->baseUrl . '?key=' . $this->apiKeyStudents, [
+            $response = Http::timeout($this->timeout)->post($this->baseUrl . '?key=' . $this->apiKeyStudents, [
                 'contents' => [[
                     'parts' => [
                         [

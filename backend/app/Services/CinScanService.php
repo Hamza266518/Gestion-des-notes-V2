@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Etudiant;
 use App\Models\User;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 
 class CinScanService
@@ -56,10 +57,11 @@ class CinScanService
             $status = 'updated';
         } else {
             $user = User::create([
-                'name'     => $data['nom_prenom'],
-                'email'    => $email,
-                'password' => Hash::make($password),
-                'role'     => 'etudiant',
+                'name'               => $data['nom_prenom'],
+                'email'              => $email,
+                'password'           => Hash::make($password),
+                'password_encrypted' => Crypt::encryptString($password),
+                'role'               => 'etudiant',
             ]);
             $status = 'created';
         }

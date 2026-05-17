@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 
 class FormateursImport implements ToCollection, WithHeadingRow
@@ -31,10 +32,11 @@ class FormateursImport implements ToCollection, WithHeadingRow
             } else {
                 $password = $row['password'] ?? Str::random(12);
                 $user = User::create([
-                    'name'     => $row['nom'],
-                    'email'    => $row['email'],
-                    'password' => Hash::make($password),
-                    'role'     => 'formateur',
+                    'name'               => $row['nom'],
+                    'email'              => $row['email'],
+                    'password'           => Hash::make($password),
+                    'password_encrypted' => Crypt::encryptString($password),
+                    'role'               => 'formateur',
                 ]);
 
                 Formateur::create(['user_id' => $user->id]);

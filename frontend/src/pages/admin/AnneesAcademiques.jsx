@@ -233,7 +233,6 @@ export default function AnneesAcademiques() {
   return (
     <div className="page">
       <div className="page-header">
-        <h2 className="page-title">Années Académiques</h2>
         <button className="btn btn-primary" onClick={handleOpenCreate}>
           + Nouvelle année
         </button>

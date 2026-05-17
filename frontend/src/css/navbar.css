@@ -1,17 +1,19 @@
 .navbar {
   position: fixed; top: 0;
-  left: var(--sidebar-width); right: 0;
+  left: 0; right: 0;
   height: var(--navbar-height);
   background: rgba(255,255,255,0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--gray-200);
   display: flex; align-items: center; gap: 12px;
-  padding: 0 24px; z-index: 90;
-  transition: left 0.25s ease;
+  padding: 0 24px 0 calc(var(--sidebar-width) + 24px);
+  z-index: 90;
 }
 
-.navbar.sidebar-collapsed { left: var(--sidebar-collapsed-width); }
+.admin-layout.sidebar-collapsed-layout .navbar {
+  padding-left: calc(var(--sidebar-collapsed-width) + 24px);
+}
 
 .navbar-hamburger {
   background: none; border: none;
@@ -50,14 +52,17 @@
 }
 
 @media (max-width: 768px) {
-  .navbar { left: 0 !important; padding: 0 14px; }
+  .navbar { left: 0 !important; padding: 0 14px !important; }
   .navbar-hamburger { display: flex; }
   .navbar-user { display: none; }
   .navbar-year { display: flex; }
   .navbar-role { font-size: 10px; padding: 2px 8px; }
+  .navbar-title { font-size: 14px; }
 }
 
 @media (max-width: 480px) {
-  .navbar { padding: 0 10px; gap: 8px; }
-  .navbar-title { font-size: 14px; }
+  .navbar { padding: 0 10px !important; gap: 8px; height: 56px; }
+  .navbar-title { font-size: 13px; }
+  .navbar-year { font-size: 11px; padding: 3px 10px; }
+  .navbar-right { gap: 10px; }
 }

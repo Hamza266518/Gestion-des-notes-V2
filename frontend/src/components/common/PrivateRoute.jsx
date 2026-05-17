@@ -6,7 +6,7 @@ export default function PrivateRoute({ children, role }) {
   const { token, role: userRole, loading } = useAuth();
   
   if (loading) {
-    return <Spinner />;
+    return <Spinner message="Chargement de la session..." />;
   }
   
   if (!token) {

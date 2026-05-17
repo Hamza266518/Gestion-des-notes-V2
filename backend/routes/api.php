@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Admin\FormateurController;
 use App\Http\Controllers\Admin\AnneeAcademiqueController;
 use App\Http\Controllers\Admin\FiliereController;
@@ -24,6 +25,9 @@ use App\Http\Controllers\Formateur\ScanController;
 use App\Http\Controllers\Formateur\NoteController;
 use App\Http\Controllers\Etudiant\PortalController;
 
+// Health check - public
+Route::get('/health', [HealthController::class, 'check']);
+
 // Auth - public
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
 Route::get('/annee-academique/current', [AnneeAcademiqueController::class, 'current']);
@@ -33,7 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
 
     // ── ADMIN ──────────────────────────────────────────────
-    Route::prefix('admin')->middleware(\App\Http\Middleware\IsAdmin::class)->group(function () {
+    Route::prefix('admin')->middleware([\App\Http\Middleware\IsAdmin::class, \App\Http\Middleware\RateLimitSensitiveEndpoints::class])->group(function () {
 
         // Annees academiques
         Route::get('/annees-academiques', [AnneeAcademiqueController::class, 'index']);

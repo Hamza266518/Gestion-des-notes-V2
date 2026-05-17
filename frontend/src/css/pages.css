@@ -4,11 +4,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
 }
 
 .login-card {
-  background: white;
+  background: var(--white);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   padding: 40px;
@@ -19,24 +19,24 @@
 .login-title {
   text-align: center;
   margin-bottom: 8px;
-  color: #1e40af;
+  color: var(--primary);
   font-size: 24px;
 }
 
 .login-subtitle {
   text-align: center;
-  color: #666;
+  color: var(--gray-500);
   margin-bottom: 32px;
   font-size: 14px;
 }
 
 .login-hint {
-  background: #f0f9ff;
+  background: var(--primary-faint);
   border-radius: 8px;
   padding: 12px;
   margin-top: 24px;
   font-size: 13px;
-  color: #666;
+  color: var(--gray-500);
   text-align: center;
 }
 
@@ -49,7 +49,7 @@
 .login-error-close {
   background: none;
   border: none;
-  color: #dc2626;
+  color: var(--danger);
   cursor: pointer;
   font-size: 18px;
   padding: 0 4px;
@@ -60,6 +60,17 @@
   justify-content: center;
 }
 
+@media (max-width: 768px) {
+  .login-wrapper { padding: 20px; }
+  .login-card { padding: 32px; }
+}
+
+@media (max-width: 480px) {
+  .login-card { padding: 24px; }
+  .login-title { font-size: 22px; }
+  .login-subtitle { font-size: 13px; margin-bottom: 24px; }
+}
+
 /* PUBLICATIONS PAGE - empty state */
 .pub-empty-state {
   text-align: center;
@@ -68,12 +79,15 @@
 }
 
 .pub-empty-title {
-  color: #666;
+  color: var(--gray-500);
   margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .pub-empty-text {
-  color: #999;
+  color: var(--gray-400);
+  font-size: 14px;
 }
 
 /* BULLETINS PAGE - empty state */
@@ -84,12 +98,21 @@
 }
 
 .bulletin-empty-title {
-  color: #666;
+  color: var(--gray-500);
   margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .bulletin-empty-text {
-  color: #999;
+  color: var(--gray-400);
+  font-size: 14px;
+}
+
+@media (max-width: 480px) {
+  .pub-empty-state, .bulletin-empty { margin-top: 20px; padding: 20px; }
+  .pub-empty-title, .bulletin-empty-title { font-size: 14px; }
+  .pub-empty-text, .bulletin-empty-text { font-size: 12px; }
 }
 
 /* NOTES PAGE */
@@ -111,23 +134,23 @@
   text-align: center;
   padding: 12px;
   border-radius: 8px;
-  background: #f3f4f6;
-  color: #999;
+  background: var(--gray-100);
+  color: var(--gray-400);
   font-size: 13px;
 }
 
 .scanner-step-active {
-  background: #1e40af;
-  color: white;
+  background: var(--primary);
+  color: var(--white);
 }
 
 .scanner-step-done {
-  background: #10b981;
-  color: white;
+  background: var(--accent);
+  color: var(--white);
 }
 
 .scanner-upload-zone {
-  border: 2px dashed #d1d5db;
+  border: 2px dashed var(--gray-300);
   border-radius: 12px;
   padding: 40px;
   text-align: center;
@@ -136,7 +159,7 @@
 }
 
 .scanner-upload-zone:hover {
-  border-color: #1e40af;
+  border-color: var(--primary);
   background: var(--primary-faint);
 }
 
@@ -151,9 +174,9 @@
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: #f9fafb;
+  background: var(--gray-50);
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 /* FORMATEURS PAGE */
@@ -185,7 +208,7 @@
 }
 
 .sequences-form-error {
-  border-color: #ef4444;
+  border-color: var(--danger);
 }
 
 /* UNITES PAGE */
@@ -227,12 +250,12 @@
   padding: 10px 14px;
   text-align: left;
   font-weight: 600;
-  background-color: #f9fafb;
+  background-color: var(--gray-50);
 }
 
 .unites-table td {
   padding: 10px 14px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
 }
 
 .unites-modal-grid {
@@ -251,7 +274,7 @@
 }
 
 .unites-form-error {
-  border-color: #ef4444;
+  border-color: var(--danger);
 }
 
 /* FILIERES GROUPES PAGE */
@@ -275,8 +298,8 @@
 
 .fg-table-wrap {
   overflow-x: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--border-radius);
 }
 
 .fg-table {
@@ -289,13 +312,13 @@
   padding: 10px 14px;
   text-align: left;
   font-weight: 600;
-  background-color: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  background-color: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
 }
 
 .fg-table td {
   padding: 10px 14px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
 }
 
 .fg-actions {
@@ -331,12 +354,12 @@
 }
 
 .etudiants-empty-title {
-  color: #666;
+  color: var(--gray-500);
   margin-bottom: 12px;
 }
 
 .etudiants-empty-text {
-  color: #999;
+  color: var(--gray-400);
   margin-bottom: 24px;
 }
 
@@ -375,12 +398,12 @@
   padding: 10px 14px;
   text-align: left;
   font-weight: 600;
-  background-color: #f9fafb;
+  background-color: var(--gray-50);
 }
 
 .etudiants-manage-td {
   padding: 10px 14px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
 }
 
 .etudiants-scan-table {
@@ -393,12 +416,12 @@
   padding: 10px 14px;
   text-align: left;
   font-weight: 600;
-  background-color: #f9fafb;
+  background-color: var(--gray-50);
 }
 
 .etudiants-scan-td {
   padding: 10px 14px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--gray-200);
 }
 
 .bulletin-footer-score {
@@ -525,13 +548,13 @@
   color: var(--gray-800);
 }
 
-.bulletin-col-cc { background: #f0f9ff; }
-.bulletin-col-theo { background: #fffbeb; }
-.bulletin-col-pra { background: #f0fdf4; }
+.bulletin-col-cc { background: var(--bulletin-cc); }
+.bulletin-col-theo { background: var(--bulletin-theo); }
+.bulletin-col-pra { background: var(--bulletin-pra); }
 
-.bulletin-cell-cc { background: #f0f9ff; text-align: center; }
-.bulletin-cell-theo { background: #fffbeb; text-align: center; }
-.bulletin-cell-pra { background: #f0fdf4; text-align: center; }
+.bulletin-cell-cc { background: var(--bulletin-cc); text-align: center; }
+.bulletin-cell-theo { background: var(--bulletin-theo); text-align: center; }
+.bulletin-cell-pra { background: var(--bulletin-pra); text-align: center; }
 .bulletin-cell-moy { text-align: center; font-weight: 700; color: var(--primary); }
 .bulletin-cell-coef { text-align: center; font-weight: 700; }
 
@@ -670,7 +693,7 @@
 }
 
 .class-avg-row {
-  background: #e8f5e9 !important;
+  background: var(--class-avg-bg) !important;
 }
 
 .class-avg-row td {
@@ -1065,7 +1088,7 @@
   }
 
   .class-avg-row {
-    background: #e8f5e9 !important;
+    background: var(--class-avg-bg) !important;
     -webkit-print-color-adjust: exact;
   }
 }

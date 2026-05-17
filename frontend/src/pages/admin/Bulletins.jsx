@@ -173,12 +173,8 @@ export default function Bulletins() {
   const fg = (v) => v !== null && v !== undefined ? v.toFixed(2).replace('.', ',') : '—';
 
   return (
-    <div className="page-container">
+    <div className="page">
       <style>{`.print-only { display: none; } .screen-only { display: block; }`}</style>
-      <div className="page-header">
-        <h1>Bulletins</h1>
-      </div>
-
       <div className="filter-bar">
         <select className="form-select" value={filiereId} onChange={e => { setFiliereId(e.target.value); handleResetFilters(); }}>
           <option value="">Filiere</option>
@@ -198,10 +194,15 @@ export default function Bulletins() {
         </select>
       </div>
 
+      {!loading && !bulletin && (
+        <div className="empty-state" style={{ marginTop: 40 }}>
+          <p className="empty-state-message">Sélectionnez une filière, un niveau, un groupe et un étudiant pour afficher le bulletin</p>
+        </div>
+      )}
+
       {loading && (
         <div className="text-center mt-5">
           <Spinner />
-          <p className="mt-2 text-muted">Chargement du bulletin...</p>
         </div>
       )}
 

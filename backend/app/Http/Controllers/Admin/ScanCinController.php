@@ -10,6 +10,7 @@ use App\Services\NoteParserService;
 use App\Services\NumeroInscriptionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 
 class ScanCinController extends Controller
@@ -162,10 +163,11 @@ class ScanCinController extends Controller
                 $password = str_replace(' ', '', $item['numero_inscription']) . substr($cin, 0, 2) . '@';
 
                 $user = User::create([
-                    'name'     => $item['nom_prenom'],
-                    'email'    => $email,
-                    'password' => Hash::make($password),
-                    'role'     => 'etudiant',
+                    'name'               => $item['nom_prenom'],
+                    'email'              => $email,
+                    'password'           => Hash::make($password),
+                    'password_encrypted' => Crypt::encryptString($password),
+                    'role'               => 'etudiant',
                 ]);
 
                 Etudiant::create([
