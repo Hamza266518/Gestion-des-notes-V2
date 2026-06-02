@@ -9,4 +9,6 @@ export const publicationsApi = {
         apiClient.post('/admin/publications/publish-all', data),
     unpublish: (data) =>
         apiClient.post('/admin/publications/unpublish', data),
+    unpublishAll: (data) =>
+        apiClient.post('/admin/publications/unpublish-all', data),
 };

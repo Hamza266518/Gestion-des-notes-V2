@@ -63,8 +63,6 @@ export const handleApiError = (error, toast, options = {}) => {
       shouldRetry = true;
   }
 
-  // Error logged for debugging (not shown to user)
-
   if (showToast && toast?.error) toast.error(message);
 
   return { type: 'api', status, message, shouldRetry, data };

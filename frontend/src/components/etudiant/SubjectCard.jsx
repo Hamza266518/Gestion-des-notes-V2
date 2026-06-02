@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import ExamRow from './ExamRow';
 import { FiChevronDown } from 'react-icons/fi';
+import { getMention } from '../../utils/helpers';
 
 export default function SubjectCard({ subject }) {
   const [expanded, setExpanded] = useState(false);
@@ -50,14 +51,4 @@ export default function SubjectCard({ subject }) {
       )}
     </div>
   );
-}
-
-function getMention(note) {
-  if (note == null) return { label: '', class: '' };
-  const n = Number(note);
-  if (n >= 16) return { label: 'Très Bien', class: 'mention-tres-bien' };
-  if (n >= 14) return { label: 'Bien', class: 'mention-bien' };
-  if (n >= 12) return { label: 'Assez Bien', class: 'mention-assez-bien' };
-  if (n >= 10) return { label: 'Passable', class: 'mention-passable' };
-  return { label: 'Insuffisant', class: 'mention-insuffisant' };
 }

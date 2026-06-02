@@ -141,4 +141,60 @@ class AnneeAcademiqueController extends Controller
             'warning' => $warning,
         ]);
     }
+
+    public function stats($id): JsonResponse
+    {
+        try {
+            $annee = AnneeAcademique::with(['groupes.niveau.filiere', 'etudiants'])->findOrFail($id);
+
+            // Query students by status
+            $graduates = Etudiant::where('annee_academique_id', $id)
+                ->where('status', 'graduate')
+                ->with(['groupe.niveau.filiere', 'anneeAcademique'])
+                ->orderBy('nom_prenom')
+                ->get();
+
+            $active = Etudiant::where('annee_academique_id', $id)
+                ->where('status', 'active')
+                ->count();
+
+            $dropped = Etudiant::where('annee_academique_id', $id)
+                ->where('status', 'dropped_out')
+                ->count();
+
+            // Aggregate by filière
+            $graduatesByFiliere = $graduates->groupBy(fn($s) => $s->groupe?->niveau?->filiere?->nom ?? 'Unknown')
+                ->map(fn($group) => [
+                    'filiere' => $group->first()?->groupe?->niveau?->filiere?->nom ?? 'Unknown',
+                    'count' => $group->count(),
+                    'students' => $group->map(fn($s) => [
+                        'id' => $s->id,
+                        'nom_prenom' => $s->nom_prenom,
+                        'numero_inscription' => $s->numero_inscription,
+                        'niveau' => $s->groupe?->niveau?->numero,
+                    ])->values(),
+                ])
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'annee' => $annee,
+                    'graduates' => $graduates,
+                    'graduates_count' => $graduates->count(),
+                    'graduates_by_filiere' => $graduatesByFiliere,
+                    'active_count' => $active,
+                    'dropped_count' => $dropped,
+                    'total_students' => $active + $graduates->count() + $dropped,
+                    'groups_count' => $annee->groupes->count(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('AnneeAcademiqueController::stats error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du chargement des statistiques',
+            ], 500);
+        }
+    }
 }

@@ -31,6 +31,7 @@ export default function Unites() {
   const [openSeq, setOpenSeq] = useState(false);
   const [selectedUnite, setSelectedUnite] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [formFiliereAnnees, setFormFiliereAnnees] = useState(0);
   const [scanOpen, setScanOpen] = useState(false);
   const [scanImage, setScanImage] = useState(null);
   const [scanFiliere, setScanFiliere] = useState('');
@@ -481,7 +482,12 @@ export default function Unites() {
           <select
             className={`form-select ${formErrors.filiere_id ? 'border-red-500' : ''}`}
             value={formU.filiere_id ?? ''}
-            onChange={e => setFormU(p => ({ ...p, filiere_id: e.target.value }))}
+            onChange={e => {
+              const filId = e.target.value;
+              const fil = filieres.find(f => f.id == filId);
+              setFormU(p => ({ ...p, filiere_id: filId, numero_annee: '' }));
+              setFormFiliereAnnees(fil?.nombre_annees || 0);
+            }}
             style={formErrors.filiere_id ? { borderColor: '#ef4444' } : {}}
           >
             <option value="">Sélectionner</option>
@@ -510,12 +516,13 @@ export default function Unites() {
               className={`form-select ${formErrors.numero_annee ? 'border-red-500' : ''}`}
               value={formU.numero_annee ?? ''}
               onChange={e => setFormU(p => ({ ...p, numero_annee: e.target.value }))}
+              disabled={!formU.filiere_id}
               style={formErrors.numero_annee ? { borderColor: '#ef4444' } : {}}
             >
               <option value="">—</option>
-              <option value="1">1ère année</option>
-              <option value="2">2ème année</option>
-              <option value="3">3ème année</option>
+              {formFiliereAnnees >= 1 && <option value="1">1ère année</option>}
+              {formFiliereAnnees >= 2 && <option value="2">2ème année</option>}
+              {formFiliereAnnees >= 3 && <option value="3">3ème année</option>}
             </select>
             {formErrors.numero_annee && (
               <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.numero_annee}</div>

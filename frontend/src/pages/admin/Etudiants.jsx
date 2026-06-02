@@ -272,7 +272,6 @@ export default function Etudiants() {
       setScanResults([]);
       load();
     } catch (err) {
-      console.error('Confirm scan error:', err);
       const fieldErrors = getFieldErrors(err);
       if (Object.keys(fieldErrors).length > 0) {
         const firstError = Object.values(fieldErrors)[0];

@@ -573,27 +573,54 @@ export default function Formateurs() {
                 </tr>
               </thead>
               <tbody>
-                {allSequences
-                  .filter(s => !searchSequence || s.nom.toLowerCase().includes(searchSequence.toLowerCase()))
-                  .map(s => {
-                    const assigned = formateurSequences.flatMap(fg => fg.unites || []).flatMap(ug => ug.sequences || []).find(seq => seq.id === s.id);
-                    const isAssigned = !!assigned;
+                {(() => {
+                  const filtered = allSequences.filter(s => !searchSequence || s.nom.toLowerCase().includes(searchSequence.toLowerCase()));
+                  const assignedIds = new Map();
+                  formateurSequences.flatMap(fg => fg.unites || []).flatMap(ug => ug.sequences || []).forEach(seq => { assignedIds.set(seq.id, seq); });
+                  const assigned = filtered.filter(s => assignedIds.has(s.id));
+                  const unassigned = filtered.filter(s => !assignedIds.has(s.id));
+                  const renderRow = (s) => {
+                    const seqData = assignedIds.get(s.id);
+                    const isAssigned = !!seqData;
                     return (
                       <tr key={s.id} style={{ background: isAssigned ? '#f0fdf4' : '#fff' }}>
                         <td style={{ padding: '10px 20px', fontSize: 14, fontWeight: 500 }}>{s.nom}</td>
                         <td style={{ padding: '10px 20px', fontSize: 13, color: '#6b7280' }}>{s.unite}</td>
                         <td style={{ padding: '10px 20px', fontSize: 13, color: '#6b7280' }}>{s.filiere}</td>
-                        <td style={{ padding: '10px 20px', textAlign: 'center', fontSize: 13 }}>{isAssigned && assigned.masse_horaire ? assigned.masse_horaire + 'h' : '—'}</td>
+                        <td style={{ padding: '10px 20px', textAlign: 'center', fontSize: 13 }}>{isAssigned && seqData.masse_horaire ? seqData.masse_horaire + 'h' : '—'}</td>
                         <td style={{ padding: '8px 20px', textAlign: 'center' }}>
                           {isAssigned ? (
-                            <button className="btn btn-sm btn-danger" onClick={() => handleRemoveSequence(assigned.id)} disabled={removingSequence === assigned.id} style={{ fontSize: 12, padding: '3px 10px' }}>{removingSequence === assigned.id ? '...' : 'Retirer'}</button>
+                            <button className="btn btn-sm btn-danger" onClick={() => handleRemoveSequence(seqData.id)} disabled={removingSequence === seqData.id} style={{ fontSize: 12, padding: '3px 10px' }}>{removingSequence === seqData.id ? '...' : 'Retirer'}</button>
                           ) : (
                             <button className="btn btn-sm btn-accent" onClick={() => handleAssignSequence(s.id, masseHoraire)} style={{ fontSize: 12, padding: '3px 10px' }}>Assigner</button>
                           )}
                         </td>
                       </tr>
                     );
-                  })}
+                  };
+                  const rows = [];
+                  if (assigned.length > 0) {
+                    rows.push(
+                      <tr key="__assigned_header" style={{ background: '#f0fdf4' }}>
+                        <td colSpan={5} style={{ padding: '8px 20px', fontSize: 12, fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #86efac' }}>
+                          Séquences assignées ({assigned.length})
+                        </td>
+                      </tr>
+                    );
+                    assigned.forEach(s => rows.push(renderRow(s)));
+                  }
+                  if (unassigned.length > 0) {
+                    rows.push(
+                      <tr key="__unassigned_header" style={{ background: '#fafafa' }}>
+                        <td colSpan={5} style={{ padding: '8px 20px', fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #d1d5db' }}>
+                          Autres séquences ({unassigned.length})
+                        </td>
+                      </tr>
+                    );
+                    unassigned.forEach(s => rows.push(renderRow(s)));
+                  }
+                  return rows;
+                })()}
               </tbody>
             </table>
           </div>

@@ -5,19 +5,19 @@ export function formatNiveau(numero) {
 }
 
 const MENTION_THRESHOLDS = [
-  { min: 16, label: 'Tres Bien', color: 'green' },
-  { min: 14, label: 'Bien', color: 'teal' },
-  { min: 12, label: 'Assez Bien', color: 'yellow' },
-  { min: 10, label: 'Passable', color: 'orange' },
-  { min: 0, label: 'Insuffisant', color: 'red' },
+  { min: 16, label: 'Très Bien', color: 'green', class: 'mention-tres-bien' },
+  { min: 14, label: 'Bien', color: 'teal', class: 'mention-bien' },
+  { min: 12, label: 'Assez Bien', color: 'yellow', class: 'mention-assez-bien' },
+  { min: 10, label: 'Passable', color: 'orange', class: 'mention-passable' },
+  { min: 0, label: 'Insuffisant', color: 'red', class: 'mention-insuffisant' },
 ];
 
 export function getMention(score) {
   if (score === null || score === undefined || isNaN(score)) {
-    return { label: '', color: 'gray' };
+    return { label: '', color: 'gray', class: '' };
   }
   const match = MENTION_THRESHOLDS.find(t => score >= t.min);
-  return match || { label: 'Insuffisant', color: 'red' };
+  return match || { label: 'Insuffisant', color: 'red', class: 'mention-insuffisant' };
 }
 
 const ARABIC_MONTHS = [

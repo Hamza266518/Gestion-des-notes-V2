@@ -70,27 +70,33 @@ export default function AnneesAcademiques() {
   };
 
   const handleSetCurrent = async (newYearId) => {
-    if (!currentAnnee) {
-      // No previous current year, just set it
-      try {
-        await adminApi.setCurrentAnnee(newYearId);
-        toast.success('Année courante mise à jour');
-        refreshAnnees();
-      } catch (e) {
-        toast.error('Erreur');
-      }
-      return;
-    }
-
-    // Check for redoublants from the previous year
     setCheckingRedoublants(true);
     try {
+      if (!currentAnnee) {
+        // No current year — find most recent archived year with groups to transition from
+        const fromYear = [...annees]
+          .filter(a => a.is_archived && (a.groupes_count || 0) > 0)
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+        if (fromYear) {
+          const promoteRes = await transitionToNewYear(fromYear.id, newYearId);
+          const promoteMsg = promoteRes.data?.message || '';
+          toast.success(`Année mise à jour. ${promoteMsg}`);
+        } else {
+          await adminApi.setCurrentAnnee(newYearId);
+          toast.success('Année courante mise à jour');
+        }
+        refreshAnnees();
+        return;
+      }
+
+      // Check for redoublants from the previous year
       const res = await adminApi.checkRedoublants({ from_annee_id: currentAnnee.id });
       const redoublants = res.data.data || [];
 
       if (redoublants.length === 0) {
-        await adminApi.setCurrentAnnee(newYearId);
-        toast.success('Année courante mise à jour');
+        const promoteRes = await transitionToNewYear(currentAnnee.id, newYearId);
+        const promoteMsg = promoteRes.data?.message || '';
+        toast.success(`Année mise à jour. ${promoteMsg}`);
         refreshAnnees();
         return;
       }
@@ -100,10 +106,10 @@ export default function AnneesAcademiques() {
       redoublants.forEach(s => { initialChecks[s.id] = true; });
       setRedoublantChecks(initialChecks);
       setRedoublantModal({ newYearId, fromAnneeId: currentAnnee.id, students: redoublants });
+      setCheckingRedoublants(false);
     } catch (e) {
       const msg = e.response?.data?.message || e.message || 'Erreur lors de la vérification des redoublants';
       toast.error(msg);
-      console.error('checkRedoublants error:', e.response?.data || e);
     } finally {
       setCheckingRedoublants(false);
     }
@@ -122,31 +128,12 @@ export default function AnneesAcademiques() {
       .map(([id]) => parseInt(id));
 
     try {
-      const fromId = redoublantModal.fromAnneeId;
-
-      await adminApi.copyGroups({
-        from_annee_id: fromId,
-        to_annee_id: redoublantModal.newYearId,
-      });
-
-      if (confirmIds.length > 0) {
-        await adminApi.confirmRedoublants({
-          etudiant_ids: confirmIds,
-          to_annee_id: redoublantModal.newYearId,
-        });
-      }
-      if (dropIds.length > 0) {
-        await adminApi.dropRedoublants({ etudiant_ids: dropIds });
-      }
-
-      // Promote admis students to next niveau or graduate
-      const promoteRes = await adminApi.promoteAdmis({
-        from_annee_id: fromId,
-        to_annee_id: redoublantModal.newYearId,
-      });
-
+      const promoteRes = await transitionToNewYear(
+        redoublantModal.fromAnneeId,
+        redoublantModal.newYearId,
+        { confirmIds, dropIds }
+      );
       const promoteMsg = promoteRes.data?.message || '';
-      await adminApi.setCurrentAnnee(redoublantModal.newYearId);
       toast.success(`Année mise à jour. ${promoteMsg}`);
       setRedoublantModal(null);
       refreshAnnees();
@@ -166,22 +153,12 @@ export default function AnneesAcademiques() {
     const allIds = redoublantModal.students.map(s => s.id);
 
     try {
-      const fromId = redoublantModal.fromAnneeId;
-
-      await adminApi.copyGroups({
-        from_annee_id: fromId,
-        to_annee_id: redoublantModal.newYearId,
-      });
-
-      await adminApi.dropRedoublants({ etudiant_ids: allIds });
-
-      const promoteRes = await adminApi.promoteAdmis({
-        from_annee_id: fromId,
-        to_annee_id: redoublantModal.newYearId,
-      });
-
+      const promoteRes = await transitionToNewYear(
+        redoublantModal.fromAnneeId,
+        redoublantModal.newYearId,
+        { dropIds: allIds }
+      );
       const promoteMsg = promoteRes.data?.message || '';
-      await adminApi.setCurrentAnnee(redoublantModal.newYearId);
       toast.success(`Année mise à jour. ${promoteMsg}`);
       setRedoublantModal(null);
       refreshAnnees();
@@ -194,11 +171,22 @@ export default function AnneesAcademiques() {
     }
   };
 
+  const transitionToNewYear = async (fromId, toId, { confirmIds = [], dropIds = [] } = {}) => {
+    await adminApi.copyGroups({ from_annee_id: fromId, to_annee_id: toId });
+    if (confirmIds.length > 0)
+      await adminApi.confirmRedoublants({ etudiant_ids: confirmIds, to_annee_id: toId });
+    if (dropIds.length > 0)
+      await adminApi.dropRedoublants({ etudiant_ids: dropIds });
+    const promoteRes = await adminApi.promoteAdmis({ from_annee_id: fromId, to_annee_id: toId });
+    await adminApi.setCurrentAnnee(toId);
+    return promoteRes;
+  };
+
   const handleViewHistory = async (anneeId) => {
     setHistoryLoading(true);
     try {
-      const res = await adminApi.getGroupes({ annee_academique_id: anneeId });
-      setHistoryGroups(res.data.data || []);
+      const res = await adminApi.getAnneeStats(anneeId);
+      setHistoryGroups(res.data.data || {});
       setHistoryYear(annees.find(a => a.id === anneeId) || null);
     } catch (e) {
       toast.error('Erreur lors du chargement');
@@ -302,14 +290,15 @@ export default function AnneesAcademiques() {
                             {historyLoading ? 'Chargement...' : 'Afficher'}
                           </button>
                         )}
-                        <button
-                          className="btn btn-sm btn-accent"
-                          onClick={() => handleSetCurrent(a.id)}
-                          disabled={a.is_archived || checkingRedoublants}
-                          title={a.is_archived ? 'Impossible de définir une année archivée comme courante' : ''}
-                        >
-                          {checkingRedoublants ? 'Vérification...' : 'Définir comme courante'}
-                        </button>
+                        {!a.is_archived && (
+                          <button
+                            className="btn btn-sm btn-accent"
+                            onClick={() => handleSetCurrent(a.id)}
+                            disabled={checkingRedoublants}
+                          >
+                            {checkingRedoublants ? 'Vérification...' : 'Définir comme courante'}
+                          </button>
+                        )}
                       </>
                     )}
                   </td>
@@ -386,7 +375,7 @@ export default function AnneesAcademiques() {
       {checkingRedoublants && (
         <div className="loading-overlay">
           <div className="spinner" />
-          <span className="loading-overlay-label">Vérification des redoublants...</span>
+          <span className="loading-overlay-label">Transition en cours...</span>
         </div>
       )}
 
@@ -400,9 +389,69 @@ export default function AnneesAcademiques() {
       {historyLoading && (
         <div className="loading-overlay">
           <div className="spinner" />
-          <span className="loading-overlay-label">Chargement...</span>
+          <span className="loading-overlay-label">Chargement des statistiques...</span>
         </div>
       )}
+
+      <Modal open={historyYear !== null} onClose={() => { setHistoryYear(null); setHistoryGroups({}); }} title={`Année archivée ${historyYear?.label || ''}`}>
+        {historyYear && historyGroups && (
+          <>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                <div style={{ padding: 12, background: '#f3f4f6', borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Diplômés</div>
+                  <div style={{ fontSize: 28, fontWeight: 'bold', color: '#059669' }}>{historyGroups.graduates_count || 0}</div>
+                </div>
+                <div style={{ padding: 12, background: '#f3f4f6', borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Groupes</div>
+                  <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1f2937' }}>{historyGroups.groups_count || 0}</div>
+                </div>
+                <div style={{ padding: 12, background: '#f3f4f6', borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Rejetés/Abandons</div>
+                  <div style={{ fontSize: 28, fontWeight: 'bold', color: '#dc2626' }}>{historyGroups.dropped_count || 0}</div>
+                </div>
+                <div style={{ padding: 12, background: '#f3f4f6', borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Total Étudiants</div>
+                  <div style={{ fontSize: 28, fontWeight: 'bold', color: '#1f2937' }}>{historyGroups.total_students || 0}</div>
+                </div>
+              </div>
+            </div>
+
+            {historyGroups.graduates_count > 0 && (
+              <>
+                <h4 style={{ margin: '16px 0 12px', fontSize: 14, fontWeight: 600 }}>Diplômés par filière</h4>
+                {historyGroups.graduates_by_filiere && historyGroups.graduates_by_filiere.length > 0 ? (
+                  <div style={{ marginBottom: 16 }}>
+                    {historyGroups.graduates_by_filiere.map((item, idx) => (
+                      <div key={idx} style={{ marginBottom: 12, padding: 12, background: '#f9fafb', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+                        <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                          {item.filiere} <span style={{ color: '#666', fontWeight: 'normal' }}>({item.count})</span>
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12 }}>
+                          {item.students && item.students.map((s, sidx) => (
+                            <li key={sidx} style={{ marginBottom: 4, color: '#374151' }}>
+                              {s.nom_prenom} ({s.numero_inscription})
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            )}
+
+            <div style={{ marginTop: 16, padding: 12, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, fontSize: 12, color: '#1e40af' }}>
+              <strong>Année de promotion :</strong> {historyGroups.annee?.label || '—'}
+            </div>
+          </>
+        )}
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={() => { setHistoryYear(null); setHistoryGroups({}); }}>
+            Fermer
+          </button>
+        </div>
+      </Modal>
 
       <Modal open={redoublantModal !== null} onClose={() => !processingRedoublants && setRedoublantModal(null)} title="Redoublants détectés">
         {redoublantModal && (

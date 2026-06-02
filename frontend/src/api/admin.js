@@ -74,4 +74,7 @@ export const adminApi = {
         apiClient.post('/admin/progression/promote-admis', data),
     copyGroups: (data) =>
         apiClient.post('/admin/progression/copy-groups', data),
+
+    getAnneeStats: (id) =>
+        apiClient.get(`/admin/annees-academiques/${id}/stats`),
 };

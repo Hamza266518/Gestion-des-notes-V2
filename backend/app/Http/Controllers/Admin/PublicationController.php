@@ -9,6 +9,28 @@ use Illuminate\Http\Request;
 
 class PublicationController extends Controller
 {
+    private $typeLabels = [
+        'notes_s1' => 'Notes S1',
+        'notes_s2' => 'Notes S2',
+        'bulletin' => 'Bulletin',
+    ];
+
+    /**
+     * Log activity for publication/unpublication actions
+     */
+    private function logActivity(string $actionType, string $type, string $description, ?int $modelId = null): void
+    {
+        $user = auth()->user();
+        ActivityLog::create([
+            'admin_id' => $user->id,
+            'admin_name' => $user->name,
+            'action_type' => $actionType,
+            'description' => $description,
+            'model_type' => 'publication',
+            'model_id' => $modelId,
+        ]);
+    }
+
     public function index(Request $request)
     {
         try {
@@ -44,21 +66,9 @@ class PublicationController extends Controller
             );
 
             // Log activity
-            $typeLabels = [
-                'notes_s1' => 'Notes S1',
-                'notes_s2' => 'Notes S2',
-                'bulletin' => 'Bulletin',
-            ];
             $groupe = \App\Models\Groupe::find($request->groupe_id);
-            $user = auth()->user();
-            ActivityLog::create([
-                'admin_id' => $user->id,
-                'admin_name' => $user->name,
-                'action_type' => 'publish',
-                'description' => 'Admin IFP a publié ' . ($typeLabels[$request->type] ?? $request->type) . ' pour ' . ($groupe->nom ?? 'Groupe'),
-                'model_type' => 'publication',
-                'model_id' => $publication->id,
-            ]);
+            $description = 'Admin IFP a publié ' . ($this->typeLabels[$request->type] ?? $request->type) . ' pour ' . ($groupe->nom ?? 'Groupe');
+            $this->logActivity('publish', $request->type, $description, $publication->id);
 
             $typeMessages = [
                 'notes_s1' => 'Notes S1 publiées',
@@ -102,25 +112,12 @@ class PublicationController extends Controller
                 $count++;
             }
 
-            $typeLabels = [
-                'notes_s1' => 'Notes S1',
-                'notes_s2' => 'Notes S2',
-                'bulletin' => 'Bulletin',
-            ];
-
-            $user = auth()->user();
-            ActivityLog::create([
-                'admin_id' => $user->id,
-                'admin_name' => $user->name,
-                'action_type' => 'publish',
-                'description' => 'Admin IFP a publié ' . ($typeLabels[$request->type] ?? $request->type) . ' pour tous les groupes (' . $count . ')',
-                'model_type' => 'publication',
-                'model_id' => null,
-            ]);
+            $description = 'Admin IFP a publié ' . ($this->typeLabels[$request->type] ?? $request->type) . ' pour tous les groupes (' . $count . ')';
+            $this->logActivity('publish', $request->type, $description);
 
             return response()->json([
                 'success' => true,
-                'message' => ($typeLabels[$request->type] ?? $request->type) . ' publiées pour ' . $count . ' groupe(s)',
+                'message' => ($this->typeLabels[$request->type] ?? $request->type) . ' publiées pour ' . $count . ' groupe(s)',
                 'count' => $count,
             ]);
         } catch (\Exception $e) {
@@ -146,24 +143,42 @@ class PublicationController extends Controller
             $publication->update(['is_published' => false, 'published_at' => null]);
 
             // Log activity
-            $typeLabels = [
-                'notes_s1' => 'Notes S1',
-                'notes_s2' => 'Notes S2',
-                'bulletin' => 'Bulletin',
-            ];
-            $user = auth()->user();
-            ActivityLog::create([
-                'admin_id' => $user->id,
-                'admin_name' => $user->name,
-                'action_type' => 'unpublish',
-                'description' => 'Admin IFP a dépublié ' . ($typeLabels[$request->type] ?? $request->type),
-                'model_type' => 'publication',
-                'model_id' => $publication->id,
-            ]);
+            $description = 'Admin IFP a dépublié ' . ($this->typeLabels[$request->type] ?? $request->type);
+            $this->logActivity('unpublish', $request->type, $description, $publication->id);
 
             return response()->json(['success' => true, 'message' => 'Publication annulée']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors de la dépublication'], 500);
+        }
+    }
+
+    public function unpublishAll(Request $request)
+    {
+        try {
+            $request->validate([
+                'annee_academique_id' => 'required|exists:annees_academiques,id',
+                'type'                => 'required|in:notes_s1,notes_s2,bulletin',
+            ]);
+
+            $count = SemestrePublication::where([
+                'annee_academique_id' => $request->annee_academique_id,
+                'type'                => $request->type,
+                'is_published'        => true,
+            ])->update([
+                'is_published' => false,
+                'published_at' => null,
+            ]);
+
+            $description = 'Admin IFP a dépublié ' . ($this->typeLabels[$request->type] ?? $request->type) . ' pour tous les groupes (' . $count . ')';
+            $this->logActivity('unpublish', $request->type, $description);
+
+            return response()->json([
+                'success' => true,
+                'message' => ($this->typeLabels[$request->type] ?? $request->type) . ' dépubliées pour ' . $count . ' groupe(s)',
+                'count' => $count,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la dépublication en masse'], 500);
         }
     }
 }

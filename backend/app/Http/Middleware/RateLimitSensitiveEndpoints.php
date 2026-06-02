@@ -16,7 +16,6 @@ class RateLimitSensitiveEndpoints
     {
         $sensitivePaths = [
             'admin/scan-cin',
-            'admin/import',
             'admin/scan-unites',
             'formateur/scan',
         ];

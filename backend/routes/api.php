@@ -131,6 +131,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/publications/publish', [PublicationController::class, 'publish']);
         Route::post('/publications/publish-all', [PublicationController::class, 'publishAll']);
         Route::post('/publications/unpublish', [PublicationController::class, 'unpublish']);
+        Route::post('/publications/unpublish-all', [PublicationController::class, 'unpublishAll']);
 
         // Diplomes
         Route::get('/diplomes', [DiplomeController::class, 'index']);
