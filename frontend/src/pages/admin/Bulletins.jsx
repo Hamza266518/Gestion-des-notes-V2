@@ -5,6 +5,7 @@ import { etudiantsApi } from '../../api/etudiants';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { handleApiError } from '../../utils/errorHandler';
+import { formatNiveau } from '../../utils/helpers';
 import Spinner from '../../components/common/Spinner';
 import '../../css/components.css';
 import '../../css/layout.css';

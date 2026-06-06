@@ -159,10 +159,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/notes/{id}', [NoteController::class, 'update']);
         Route::get('/sequences', [NoteController::class, 'mySequences']);
         Route::get('/scan-data', [NoteController::class, 'scanData']);
+        Route::get('/etudiants', [NoteController::class, 'searchEtudiants']);
     });
 
     // ── ETUDIANT ───────────────────────────────────────────
     Route::prefix('etudiant')->middleware(\App\Http\Middleware\IsEtudiant::class)->group(function () {
         Route::get('/bulletin', [PortalController::class, 'monBulletin']);
+        
+        // Password Management (authenticated)
+        Route::get('/password/check-first-login', [\App\Http\Controllers\Etudiant\PasswordController::class, 'checkFirstLogin']);
+        Route::post('/password/change', [\App\Http\Controllers\Etudiant\PasswordController::class, 'changePassword']);
     });
 });
+
+// Forgot Password (unauthenticated - no auth:sanctum required)
+Route::post('/etudiant/password/forgot-verify', [\App\Http\Controllers\Etudiant\PasswordController::class, 'verifyForgotPassword']);
+Route::post('/etudiant/password/reset', [\App\Http\Controllers\Etudiant\PasswordController::class, 'resetForgotPassword']);

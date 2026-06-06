@@ -24,6 +24,7 @@ import Sequences from './pages/admin/Sequences';
 
 import MonBulletin from './pages/etudiant/MonBulletin';
 import MonBulletinView from './pages/etudiant/MonBulletinView';
+import { ChangePassword } from './pages/etudiant/ChangePassword';
 
 import Scanner from './pages/formateur/Scanner';
 import NotesList from './pages/formateur/NotesList';
@@ -73,6 +74,7 @@ export default function App() {
               <Route index element={<Navigate to="bulletin" replace />} />
               <Route path="bulletin" element={<MonBulletin />} />
               <Route path="mon-bulletin" element={<MonBulletinView />} />
+              <Route path="changer-mot-de-passe" element={<ChangePassword />} />
             </Route>
 
             <Route

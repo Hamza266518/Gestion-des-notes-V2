@@ -21,11 +21,13 @@ return new class extends Migration
 
         foreach ($users as $user) {
             $password = strtoupper($user->cin) . $symbols[array_rand($symbols)];
+            $encryptedPassword = Crypt::encryptString($password);
             DB::table('users')
                 ->where('id', $user->id)
                 ->update([
                     'password' => Hash::make($password),
-                    'password_encrypted' => Crypt::encryptString($password),
+                    'password_encrypted' => $encryptedPassword,
+                    'password_original_encrypted' => $encryptedPassword,
                 ]);
         }
     }

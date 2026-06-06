@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth';
 import { useAuth } from '../../context/AuthContext';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiLoader } from 'react-icons/fi';
+import { ForgotPasswordModal } from '../../components/etudiant/ForgotPasswordModal';
 import logoIFP from '../../image/logo IFP.jpeg';
 import bgImage from '../../image/TIBYA.png';
 import '../../css/login.css';
@@ -14,6 +15,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const passwordRef = useRef(null);
@@ -171,7 +173,7 @@ export default function Login() {
                 <button
                   type="button"
                   className="login-forgot-link"
-                  onClick={() => setShowHint(!showHint)}
+                  onClick={() => setShowForgotPassword(true)}
                 >
                   Mot de passe oublié ?
                 </button>
@@ -198,6 +200,19 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      {showForgotPassword && (
+        <ForgotPasswordModal
+          onClose={() => setShowForgotPassword(false)}
+          onSuccess={() => {
+            setShowForgotPassword(false);
+            setError('');
+            setEmail('');
+            setPassword('');
+            alert('Mot de passe réinitialisé avec succès. Veuillez vous connecter avec votre nouveau mot de passe.');
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { FiX } from 'react-icons/fi';
 import { formateursApi } from '../../api/formateurs';
 import { scanApi } from '../../api/scan';
@@ -24,8 +24,60 @@ export default function Scanner() {
   const [scanning, setScanning] = useState(false);
   const [savingResults, setSavingResults] = useState(false);
   const [pdfUrls, setPdfUrls] = useState([]);
+  const [allConfirmed, setAllConfirmed] = useState(false);
 
   const toast = useToast();
+
+  const [searchQueries, setSearchQueries] = useState({});
+  const [searchMatches, setSearchMatches] = useState({});
+  const [searchActiveIndex, setSearchActiveIndex] = useState(null);
+  const [searchDropdownStyle, setSearchDropdownStyle] = useState({});
+  const searchTimer = useRef(null);
+
+  useEffect(() => {
+    const handleClick = () => setSearchActiveIndex(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
+
+  const handleSearchChange = (index, value) => {
+    setSearchQueries(prev => ({ ...prev, [index]: value }));
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (value.length < 2) {
+      setSearchMatches(prev => ({ ...prev, [index]: [] }));
+      return;
+    }
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const res = await formateursApi.searchEtudiants(value);
+        const data = res.data.data || [];
+        if (data.length === 1) {
+          selectStudent(index, data[0]);
+        } else {
+          setSearchMatches(prev => ({ ...prev, [index]: data }));
+        }
+      } catch {
+        setSearchMatches(prev => ({ ...prev, [index]: [] }));
+      }
+    }, 300);
+  };
+
+  const selectStudent = (index, student) => {
+    setResults(prev => prev.map((r, i) =>
+      i === index ? {
+        ...r,
+        etudiant_id: student.id,
+        nom: student.nom_prenom,
+        nom_ar: student.nom_ar || '',
+        numero_inscription: student.numero_inscription,
+        groupe: student.groupe?.nom || '',
+        found: true
+      } : r
+    ));
+    setSearchQueries(prev => { const n = { ...prev }; delete n[index]; return n; });
+    setSearchMatches(prev => { const n = { ...prev }; delete n[index]; return n; });
+    setSearchActiveIndex(null);
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -100,18 +152,27 @@ export default function Scanner() {
         confidence: r.found ? 'high' : 'low'
       }));
 
+      const unconfirmedResults = scanned.filter(r => !r.already_confirmed);
+
       if (scanned.length === 0) {
+        setAllConfirmed(false);
+        setResults([]);
         toast.error('Aucun résultat trouvé. Vérifiez que le fichier PDF est lisible.');
+      } else if (unconfirmedResults.length === 0) {
+        setAllConfirmed(true);
+        setResults([]);
+        toast.info('Toutes les notes pour ce contrôle ont déjà été confirmées. Modifiez-les depuis la page Mes Notes ou choisissez un autre contrôle.');
       } else {
-        const confirmedCount = scanned.filter(r => r.already_confirmed).length;
-        const unrecCount = scanned.filter(r => !r.found).length;
-        let msg = `${scanned.length} note(s) détectée(s)`;
-        if (confirmedCount > 0) msg += `, ${confirmedCount} déjà confirmée(s)`;
+        setAllConfirmed(false);
+        const confirmedCount = scanned.length - unconfirmedResults.length;
+        const unrecCount = unconfirmedResults.filter(r => !r.found).length;
+        let msg = `${unconfirmedResults.length} note(s) détectée(s)`;
+        if (confirmedCount > 0) msg += ` (${confirmedCount} déjà confirmée(s) ignorée(s))`;
         if (unrecCount > 0) msg += `, ${unrecCount} non reconnue(s)`;
         showSuccess(toast, msg);
+        setResults(unconfirmedResults);
       }
 
-      setResults(scanned);
       setStep(3);
     } catch (err) {
       handleApiError(err, toast);
@@ -133,6 +194,15 @@ export default function Scanner() {
 
   const removeResult = (i) => {
     setResults(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const handleNextFromResults = () => {
+    const unrec = results.filter(r => !r.etudiant_id);
+    if (unrec.length > 0) {
+      toast.warning(`${unrec.length} étudiant(s) non reconnu(s). Retirez-les de la liste avant de continuer.`);
+      return;
+    }
+    setStep(4);
   };
 
   const handleConfirm = async () => {
@@ -310,18 +380,33 @@ export default function Scanner() {
           </div>
           {results.length === 0 ? (
             <div className="text-center" style={{ padding: 40 }}>
-              <h4 style={{ color: '#666', marginBottom: 12 }}>Aucune note detectee</h4>
-              <p style={{ color: '#999', marginBottom: 24 }}>
-                Verifiez le fichier PDF ou ressayer le scan.
-              </p>
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                <button className="btn btn-primary" onClick={() => setStep(2)}>
-                  Retour aux fichiers
-                </button>
-                <button className="btn btn-outline" onClick={handleScan}>
-                  Ressayer le scan
-                </button>
-              </div>
+              {allConfirmed ? (
+                <>
+                  <h4 style={{ color: 'var(--warning)', marginBottom: 12 }}>Toutes les notes existent deja</h4>
+                  <p style={{ color: '#999', marginBottom: 24 }}>
+                    Tous les etudiants scannes ont deja des notes confirmees pour ce controle.
+                    Modifiez-les depuis la page <strong>Mes Notes</strong> ou selectionnez un autre controle.
+                  </p>
+                  <button className="btn btn-primary" onClick={() => { setStep(1); setAllConfirmed(false); }}>
+                    Choisir un autre controle
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h4 style={{ color: '#666', marginBottom: 12 }}>Aucune note detectee</h4>
+                  <p style={{ color: '#999', marginBottom: 24 }}>
+                    Verifiez le fichier PDF ou ressayer le scan.
+                  </p>
+                  <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                    <button className="btn btn-primary" onClick={() => setStep(2)}>
+                      Retour aux fichiers
+                    </button>
+                    <button className="btn btn-outline" onClick={handleScan}>
+                      Ressayer le scan
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20 }}>
@@ -362,7 +447,23 @@ export default function Scanner() {
                       {results.map((r, i) => (
                         <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
                           <td style={{ padding: '12px 16px' }}>
-                            <span style={{ padding: '8px 12px', display: 'block' }}>{r.nom}</span>
+                            {!r.etudiant_id && !r.already_confirmed ? (
+                              <input
+                                className="form-input"
+                                style={{ width: '100%', padding: '6px 10px', fontSize: '14px' }}
+                                value={searchQueries[i] ?? r.nom}
+                                onChange={e => handleSearchChange(i, e.target.value)}
+                                placeholder="Rechercher un étudiant..."
+                                onClick={e => e.stopPropagation()}
+                                onFocus={e => {
+                                  const rect = e.target.getBoundingClientRect();
+                                  setSearchDropdownStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+                                  setSearchActiveIndex(i);
+                                }}
+                              />
+                            ) : (
+                              <span style={{ padding: '8px 12px', display: 'block' }}>{r.nom}</span>
+                            )}
                           </td>
                           <td style={{ padding: '12px 16px' }}>
                             <span style={{ padding: '8px 12px', display: 'block' }}>{r.numero_inscription}</span>
@@ -404,9 +505,43 @@ export default function Scanner() {
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="btn btn-outline" onClick={() => setStep(2)}>← Retour</button>
-                  <button className="btn btn-primary" onClick={() => setStep(4)}>Suivant →</button>
+                  <button className="btn btn-primary" onClick={handleNextFromResults}>Suivant →</button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {searchActiveIndex !== null && searchMatches[searchActiveIndex]?.length > 0 && (
+            <div
+              style={{
+                position: 'fixed',
+                top: searchDropdownStyle.top,
+                left: searchDropdownStyle.left,
+                width: searchDropdownStyle.width,
+                background: '#fff',
+                border: '1px solid #e5e7eb',
+                borderRadius: 6,
+                zIndex: 9999,
+                maxHeight: 200,
+                overflowY: 'auto',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.12)'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {searchMatches[searchActiveIndex].map(s => (
+                <div
+                  key={s.id}
+                  style={{ padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6', fontSize: 13 }}
+                  onClick={() => selectStudent(searchActiveIndex, s)}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ fontWeight: 500 }}>{s.nom_prenom}</div>
+                  <div style={{ fontSize: 11, color: '#999' }}>
+                    {s.numero_inscription || ''}{s.groupe?.nom ? ` — ${s.groupe.nom}` : ''}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

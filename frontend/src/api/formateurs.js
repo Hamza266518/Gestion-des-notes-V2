@@ -33,4 +33,6 @@ export const formateursApi = {
     apiClient.get('/formateur/notes', { params }),
   updateNote: (id, valeur) =>
     apiClient.put(`/formateur/notes/${id}`, { valeur }),
+  searchEtudiants: (search) =>
+    apiClient.get('/formateur/etudiants', { params: { search } }),
 };

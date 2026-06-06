@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Formateur;
 
 use App\Http\Controllers\Controller;
 use App\Models\Note;
+use App\Models\Etudiant;
 use Illuminate\Http\Request;
 
 class NoteController extends Controller
@@ -47,6 +48,26 @@ class NoteController extends Controller
         $note->update(['valeur' => $request->valeur]);
 
         return response()->json(['success' => true, 'data' => $note, 'message' => 'Note mise à jour']);
+    }
+
+    public function searchEtudiants(Request $request)
+    {
+        $request->validate(['search' => 'required|string|min:1']);
+        $search = $request->search;
+
+        $search = strtolower($search);
+
+        $etudiants = Etudiant::with('groupe.niveau.filiere')
+            ->where(function ($q) use ($search) {
+                $q->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $search . '%'])
+                  ->orWhereRaw('LOWER(nom_ar) LIKE ?', ['%' . $search . '%'])
+                  ->orWhereRaw('LOWER(numero_inscription) LIKE ?', ['%' . $search . '%']);
+            })
+            ->orderBy('nom_prenom')
+            ->limit(15)
+            ->get();
+
+        return response()->json(['success' => true, 'data' => $etudiants]);
     }
 
     public function scanData(Request $request)

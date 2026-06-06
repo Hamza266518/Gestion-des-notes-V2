@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import portalApi from '../../api/portal';
+import { passwordApi } from '../../api/password';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { handleApiError } from '../../utils/errorHandler';
 import { formatNiveau } from '../../utils/helpers';
+import { PasswordChangeModal } from '../../components/etudiant/PasswordChangeModal';
 import Badge from '../../components/common/Badge';
 import Spinner from '../../components/common/Spinner';
 import '../../css/components.css';
@@ -181,9 +183,11 @@ function SemesterToggle({ active, onChange }) {
 
 export default function MonBulletin() {
   const [bulletin, setBulletin] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeSemestre, setActiveSemestre] = useState(1);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [checkingPassword, setCheckingPassword] = useState(true);
   const toast = useToast();
   const navigate = useNavigate();
   const { currentAnnee } = useAnneeAcademique();
@@ -203,9 +207,29 @@ export default function MonBulletin() {
     }
   }, [currentAnnee, toast]);
 
+  // Check if student needs to change password on first login
   useEffect(() => {
-    loadBulletin();
-  }, [loadBulletin]);
+    const checkPasswordStatus = async () => {
+      try {
+        const res = await passwordApi.checkFirstLogin();
+        if (res.data.needs_password_change) {
+          setShowPasswordModal(true);
+        }
+      } catch (err) {
+        console.error('Error checking password status:', err);
+      } finally {
+        setCheckingPassword(false);
+      }
+    };
+
+    checkPasswordStatus();
+  }, []);
+
+  useEffect(() => {
+    if (!checkingPassword) {
+      loadBulletin();
+    }
+  }, [loadBulletin, checkingPassword]);
 
   if (loading) return <Spinner />;
 
@@ -272,6 +296,13 @@ export default function MonBulletin() {
           )}
         </div>
       )}
+
+      {showPasswordModal && (
+        <PasswordChangeModal 
+          onSuccess={() => setShowPasswordModal(false)} 
+        />
+      )}
     </div>
   );
 }
+
