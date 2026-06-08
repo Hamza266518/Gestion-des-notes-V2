@@ -15,8 +15,8 @@ COPY . .
 
 RUN composer install --no-dev --optimize-autoloader
 
-RUN php artisan config:cache && \
-    php artisan route:cache
+# Don't cache config — it would hardcode build-time env values
+# Railway env vars are injected at runtime
 
 EXPOSE 8080
 
