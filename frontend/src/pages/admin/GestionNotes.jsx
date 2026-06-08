@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { FiSearch, FiX } from 'react-icons/fi';
 import { notesApi } from '../../api/notes';
 import { unitesApi } from '../../api/unites';
 import { sequencesApi } from '../../api/sequences';
@@ -33,6 +34,7 @@ export default function GestionNotes() {
   const [editExamValue, setEditExamValue] = useState('');
   const [saving, setSaving] = useState(false);
   const [filtersApplied, setFiltersApplied] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
 
@@ -192,6 +194,16 @@ export default function GestionNotes() {
     Object.values(notesByControl).flat().map(n => [n.etudiant_id, n.etudiant])
   ).values()];
 
+  const filteredEtudiants = useMemo(() => {
+    if (!searchTerm.trim()) return etudiants;
+    const q = searchTerm.trim().toLowerCase();
+    return etudiants.filter(e =>
+      (e.nom_prenom?.toLowerCase().includes(q)) ||
+      (e.cin?.toLowerCase().includes(q)) ||
+      (e.numero_inscription?.toLowerCase().includes(q))
+    );
+  }, [etudiants, searchTerm]);
+
   const showExamCols = selectedUniteId && selected.groupe_id;
 
   return (
@@ -272,7 +284,29 @@ export default function GestionNotes() {
               )}
             </h5>
           </div>
-          <div className="card-body p-0">
+          <div className="card-body">
+            <div className="search-input-wrapper" style={{ position: 'relative', marginBottom: 12, maxWidth: 400 }}>
+              <FiSearch style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#999' }} />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Rechercher par nom, CIN ou N° inscription..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                style={{ paddingLeft: 32, paddingRight: 30, width: '100%' }}
+              />
+              {searchTerm && (
+                <FiX
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#999' }}
+                  onClick={() => setSearchTerm('')}
+                />
+              )}
+            </div>
+            {searchTerm && (
+              <p style={{ marginBottom: 8, fontSize: 13, color: '#666' }}>
+                {filteredEtudiants.length} étudiant(s) trouvé(s)
+              </p>
+            )}
             <div className="table-wrap">
               <table className="table mb-0">
                 <thead>
@@ -286,7 +320,7 @@ export default function GestionNotes() {
                   </tr>
                 </thead>
                 <tbody>
-                  {etudiants.map((etudiant) => {
+                  {filteredEtudiants.map((etudiant) => {
                     const seq = sequences.find(s => s.id === selectedSequenceId);
                     const ctrlCells = allControlNums.map(num => {
                       const ctrl = seq?.controles?.find(c => c.numero === num);

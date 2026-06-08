@@ -12,11 +12,31 @@ class ActivityLogController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = ActivityLog::select(['id', 'admin_name', 'action_type', 'description', 'created_at'])
+            $query = ActivityLog::select(['id', 'admin_name', 'action_type', 'description', 'model_type', 'model_id', 'created_at'])
                 ->latest();
+
+            if ($request->filled('action_type')) {
+                $query->where('action_type', $request->action_type);
+            }
 
             if ($request->filled('model_type')) {
                 $query->where('model_type', $request->model_type);
+            }
+
+            if ($request->filled('date_from')) {
+                $query->whereDate('created_at', '>=', $request->date_from);
+            }
+
+            if ($request->filled('date_to')) {
+                $query->whereDate('created_at', '<=', $request->date_to);
+            }
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('admin_name', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%");
+                });
             }
 
             if ($request->filled('etudiant_id')) {
@@ -27,13 +47,13 @@ class ActivityLogController extends Controller
                 });
             }
 
-            if ($request->filled('limit')) {
-                $query->limit((int) $request->limit);
+            if ($request->boolean('paginate')) {
+                $perPage = (int) $request->input('per_page', 20);
+                $logs = $query->paginate($perPage);
             } else {
-                $query->limit(20);
+                $limit = (int) $request->input('limit', 20);
+                $logs = $query->limit($limit)->get();
             }
-
-            $logs = $query->get();
 
             return response()->json([
                 'success' => true,

@@ -422,10 +422,11 @@ export default function Diplomes() {
         annee_academique_id: currentAnnee.id
       });
       const { created, skipped, total } = res.data.data;
-      toast.success(`${created} diplôme(s) généré(s) pour les admis, ${skipped} non-admis`);
+      toast.success(`${created} diplôme(s) généré(s), ${skipped} non-diplômables`);
       load();
-    } catch {
-      toast.error('Erreur lors de la génération des diplômes');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Erreur lors de la génération des diplômes';
+      toast.error(msg);
     } finally {
       setGenAllLoading(false);
     }
@@ -458,7 +459,7 @@ export default function Diplomes() {
               Générer les diplômes pour tous les étudiants admis de la promotion <strong>{currentAnnee?.label}</strong>&nbsp;?
               <br /><br />
               <span style={{ color: '#dc2626', fontSize: 13 }}>
-                ⚠ Seuls les étudiants en année diplômante (dernière année) avec une moyenne ≥ 10 recevront un diplôme.
+                ⚠ Seuls les étudiants en année diplômante avec bulletin publié, toutes notes saisies, et moyenne ≥ 10 recevront un diplôme.
               </span>
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>

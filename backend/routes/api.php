@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\ScanCinController;
 use App\Http\Controllers\Admin\ScanUnitesController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\ProgressionController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Formateur\ScanController;
 use App\Http\Controllers\Formateur\NoteController;
 use App\Http\Controllers\Etudiant\PortalController;
@@ -143,6 +144,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Activity logs
         Route::get('/activity-logs', [ActivityLogController::class, 'index']);
 
+        // Dashboard stats
+        Route::get('/dashboard-stats', [DashboardController::class, 'stats']);
+        Route::get('/controles-pending', [DashboardController::class, 'controlesPending']);
+
         // Progression
         Route::get('/progression/check-redoublants', [ProgressionController::class, 'checkRedoublants']);
         Route::post('/progression/confirm-redoublants', [ProgressionController::class, 'confirmRedoublants']);
@@ -160,6 +165,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/sequences', [NoteController::class, 'mySequences']);
         Route::get('/scan-data', [NoteController::class, 'scanData']);
         Route::get('/etudiants', [NoteController::class, 'searchEtudiants']);
+        Route::get('/sequences/{id}/etudiants', [NoteController::class, 'sequenceEtudiants']);
+        Route::get('/groupes', [NoteController::class, 'groupes']);
+        Route::get('/publication-status', [NoteController::class, 'publicationStatus']);
     });
 
     // ── ETUDIANT ───────────────────────────────────────────

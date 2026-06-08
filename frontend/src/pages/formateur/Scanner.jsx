@@ -25,6 +25,9 @@ export default function Scanner() {
   const [savingResults, setSavingResults] = useState(false);
   const [pdfUrls, setPdfUrls] = useState([]);
   const [allConfirmed, setAllConfirmed] = useState(false);
+  const [publicationMap, setPublicationMap] = useState({});
+
+  const processing = scanning || savingResults;
 
   const toast = useToast();
 
@@ -86,6 +89,7 @@ export default function Scanner() {
         const data = r.data.data;
         setFilieres(data.filieres || []);
         setSequences(data.sequences || []);
+        setPublicationMap(data.publication_map || {});
       })
       .catch((err) => {
         const info = handleApiError(err, toast, { showToast: false });
@@ -120,6 +124,11 @@ export default function Scanner() {
     }
     if (!sel.controle_id) {
       toast.warning('Veuillez sélectionner un contrôle');
+      return;
+    }
+
+    if (publicationMap[sel.controle_id]) {
+      toast.warning('Les notes/bulletins ont déjà été publiés pour ce groupe. Scan impossible.');
       return;
     }
 
@@ -273,7 +282,7 @@ export default function Scanner() {
         <div className="alert alert-danger" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>{error}</span>
-            <button className="btn btn-sm btn-outline" onClick={() => window.location.reload()}>Réessayer</button>
+            <button className="btn btn-sm btn-outline" onClick={() => window.location.reload()} disabled={processing}>Réessayer</button>
           </div>
         </div>
       )}
@@ -324,7 +333,20 @@ export default function Scanner() {
               {filteredControles.map(c => <option key={c.id} value={c.id}>Contrôle {c.numero}</option>)}
             </select>
           </div>
-          <button className="btn btn-primary" style={{ marginTop: 16 }} disabled={!sel.controle_id} onClick={() => setStep(2)}>
+
+          {sel.controle_id && publicationMap[Number(sel.controle_id)] && (
+            <div className="alert alert-danger" style={{ marginTop: 16 }}>
+              <strong>Période terminée.</strong> Les notes et/ou bulletins ont déjà été publiés pour ce groupe.
+              Vous ne pouvez plus saisir ou modifier des notes. Contactez l'administrateur si nécessaire.
+            </div>
+          )}
+
+          <button
+            className="btn btn-primary"
+            style={{ marginTop: 16 }}
+            disabled={processing || !sel.controle_id || (sel.controle_id && publicationMap[Number(sel.controle_id)])}
+            onClick={() => setStep(2)}
+          >
             Suivant →
           </button>
         </div>
@@ -334,7 +356,7 @@ export default function Scanner() {
       {step === 2 && (
         <div className="card card-body" style={{ maxWidth: 1000, width: '90vw' }}>
           <div className="upload-zone">
-            <input type="file" accept=".pdf" multiple onChange={handleFiles} />
+            <input type="file" accept=".pdf" multiple onChange={handleFiles} disabled={processing} />
             <div className="upload-zone-text">
               <strong>Cliquer ou glisser</strong> les fichiers PDF de notes
             </div>
@@ -346,7 +368,7 @@ export default function Scanner() {
                 {pdfUrls.map((src, i) => (
                   <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb', background: '#f9fafb', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <embed src={src} type="application/pdf" style={{ width: '100%', height: '100%' }} />
-                    <div style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(239,68,68,0.92)', color: '#fff', border: 'none', borderRadius: 6, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }} onClick={() => removePdf(i)}>
+                    <div style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(239,68,68,0.92)', color: '#fff', border: 'none', borderRadius: 6, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: processing ? 'not-allowed' : 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', opacity: processing ? 0.5 : 1 }} onClick={() => !processing && removePdf(i)}>
                         <FiX size={18} aria-label="Retirer ce fichier" />
                       </div>
                       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', padding: '4px 8px', fontSize: 12, textAlign: 'center' }}>
@@ -358,8 +380,8 @@ export default function Scanner() {
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button className="btn btn-outline" onClick={() => setStep(1)}>Retour</button>
-            <button className="btn btn-primary" disabled={pdfs.length === 0 || scanning} onClick={handleScan}>
+            <button className="btn btn-outline" onClick={() => setStep(1)} disabled={processing}>Retour</button>
+            <button className="btn btn-primary" disabled={processing || pdfs.length === 0} onClick={handleScan}>
               {scanning ? 'Lecture en cours...' : 'Scanner'}
             </button>
           </div>
@@ -387,7 +409,7 @@ export default function Scanner() {
                     Tous les etudiants scannes ont deja des notes confirmees pour ce controle.
                     Modifiez-les depuis la page <strong>Mes Notes</strong> ou selectionnez un autre controle.
                   </p>
-                  <button className="btn btn-primary" onClick={() => { setStep(1); setAllConfirmed(false); }}>
+                  <button className="btn btn-primary" onClick={() => { setStep(1); setAllConfirmed(false); }} disabled={processing}>
                     Choisir un autre controle
                   </button>
                 </>
@@ -398,13 +420,19 @@ export default function Scanner() {
                     Verifiez le fichier PDF ou ressayer le scan.
                   </p>
                   <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                    <button className="btn btn-primary" onClick={() => setStep(2)}>
+                    <button className="btn btn-primary" onClick={() => setStep(2)} disabled={processing}>
                       Retour aux fichiers
                     </button>
-                    <button className="btn btn-outline" onClick={handleScan}>
-                      Ressayer le scan
+                    <button className="btn btn-outline" onClick={handleScan} disabled={processing}>
+                      {scanning ? 'Scan en cours...' : 'Ressayer le scan'}
                     </button>
                   </div>
+                  {scanning && (
+                    <div style={{ textAlign: 'center', padding: 16, marginTop: 12 }}>
+                      <Spinner />
+                      <p style={{ marginTop: 8, color: 'var(--gray-500)', fontSize: 13 }}>Lecture des notes en cours...</p>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -420,8 +448,9 @@ export default function Scanner() {
                         {i + 1}
                       </div>
                       <button
-                        onClick={() => removePdf(i)}
-                        style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(239,68,68,0.9)', color: '#fff', border: 'none', borderRadius: 4, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16 }}
+                        onClick={() => !processing && removePdf(i)}
+                        disabled={processing}
+                        style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(239,68,68,0.9)', color: '#fff', border: 'none', borderRadius: 4, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: processing ? 'not-allowed' : 'pointer', fontSize: 16, opacity: processing ? 0.5 : 1 }}
                         title="Retirer ce fichier"
                       >
                         <FiX />
@@ -496,7 +525,7 @@ export default function Scanner() {
                             )}
                           </td>
                           <td style={{ padding: '12px 16px' }}>
-                            <button className="btn btn-sm btn-danger" onClick={() => removeResult(i)}>Retirer</button>
+                            <button className="btn btn-sm btn-danger" onClick={() => removeResult(i)} disabled={processing}>Retirer</button>
                           </td>
                         </tr>
                       ))}
@@ -504,8 +533,8 @@ export default function Scanner() {
                   </table>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-outline" onClick={() => setStep(2)}>← Retour</button>
-                  <button className="btn btn-primary" onClick={handleNextFromResults}>Suivant →</button>
+                  <button className="btn btn-outline" onClick={() => setStep(2)} disabled={processing}>← Retour</button>
+                  <button className="btn btn-primary" onClick={handleNextFromResults} disabled={processing}>Suivant →</button>
                 </div>
               </div>
             </div>
@@ -566,8 +595,8 @@ export default function Scanner() {
             <strong>Confirmez pour enregistrer les notes</strong> — toute modification sera impossible après.
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-outline" onClick={() => setStep(3)}>← Retour</button>
-            <button className="btn btn-primary" disabled={savingResults || results.some(r => !r.etudiant_id || r.already_confirmed)} onClick={handleConfirm}>
+            <button className="btn btn-outline" onClick={() => setStep(3)} disabled={processing}>← Retour</button>
+            <button className="btn btn-primary" style={{ minWidth: 220, justifyContent: 'center' }} disabled={processing || results.some(r => !r.etudiant_id || r.already_confirmed)} onClick={handleConfirm}>
               {savingResults ? (
                 <>
                   <Spinner /> Enregistrement...

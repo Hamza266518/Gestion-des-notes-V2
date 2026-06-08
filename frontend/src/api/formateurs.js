@@ -35,4 +35,10 @@ export const formateursApi = {
     apiClient.put(`/formateur/notes/${id}`, { valeur }),
   searchEtudiants: (search) =>
     apiClient.get('/formateur/etudiants', { params: { search } }),
+  getGroupes: () =>
+    apiClient.get('/formateur/groupes'),
+  getSequenceEtudiants: (seqId) =>
+    apiClient.get(`/formateur/sequences/${seqId}/etudiants`),
+  getPublicationStatus: (controleId) =>
+    apiClient.get('/formateur/publication-status', { params: { controle_id: controleId } }),
 };

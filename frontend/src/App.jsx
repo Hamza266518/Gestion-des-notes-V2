@@ -9,6 +9,7 @@ import FormateurLayout from './components/common/FormateurLayout';
 
 import Login from './pages/auth/Login';
 import Dashboard from './pages/admin/Dashboard';
+import Journal from './pages/admin/Journal';
 import AnneesAcademiques from './pages/admin/AnneesAcademiques';
 import FilieresGroupes from './pages/admin/FilieresGroupes';
 import Etudiants from './pages/admin/Etudiants';
@@ -47,7 +48,8 @@ export default function App() {
                 </PrivateRoute>
               }
             >
-              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route index element={<Navigate to="journal" replace />} />
+              <Route path="journal" element={<Journal />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="annees" element={<AnneesAcademiques />} />
               <Route path="filieres-groupes" element={<FilieresGroupes />} />
@@ -90,6 +92,7 @@ export default function App() {
               <Route path="notes" element={<NotesList />} />
               <Route path="liste-notes" element={<MesNotesList />} />
             </Route>
+
           </Routes>
         </ToastProvider>
       </AnneeAcademiqueProvider>

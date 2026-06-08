@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Formateur;
 
 use App\Http\Controllers\Controller;
+use App\Models\AnneeAcademique;
 use App\Models\Controle;
 use App\Models\Etudiant;
+use App\Models\Groupe;
+use App\Models\Niveau;
 use App\Models\Note;
 use App\Models\ScanLog;
+use App\Models\SemestrePublication;
 use App\Services\GeminiService;
 use App\Services\NoteParserService;
 use Illuminate\Http\Request;
@@ -35,6 +39,13 @@ class ScanController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Vous n\'êtes pas assigné à cette séquence',
+            ], 403);
+        }
+
+        if ($this->isPublishedForControle($controle->id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Les notes/bulletins ont été publiés pour ce groupe. Scan impossible.',
             ], 403);
         }
 
@@ -175,6 +186,12 @@ class ScanController extends Controller
 
         $formateur = auth()->user()->formateur;
 
+        // Check publication for first controle (all notes should be for same controle)
+        $firstControleId = $request->notes[0]['controle_id'] ?? null;
+        if ($firstControleId && $this->isPublishedForControle($firstControleId)) {
+            return response()->json(['success' => false, 'message' => 'Les notes/bulletins ont été publiés pour ce groupe. Enregistrement impossible.'], 403);
+        }
+
         $alreadyConfirmed = [];
 
         foreach ($request->notes as $item) {
@@ -240,5 +257,37 @@ class ScanController extends Controller
             'already_confirmed' => $alreadyConfirmed,
             'message' => $msg,
         ]);
+    }
+
+    private function isPublishedForControle($controleId): bool
+    {
+        $controle = Controle::with('sequence.unite')->find($controleId);
+        if (!$controle || !$controle->sequence || !$controle->sequence->unite) return false;
+
+        $unite = $controle->sequence->unite;
+
+        $niveau = Niveau::where('filiere_id', $unite->filiere_id)
+            ->where('numero', $unite->numero_annee)
+            ->first();
+        if (!$niveau) return false;
+
+        $currentAnnee = AnneeAcademique::where('is_current', true)->first();
+        if (!$currentAnnee) return false;
+
+        $groupeIds = Groupe::where('niveau_id', $niveau->id)
+            ->where('annee_academique_id', $currentAnnee->id)
+            ->pluck('id');
+
+        if ($groupeIds->isEmpty()) return false;
+
+        $types = ['bulletin'];
+        if ($unite->semestre == 1) $types[] = 'notes_s1';
+        else $types[] = 'notes_s2';
+
+        return SemestrePublication::whereIn('groupe_id', $groupeIds)
+            ->where('annee_academique_id', $currentAnnee->id)
+            ->whereIn('type', $types)
+            ->where('is_published', true)
+            ->exists();
     }
 }

@@ -77,4 +77,10 @@ export const adminApi = {
 
     getAnneeStats: (id) =>
         apiClient.get(`/admin/annees-academiques/${id}/stats`),
+
+    getDashboardStats: (params) =>
+        apiClient.get('/admin/dashboard-stats', { params }),
+
+    getControlesPending: (params) =>
+        apiClient.get('/admin/controles-pending', { params }),
 };

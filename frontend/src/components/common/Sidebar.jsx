@@ -15,12 +15,14 @@ import {
   FiLogOut,
   FiChevronLeft,
   FiChevronRight,
-  FiX
+  FiX,
+  FiClock
 } from 'react-icons/fi';
 import logoMenu from '../../image/logo-menu.png';
 import '../../css/sidebar.css';
 
 const adminLinks = [
+  { to: '/admin/journal',      label: 'Journal',             icon: FiClock },
   { to: '/admin/dashboard',    label: 'Dashboard',          icon: FiGrid },
   { to: '/admin/annees',       label: 'Années Académiques', icon: FiCalendar },
   { to: '/admin/filieres-groupes', label: 'Filières & Groupes', icon: FiHome },
