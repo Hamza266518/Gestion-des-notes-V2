@@ -18,6 +18,6 @@ RUN composer install --no-dev --optimize-autoloader
 RUN php artisan config:cache && \
     php artisan route:cache
 
-EXPOSE $PORT
+EXPOSE 8080
 
-CMD php artisan serve --host=0.0.0.0 --port=$PORT
+CMD php -S 0.0.0.0:${PORT:-8080} -t public
