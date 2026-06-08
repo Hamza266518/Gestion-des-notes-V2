@@ -56,7 +56,7 @@ class EtudiantController extends Controller
             return response()->json(['success' => true, 'data' => $etudiants]);
         } catch (\Exception $e) {
             \Log::error('EtudiantController::index error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Erreur lors du chargement des étudiants'], 500);
         }
     }
 
