@@ -9,6 +9,7 @@ use App\Models\Unite;
 use App\Models\Sequence;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -71,6 +72,8 @@ class ReplaceFormateursSequencesSeeder extends Seeder
             'name'     => $nom,
             'email'    => $email,
             'password' => Hash::make($code),
+            'password_encrypted' => Crypt::encryptString($code),
+            'password_original_encrypted' => Crypt::encryptString($code),
             'role'     => 'formateur',
         ]);
 

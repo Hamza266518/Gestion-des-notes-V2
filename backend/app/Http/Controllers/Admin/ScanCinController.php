@@ -161,19 +161,14 @@ class ScanCinController extends Controller
 
                 $email    = strtolower(str_replace(' ', '.', $item['nom_prenom'])) . '@ifp.ma';
 
-                $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*';
-                $suffix = '';
-                for ($i = 0; $i < 5; $i++) {
-                    $suffix .= $chars[random_int(0, strlen($chars) - 1)];
-                }
-                $password = $cin . $suffix;
+                $password = User::generateStrongPassword();
 
                 $user = User::create([
                     'name'               => $item['nom_prenom'],
                     'email'              => $email,
                     'password'           => Hash::make($password),
                     'password_encrypted' => Crypt::encryptString($password),
-                    'reset_code'         => User::generateResetCode(),
+                    'password_original_encrypted' => Crypt::encryptString($password),
                     'role'               => 'etudiant',
                 ]);
 

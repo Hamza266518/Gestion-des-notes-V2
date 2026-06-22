@@ -30,18 +30,19 @@ class FormateursImport implements ToCollection, WithHeadingRow
                 ]);
                 $this->updated++;
             } else {
-                $password = $row['password'] ?? Str::random(12);
+                $password = $row['password'] ?? User::generateStrongPassword();
                 $user = User::create([
                     'name'               => $row['nom'],
                     'email'              => $row['email'],
                     'password'           => Hash::make($password),
                     'password_encrypted' => Crypt::encryptString($password),
+                    'password_original_encrypted' => Crypt::encryptString($password),
                     'role'               => 'formateur',
                 ]);
 
                 Formateur::create(['user_id' => $user->id]);
                 $this->created++;
-                $this->errors[] = "{$row['nom']}: mot de passe généré ({$password})";
+                \Log::info("Formateur import: {$row['nom']} created (logged without password)");
             }
         }
     }

@@ -17,6 +17,7 @@ use App\Models\SemestrePublication;
 use App\Models\Unite;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -80,6 +81,8 @@ class TestDataSeeder extends Seeder
                 [
                     'name' => 'Admin IFP',
                     'password' => Hash::make('admin123'),
+                    'password_encrypted' => Crypt::encryptString('admin123'),
+                    'password_original_encrypted' => Crypt::encryptString('admin123'),
                     'role' => 'admin',
                 ]
             );
@@ -99,6 +102,8 @@ class TestDataSeeder extends Seeder
                     [
                         'name' => $fd['name'],
                         'password' => Hash::make('formateur123'),
+                        'password_encrypted' => Crypt::encryptString('formateur123'),
+                        'password_original_encrypted' => Crypt::encryptString('formateur123'),
                         'role' => 'formateur',
                     ]
                 );
@@ -128,6 +133,8 @@ class TestDataSeeder extends Seeder
                     [
                         'name' => $s['nom_prenom'],
                         'password' => Hash::make($password),
+                        'password_encrypted' => Crypt::encryptString($password),
+                        'password_original_encrypted' => Crypt::encryptString($password),
                         'role' => 'etudiant',
                     ]
                 );
@@ -164,6 +171,8 @@ class TestDataSeeder extends Seeder
                     [
                         'name' => $s['nom_prenom'],
                         'password' => Hash::make($password),
+                        'password_encrypted' => Crypt::encryptString($password),
+                        'password_original_encrypted' => Crypt::encryptString($password),
                         'role' => 'etudiant',
                     ]
                 );

@@ -8,6 +8,7 @@ use App\Models\Groupe;
 use App\Models\AnneeAcademique;
 use App\Models\Filiere;
 use App\Models\Niveau;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Seeder;
@@ -210,10 +211,13 @@ class StudentSeeder extends Seeder
             }
 
             // Create user
+            $password = $numero . substr($data['cin'], 0, 2);
             $user = User::create([
                 'name' => $data['nom'],
                 'email' => $email,
-                'password' => Hash::make($numero . substr($data['cin'], 0, 2)),
+                'password' => Hash::make($password),
+                'password_encrypted' => Crypt::encryptString($password),
+                'password_original_encrypted' => Crypt::encryptString($password),
                 'role' => 'etudiant',
             ]);
 

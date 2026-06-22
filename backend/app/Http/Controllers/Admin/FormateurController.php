@@ -26,7 +26,6 @@ class FormateurController extends Controller
     {
         try {
             $formateurs = Formateur::with(['user', 'sequences.unite.filiere'])->get();
-            $formateurs->each(fn($f) => $f->user?->append('password_plain'));
             return response()->json(['success' => true, 'data' => $formateurs]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors du chargement des formateurs'], 500);
@@ -47,11 +46,12 @@ class FormateurController extends Controller
                 'email'              => $request->email,
                 'password'           => Hash::make($request->password),
                 'password_encrypted' => Crypt::encryptString($request->password),
+                'password_original_encrypted' => Crypt::encryptString($request->password),
                 'role'               => 'formateur',
             ]);
 
             $formateur = Formateur::create(['user_id' => $user->id]);
-            $formateur->load('user')->user->append('password_plain');
+            $formateur->load('user');
 
             return response()->json([
                 'success' => true,
@@ -295,8 +295,6 @@ class FormateurController extends Controller
                 'password'           => Hash::make($request->password),
                 'password_encrypted' => Crypt::encryptString($request->password),
             ]);
-
-            $formateur->user->append('password_plain');
 
             return response()->json([
                 'success' => true,

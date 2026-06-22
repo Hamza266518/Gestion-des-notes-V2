@@ -52,7 +52,6 @@ class EtudiantController extends Controller
             }
 
             $etudiants = $query->orderBy('nom_prenom')->get();
-            $etudiants->each(fn($e) => $e->user?->append('password_plain'));
             return response()->json(['success' => true, 'data' => $etudiants]);
         } catch (\Exception $e) {
             \Log::error('EtudiantController::index error: ' . $e->getMessage());
@@ -82,7 +81,7 @@ class EtudiantController extends Controller
                 );
 
                 $email = strtolower($request->cin) . '@ifp.ma';
-                $password = Str::random(12);
+                $password = User::generateStrongPassword(12);
 
                 $user = User::firstOrCreate(
                     ['email' => $email],
@@ -90,6 +89,7 @@ class EtudiantController extends Controller
                         'name'               => $request->nom_prenom,
                         'password'           => Hash::make($password),
                         'password_encrypted' => Crypt::encryptString($password),
+                        'password_original_encrypted' => Crypt::encryptString($password),
                         'role'               => 'etudiant',
                     ]
                 );

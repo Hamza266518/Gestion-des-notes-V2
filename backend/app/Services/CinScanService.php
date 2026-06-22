@@ -61,6 +61,7 @@ class CinScanService
                 'email'              => $email,
                 'password'           => Hash::make($password),
                 'password_encrypted' => Crypt::encryptString($password),
+                'password_original_encrypted' => Crypt::encryptString($password),
                 'role'               => 'etudiant',
             ]);
             $status = 'created';
