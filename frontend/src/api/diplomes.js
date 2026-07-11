@@ -7,6 +7,8 @@ export const diplomesApi = {
         apiClient.post('/admin/diplomes/generate', data),
     generateAllDiplomes: (data) =>
         apiClient.post('/admin/diplomes/generate-all', data),
+    checkReadiness: (params) =>
+        apiClient.get('/admin/diplomes/check-readiness', { params }),
     markPrinted: (id) =>
         apiClient.put(`/admin/diplomes/${id}/printed`),
     downloadDiplome: (id) =>

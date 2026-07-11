@@ -189,7 +189,11 @@ export default function AnneesAcademiques() {
       setHistoryGroups(res.data.data || {});
       setHistoryYear(annees.find(a => a.id === anneeId) || null);
     } catch (e) {
-      toast.error('Erreur lors du chargement');
+      if (e.response?.status === 404) {
+        toast.warning('Bientôt disponible');
+      } else {
+        toast.error('Erreur lors du chargement');
+      }
     } finally {
       setHistoryLoading(false);
     }

@@ -33,15 +33,34 @@ class GeminiService
 
     public function scanNotes(string $base64Pdf): string
     {
-        if (empty($this->apiKeyFormateur)) {
-            \Log::error('Gemini API key for formateur/notes is missing');
-            return '[]';
+        $keys = [
+            'formateur' => $this->apiKeyFormateur,
+            'students'  => $this->apiKeyStudents,
+            'unites'    => $this->apiKeyUnites,
+        ];
+
+        foreach ($keys as $name => $key) {
+            if (empty($key)) {
+                continue;
+            }
+
+            $result = $this->tryScanNotes($key, $base64Pdf);
+            if ($result !== null) {
+                \Log::info("Gemini notes scan succeeded with key: {$name}");
+                return $result;
+            }
+
+            \Log::warning("Gemini notes scan failed with key: {$name}, trying next...");
         }
 
-        \Log::info('Calling Gemini API for notes scan (PDF)...');
+        \Log::error('All Gemini API keys failed for notes scan');
+        return '[]';
+    }
 
+    private function tryScanNotes(string $apiKey, string $base64Pdf): ?string
+    {
         try {
-            $response = Http::timeout($this->timeout)->post($this->baseUrl . '?key=' . $this->apiKeyFormateur, [
+            $response = Http::timeout($this->timeout)->withoutVerifying()->post($this->baseUrl . '?key=' . $apiKey, [
                 'contents' => [[
                     'parts' => [
                         [
@@ -72,17 +91,14 @@ Rules:
             $data = $response->json();
 
             if (isset($data['error'])) {
-                \Log::error('Gemini API error (notes): ' . json_encode($data['error']));
-                return '[]';
+                \Log::warning('Gemini API error (notes): ' . json_encode($data['error']));
+                return null;
             }
 
-            return $data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
+            return $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
         } catch (\Exception $e) {
-            \Log::error('Gemini API exception for notes', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return '[]';
+            \Log::warning('Gemini API exception for notes: ' . $e->getMessage());
+            return null;
         }
     }
 
@@ -96,7 +112,7 @@ Rules:
         \Log::info('Calling Gemini API for CIN scan (PDF)...');
 
         try {
-            $response = Http::timeout($this->timeout)->post($this->baseUrl . '?key=' . $this->apiKeyStudents, [
+            $response = Http::timeout($this->timeout)->withoutVerifying()->post($this->baseUrl . '?key=' . $this->apiKeyStudents, [
                 'contents' => [[
                     'parts' => [
                         [
@@ -207,7 +223,7 @@ Rules:
             
             \Log::info('Sending request to Gemini...');
             
-            $response = Http::timeout(30)->post($this->baseUrl . '?key=' . $this->apiKeyUnites, $payload);
+            $response = Http::timeout(30)->withoutVerifying()->post($this->baseUrl . '?key=' . $this->apiKeyUnites, $payload);
 
             $data = $response->json();
             
@@ -239,7 +255,7 @@ Rules:
             return '[]';
         }
 
-        $response = Http::post($this->baseUrl . '?key=' . $this->apiKeyUnites, [
+        $response = Http::withoutVerifying()->post($this->baseUrl . '?key=' . $this->apiKeyUnites, [
             'contents' => [[
                 'parts' => [
                     [
@@ -279,7 +295,7 @@ Rules:
 
         \Log::info('Calling Gemini API for formateur sequences scan...');
 
-        $response = Http::timeout(30)->post($this->baseUrl . '?key=' . $this->apiKeyUnites, [
+        $response = Http::timeout(30)->withoutVerifying()->post($this->baseUrl . '?key=' . $this->apiKeyUnites, [
             'contents' => [[
                 'parts' => [
                     [

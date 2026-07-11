@@ -411,6 +411,21 @@ export default function Diplomes() {
 
   const handleGenerateAll = async () => {
     if (!currentAnnee) return;
+    try {
+      const res = await diplomesApi.checkReadiness({ annee_academique_id: currentAnnee.id });
+      const data = res.data.data;
+      if (data.blocked) {
+        toast.warning(data.message || 'Génération impossible');
+        return;
+      }
+      if (data.ready === 0) {
+        toast.warning('Aucun étudiant admissible pour un diplôme.');
+        return;
+      }
+    } catch {
+      toast.error('Erreur de vérification');
+      return;
+    }
     setShowConfirmModal(true);
   };
 

@@ -16,7 +16,8 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiX,
-  FiClock
+  FiClock,
+  FiBriefcase
 } from 'react-icons/fi';
 import logoMenu from '../../image/logo-menu.png';
 import '../../css/sidebar.css';
@@ -34,6 +35,7 @@ const adminLinks = [
   { to: '/admin/bulletins',    label: 'Bulletins',          icon: FiFileText },
   { to: '/admin/publications', label: 'Publications',       icon: FiCheckSquare },
   { to: '/admin/diplomes',     label: 'Diplômes',           icon: FiAward },
+  { to: '/admin/stages',       label: 'Stages',             icon: FiBriefcase },
 ];
 
 const formateurLinks = [

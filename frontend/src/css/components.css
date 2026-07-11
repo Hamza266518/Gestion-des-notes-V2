@@ -80,6 +80,10 @@ tbody tr:hover { background: var(--primary-faint); }
 tbody td { padding: 11px 18px; color: var(--gray-700); font-size: 13.5px; vertical-align: middle; }
 .table-empty { text-align: center; padding: 56px 24px; color: var(--gray-400); font-size: 14px; }
 
+.table-total td { background: var(--gray-100); font-weight: 700; border-top: 2px solid var(--gray-300); }
+
+.form-select-sm { padding: 4px 8px; font-size: 12px; }
+
 @media (max-width: 768px) {
   thead th { font-size: 10px; padding: 8px 12px; }
   tbody td { padding: 8px 12px; font-size: 12px; }
@@ -288,6 +292,9 @@ tbody td { padding: 11px 18px; color: var(--gray-700); font-size: 13.5px; vertic
 .empty-state-message { color: var(--gray-500); font-size: 15px; margin-bottom: 6px; font-weight: 600; }
 .empty-state-sub { color: var(--gray-400); font-size: 13px; margin-bottom: 24px; }
 .empty-state-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+.data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .data-grid { grid-template-columns: 1fr; } }
 
 /* DASHBOARD */
 .dashboard-quick-actions { background: var(--white); border-radius: var(--border-radius-lg); border: 1px solid var(--gray-200); padding: 20px 24px; box-shadow: var(--shadow-sm); }

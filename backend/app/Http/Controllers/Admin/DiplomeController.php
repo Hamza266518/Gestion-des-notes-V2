@@ -195,6 +195,87 @@ class DiplomeController extends Controller
         }
     }
 
+    public function checkReadiness(Request $request)
+    {
+        try {
+            $request->validate([
+                'annee_academique_id' => 'required|exists:annees_academiques,id',
+            ]);
+
+            $anneeId = $request->annee_academique_id;
+
+            $etudiants = Etudiant::with('groupe.niveau.filiere')
+                ->where('annee_academique_id', $anneeId)
+                ->get();
+
+            $ready = 0;
+            $notFinalYear = 0;
+            $bulletinNotPublished = 0;
+            $notesIncomplete = 0;
+            $moyenneInsufficient = 0;
+
+            foreach ($etudiants as $etudiant) {
+                $niveau = $etudiant->groupe?->niveau;
+                $filiere = $niveau?->filiere;
+
+                if (!$niveau || !$filiere || $niveau->numero !== $filiere->nombre_annees) {
+                    $notFinalYear++;
+                    continue;
+                }
+
+                if (!$this->checkBulletinPublished($etudiant, $anneeId)) {
+                    $bulletinNotPublished++;
+                    continue;
+                }
+
+                if (!$this->checkAllNotesFilled($etudiant, $anneeId)) {
+                    $notesIncomplete++;
+                    continue;
+                }
+
+                $bulletin = $this->bulletinService->calculateBulletin($etudiant->id, $anneeId);
+                $moyenne = $bulletin['moyenne_generale'];
+
+                if (!$moyenne || $moyenne < 10) {
+                    $moyenneInsufficient++;
+                    continue;
+                }
+
+                $ready++;
+            }
+
+            $blocked = $bulletinNotPublished > 0 || $notesIncomplete > 0;
+
+            $message = null;
+            if ($blocked) {
+                $parts = [];
+                if ($bulletinNotPublished > 0) {
+                    $parts[] = "{$bulletinNotPublished} étudiant(s) sans bulletin publié";
+                }
+                if ($notesIncomplete > 0) {
+                    $parts[] = "{$notesIncomplete} étudiant(s) avec notes incomplètes";
+                }
+                $message = 'Génération impossible : ' . implode(', ', $parts) . '.';
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'ready' => $ready,
+                    'not_final_year' => $notFinalYear,
+                    'bulletin_not_published' => $bulletinNotPublished,
+                    'notes_incomplete' => $notesIncomplete,
+                    'moyenne_insufficient' => $moyenneInsufficient,
+                    'total' => $etudiants->count(),
+                    'blocked' => $blocked,
+                    'message' => $message,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
     public function generateAll(Request $request)
     {
         try {

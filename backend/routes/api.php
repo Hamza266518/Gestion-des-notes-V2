@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\ScanUnitesController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\ProgressionController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\StageController;
 use App\Http\Controllers\Formateur\ScanController;
 use App\Http\Controllers\Formateur\NoteController;
 use App\Http\Controllers\Etudiant\PortalController;
@@ -45,6 +46,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/annees-academiques', [AnneeAcademiqueController::class, 'store']);
         Route::post('/annees-academiques/{id}/set-current', [AnneeAcademiqueController::class, 'setCurrent']);
         Route::post('/annees-academiques/{id}/archive', [AnneeAcademiqueController::class, 'archive']);
+        Route::get('/annees-academiques/{id}/stats', [AnneeAcademiqueController::class, 'stats']);
 
         // Filieres
         Route::get('/filieres', [FiliereController::class, 'index']);
@@ -136,10 +138,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Diplomes
         Route::get('/diplomes', [DiplomeController::class, 'index']);
+        Route::get('/diplomes/check-readiness', [DiplomeController::class, 'checkReadiness']);
         Route::post('/diplomes/generate', [DiplomeController::class, 'generate']);
         Route::post('/diplomes/generate-all', [DiplomeController::class, 'generateAll']);
         Route::put('/diplomes/{id}/printed', [DiplomeController::class, 'markPrinted']);
         Route::get('/diplomes/{id}/download', [DiplomeController::class, 'download']);
+
+        // Stage evaluations
+        Route::get('/stage/search-students', [StageController::class, 'searchStudents']);
+        Route::post('/stage/save', [StageController::class, 'save']);
+        Route::get('/stage/load', [StageController::class, 'load']);
 
         // Activity logs
         Route::get('/activity-logs', [ActivityLogController::class, 'index']);

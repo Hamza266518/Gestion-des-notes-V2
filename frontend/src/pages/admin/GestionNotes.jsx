@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { FiSearch, FiX } from 'react-icons/fi';
 import { notesApi } from '../../api/notes';
 import { unitesApi } from '../../api/unites';
@@ -146,6 +146,29 @@ export default function GestionNotes() {
       setLoading(false);
     }
   }, [selectedSequenceId, selectedUniteId, selected.groupe_id, loadNotesForSequence, loadExamens]);
+
+  const prevSelections = useRef({ groupe_id: '', unite_id: '', sequence_id: '' });
+
+  useEffect(() => {
+    const prev = prevSelections.current;
+    prevSelections.current = { groupe_id: selected.groupe_id, unite_id: selectedUniteId, sequence_id: selectedSequenceId };
+
+    if (!prev.groupe_id && !prev.unite_id && !prev.sequence_id) return;
+
+    if (selected.groupe_id && selectedUniteId && selectedSequenceId) {
+      handleLoad();
+    }
+  }, [selected.groupe_id, selectedUniteId, selectedSequenceId, handleLoad]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      if (selected.groupe_id && selectedUniteId && selectedSequenceId && filtersApplied) {
+        handleLoad();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [selected.groupe_id, selectedUniteId, selectedSequenceId, filtersApplied, handleLoad]);
 
   const handleSaveNote = async (noteId) => {
     if (editValue === '' || editValue === null) return;

@@ -22,6 +22,7 @@ import GestionNotes from './pages/admin/GestionNotes';
 import Publications from './pages/admin/Publications';
 import Bulletins from './pages/admin/Bulletins';
 import Sequences from './pages/admin/Sequences';
+import Stage from './pages/admin/Stage';
 
 import MonBulletin from './pages/etudiant/MonBulletin';
 import MonBulletinView from './pages/etudiant/MonBulletinView';
@@ -63,6 +64,7 @@ export default function App() {
               <Route path="publications" element={<Publications />} />
               <Route path="bulletins" element={<Bulletins />} />
               <Route path="sequences" element={<Sequences />} />
+              <Route path="stages" element={<Stage />} />
             </Route>
 
             <Route
