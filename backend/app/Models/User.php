@@ -29,6 +29,10 @@ class User extends Authenticatable
         'password_original_encrypted',
     ];
 
+    protected $appends = [
+        'password_plain',
+    ];
+
     public function getPasswordPlainAttribute(): ?string
     {
         return $this->password_encrypted ? Crypt::decryptString($this->password_encrypted) : null;

@@ -286,6 +286,65 @@ Rules:
         return $data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
     }
 
+    public function scanExamens(array $base64Pdfs): string
+    {
+        if (empty($this->apiKeyFormateur)) {
+            \Log::error('Gemini API key for formateur/examens is missing');
+            return '[]';
+        }
+
+        \Log::info('Calling Gemini API for examens scan (' . count($base64Pdfs) . ' PDFs)...');
+
+        $parts = [
+            [
+                'text' => 'You are reading multiple PDF documents containing exam results from a nursing school in Morocco (Institut de Formation aux Professions Paramédicales).
+Some PDFs are KEY SHEETS that map anonymous codes to student identities (name, CIN).
+Other PDFs are GRADED EXAM SHEETS showing anonymous codes with their scores.
+Extract ALL students by matching codes across documents.
+Return ONLY a valid JSON array like: [{"code":"01","nom_prenom":"FATIMA ZAHRA IDRISSI","cin":"AB123456","note":14}]
+Rules:
+- code: the anonymous code/number written on both the key sheet and graded sheet
+- nom_prenom: full name in French/Latin script from the key sheet, CAPITAL LETTERS preferred. If the name appears incomplete (e.g. only first name "AHMED" without a last name), search the document for the missing parts (last name may appear elsewhere) and combine them. Always prefer extracting BOTH first and last name.
+- cin: CIN code if available from the key sheet, otherwise empty string ""
+- note: numeric score only (0-20), extract just the number without /20
+- If a grade is written as 14/20 extract only 14
+- Match each code from graded sheets to the corresponding student on the key sheet
+- If no key sheet is found, return what you can with empty nom_prenom and code as identifier
+- If some fields are missing or unclear, use empty strings ""
+- Return ONLY the JSON array, nothing else, no markdown, no code fences, no explanation'
+            ]
+        ];
+
+        foreach ($base64Pdfs as $base64) {
+            $parts[] = [
+                'inline_data' => [
+                    'mime_type' => 'application/pdf',
+                    'data'      => $base64
+                ]
+            ];
+        }
+
+        try {
+            $response = Http::timeout($this->timeout)->withoutVerifying()->post($this->baseUrl . '?key=' . $this->apiKeyFormateur, [
+                'contents' => [['parts' => $parts]]
+            ]);
+
+            $data = $response->json();
+
+            if (isset($data['error'])) {
+                \Log::error('Gemini API error (examens): ' . json_encode($data['error']));
+                return '[]';
+            }
+
+            $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
+            \Log::info('Gemini examens raw response', ['text' => substr($text, 0, 500)]);
+            return $text;
+        } catch (\Exception $e) {
+            \Log::error('Gemini API exception for examens: ' . $e->getMessage());
+            return '[]';
+        }
+    }
+
     public function scanFormateurSequences(string $base64Image, string $prompt): string
     {
         if (empty($this->apiKeyUnites)) {

@@ -17,6 +17,7 @@ class ExamController extends Controller
             ->when($request->unite_id, fn($q) => $q->where('unite_id', $request->unite_id))
             ->when($request->bloc, fn($q) => $q->where('bloc', $request->bloc))
             ->when($request->type, fn($q) => $q->where('type', $request->type))
+            ->when($request->annee_academique_id, fn($q) => $q->where('annee_academique_id', $request->annee_academique_id))
             ->get();
 
         return response()->json(['success' => true, 'data' => $examens]);

@@ -14,6 +14,8 @@ export function AnneeAcademiqueProvider({ children }) {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
     if (!token) {
+      setCurrentAnnee(null);
+      setAnnees([]);
       setLoading(false);
       return;
     }
@@ -52,6 +54,15 @@ export function AnneeAcademiqueProvider({ children }) {
         });
     }
   }, []);
+
+  const [prevToken, setPrevToken] = useState(() => localStorage.getItem('token'));
+  useEffect(() => {
+    const currentToken = localStorage.getItem('token');
+    if (currentToken !== prevToken) {
+      setPrevToken(currentToken);
+      fetchAnnees();
+    }
+  }, [prevToken, fetchAnnees]);
 
   useEffect(() => {
     fetchAnnees();

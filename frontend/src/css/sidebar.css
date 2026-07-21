@@ -80,7 +80,25 @@
 .desktop-toggle { display: flex; }
 .mobile-close { display: none; }
 
-.sidebar-nav { flex: 1; padding: 10px 0; }
+.sidebar-nav { flex: 1; padding: 6px 0; }
+
+.sidebar-group { margin-bottom: 2px; }
+.sidebar-group-collapsed { margin-bottom: 2px; }
+.sidebar-group-header {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 8px 20px 4px;
+  background: none; border: none;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--gray-400);
+  cursor: pointer; font-family: var(--font);
+  transition: color 0.15s;
+  white-space: nowrap; overflow: hidden;
+}
+.sidebar-group-header:hover { color: var(--gray-600); }
+.sidebar-group-arrow { transition: transform 0.2s; flex-shrink: 0; }
+.sidebar-group-arrow.open { transform: rotate(180deg); }
+.sidebar-collapsed .sidebar-group-header { display: none; }
 
 .sidebar-section-label {
   padding: 14px 20px 4px;

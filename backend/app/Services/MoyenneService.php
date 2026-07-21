@@ -59,7 +59,7 @@ class MoyenneService
         $totalNote  = 0;
 
         foreach ($unites as $unite) {
-            $moy = $this->moyenneUnite($etudiantId, $unite->id, $anneeAcademiqueId);
+            $moy = $this->moyenneUnite($etudiantId, $unite->id, null, $anneeAcademiqueId);
             if ($moy !== null) {
                 $totalNote  += $moy * $unite->coefficient;
                 $totalPoids += $unite->coefficient;

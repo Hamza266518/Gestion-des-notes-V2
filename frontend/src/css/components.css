@@ -313,6 +313,24 @@ tbody td { padding: 11px 18px; color: var(--gray-700); font-size: 13.5px; vertic
 /* NOTE INPUT */
 .note-input { width: 82px; padding: 5px 8px; font-size: 14px; text-align: center; border-radius: 6px; }
 
+/* NOTE STEPPER */
+.num-stepper { display: inline-flex; align-items: center; gap: 2px; }
+.num-stepper-btn {
+  padding: 4px 8px; font-size: 11px; font-weight: 700; font-family: var(--font);
+  border: 1px solid var(--gray-300); border-radius: 5px;
+  background: var(--white); color: var(--gray-700); cursor: pointer;
+  transition: all var(--transition); line-height: 1; white-space: nowrap;
+  min-height: 28px;
+}
+.num-stepper-btn:hover:not(:disabled) { background: var(--gray-50); border-color: var(--primary); color: var(--primary); }
+.num-stepper-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.num-stepper-value {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 36px; padding: 0 4px;
+  font-size: 13.5px; font-weight: 600; color: var(--gray-800);
+  text-align: center;
+}
+
 /* RESPONSIVE */
 @media (max-width: 900px) {
   .filter-bar { gap: 6px; }

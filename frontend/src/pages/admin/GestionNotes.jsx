@@ -114,7 +114,7 @@ export default function GestionNotes() {
   const loadExamens = useCallback(async () => {
     setError(null);
     try {
-      const res = await notesApi.getExamens({ groupe_id: selected.groupe_id, unite_id: selectedUniteId });
+      const res = await notesApi.getExamens({ groupe_id: selected.groupe_id, unite_id: selectedUniteId, annee_academique_id: currentAnnee?.id });
       const data = res.data?.data || [];
       const theoMap = {};
       const praMap = {};

@@ -39,7 +39,7 @@ export default function Formateurs() {
   const [passwordForm, setPasswordForm] = useState({ password: '', confirm: '' });
   const [passwordErrors, setPasswordErrors] = useState({});
   const [copiedId, setCopiedId] = useState(null);
-  const [masseHoraire, setMasseHoraire] = useState('');
+  const [filterNum, setFilterNum] = useState('');
   const [searchSequence, setSearchSequence] = useState('');
   const [allSequences, setAllSequences] = useState([]);
   const [deleteConfirm, setDeleteConfirm] = useState({ id: null, name: '' });
@@ -224,19 +224,18 @@ export default function Formateurs() {
     }
   };
 
-  const handleAssignSequence = async (sequenceId, masseHoraire = null) => {
+  const handleAssignSequence = async (sequenceId) => {
     if (!selectedFormateur || !sequenceId) return;
 
     try {
       await adminApi.assignFormateurSequence(selectedFormateur.id, {
         sequence_id: sequenceId,
-        masse_horaire: masseHoraire
       });
       showSuccess(toast, 'Séquence assignée');
       const res = await adminApi.getFormateurSequences(selectedFormateur.id);
       setFormateurSequences(res.data.data || []);
       setSearchSequence('');
-      setMasseHoraire('');
+      setFilterNum('');
     } catch (error) {
       handleApiError(error, toast);
     }
@@ -557,8 +556,8 @@ export default function Formateurs() {
               <input className="form-input" placeholder="Nom de la séquence..." value={searchSequence} onChange={e => setSearchSequence(e.target.value)} style={{ padding: '7px 12px', fontSize: 13 }} />
             </div>
             <div style={{ width: 130 }}>
-              <label className="form-label" style={{ marginBottom: 4, fontSize: 12 }}>Masse horaire</label>
-              <input type="number" className="form-input" placeholder="Heures" min={0} value={masseHoraire} onChange={e => setMasseHoraire(e.target.value)} style={{ padding: '7px 12px', fontSize: 13 }} />
+              <label className="form-label" style={{ marginBottom: 4, fontSize: 12 }}>Filtrer par N°</label>
+              <input type="number" className="form-input" placeholder="N° séquence" min={0} value={filterNum} onChange={e => setFilterNum(e.target.value)} style={{ padding: '7px 12px', fontSize: 13 }} />
             </div>
           </div>
           <div style={{ maxHeight: 500, overflowY: 'auto' }}>
@@ -574,7 +573,11 @@ export default function Formateurs() {
               </thead>
               <tbody>
                 {(() => {
-                  const filtered = allSequences.filter(s => !searchSequence || s.nom.toLowerCase().includes(searchSequence.toLowerCase()));
+                  const filtered = allSequences.filter(s => {
+                    if (searchSequence && !s.nom.toLowerCase().includes(searchSequence.toLowerCase())) return false;
+                    if (filterNum && s.id !== parseInt(filterNum)) return false;
+                    return true;
+                  });
                   const assignedIds = new Map();
                   formateurSequences.flatMap(fg => fg.unites || []).flatMap(ug => ug.sequences || []).forEach(seq => { assignedIds.set(seq.id, seq); });
                   const assigned = filtered.filter(s => assignedIds.has(s.id));
@@ -592,7 +595,7 @@ export default function Formateurs() {
                           {isAssigned ? (
                             <button className="btn btn-sm btn-danger" onClick={() => handleRemoveSequence(seqData.id)} disabled={removingSequence === seqData.id} style={{ fontSize: 12, padding: '3px 10px' }}>{removingSequence === seqData.id ? '...' : 'Retirer'}</button>
                           ) : (
-                            <button className="btn btn-sm btn-accent" onClick={() => handleAssignSequence(s.id, masseHoraire)} style={{ fontSize: 12, padding: '3px 10px' }}>Assigner</button>
+                            <button className="btn btn-sm btn-accent" onClick={() => handleAssignSequence(s.id)} style={{ fontSize: 12, padding: '3px 10px' }}>Assigner</button>
                           )}
                         </td>
                       </tr>

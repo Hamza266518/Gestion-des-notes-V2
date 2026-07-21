@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { FiClipboard, FiSearch } from 'react-icons/fi';
+import { FiClipboard, FiSearch, FiEye, FiEyeOff } from 'react-icons/fi';
 import { adminApi } from '../../api/admin';
 import { etudiantsApi } from '../../api/etudiants';
 import { scanApi } from '../../api/scan';
@@ -42,6 +42,7 @@ export default function Etudiants() {
   const [printLoading, setPrintLoading] = useState(false);
   const [printNiveaux, setPrintNiveaux] = useState([]);
   const [printGroupes, setPrintGroupes] = useState([]);
+  const [visiblePasswords, setVisiblePasswords] = useState({});
 
   // ─── load does NOT depend on currentAnnee — it just sends whatever filters exist ───
   const load = useCallback(() => {
@@ -411,7 +412,25 @@ export default function Etudiants() {
                       <td>{e.date_naissance ?? '—'}</td>
                       <td><Badge label={e.numero_inscription} color="blue" /></td>
                       <td style={{ fontSize: 12 }}>{e.user?.email ?? '—'}</td>
-                      <td><code style={{ fontSize: 12, background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 4 }}>{e.user?.password_plain || '—'}</code></td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <code style={{ fontSize: 12, background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 4 }}>
+                            {e.user?.password_plain
+                              ? (visiblePasswords[e.id] ? e.user.password_plain : '••••••••')
+                              : '—'}
+                          </code>
+                          {e.user?.password_plain && (
+                            <button
+                              className="btn-ghost btn-sm"
+                              onClick={() => setVisiblePasswords(p => ({ ...p, [e.id]: !p[e.id] }))}
+                              style={{ padding: '2px 6px', border: 'none', background: 'none', cursor: 'pointer', lineHeight: 1 }}
+                              title={visiblePasswords[e.id] ? 'Masquer' : 'Afficher'}
+                            >
+                              {visiblePasswords[e.id] ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                            </button>
+                          )}
+                        </div>
+                      </td>
                       <td>{e.groupe?.nom ?? '—'}</td>
                       <td className="no-print">
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap' }}>

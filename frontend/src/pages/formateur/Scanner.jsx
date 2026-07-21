@@ -152,6 +152,8 @@ export default function Scanner() {
       const scanned = (data.data?.resultats || []).map(r => ({
         nom: r.nom_prenom || '',
         nom_ar: r.nom_ar || '',
+        gemini_nom: r.gemini_nom || '',
+        gemini_nom_ar: r.gemini_nom_ar || '',
         numero_inscription: r.numero_inscription || '',
         groupe: r.groupe || '',
         note: r.note,
@@ -236,6 +238,8 @@ export default function Scanner() {
         etudiant_id: r.etudiant_id,
         controle_id: parseInt(sel.controle_id),
         valeur: r.note,
+        gemini_nom: r.gemini_nom || null,
+        gemini_nom_ar: r.gemini_nom_ar || null,
       }));
 
       const res = await scanApi.confirm({ notes });

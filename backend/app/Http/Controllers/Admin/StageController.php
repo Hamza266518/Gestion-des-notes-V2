@@ -17,12 +17,14 @@ class StageController extends Controller
 
         $search = $request->search;
 
+        $currentAnneeId = AnneeAcademique::where('is_current', true)->first()?->id;
         $etudiants = Etudiant::with(['groupe.niveau.filiere', 'anneeAcademique'])
             ->where(function ($q) use ($search) {
                 $q->where('nom_prenom', 'like', "%{$search}%")
                   ->orWhere('cin', 'like', "%{$search}%")
                   ->orWhere('numero_inscription', 'like', "%{$search}%");
             })
+            ->when($currentAnneeId, fn($q) => $q->where('annee_academique_id', $currentAnneeId))
             ->limit(20)
             ->get()
             ->map(fn($e) => [

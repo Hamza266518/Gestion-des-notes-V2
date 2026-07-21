@@ -26,8 +26,12 @@ class EtudiantController extends Controller
         try {
             $query = Etudiant::with(['user', 'groupe.niveau.filiere', 'anneeAcademique']);
 
-            if ($request->filled('annee_academique_id')) {
-                $query->where('annee_academique_id', $request->annee_academique_id);
+            $anneeId = $request->annee_academique_id;
+            if (!$anneeId) {
+                $anneeId = \App\Models\AnneeAcademique::where('is_current', true)->first()?->id;
+            }
+            if ($anneeId) {
+                $query->where('annee_academique_id', $anneeId);
             }
 
             if ($request->filled('groupe_id')) {

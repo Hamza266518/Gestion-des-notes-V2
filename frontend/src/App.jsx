@@ -16,6 +16,7 @@ import Etudiants from './pages/admin/Etudiants';
 import Unites from './pages/admin/Unites';
 import Formateurs from './pages/admin/Formateurs';
 import ScanCin from './pages/admin/ScanCin';
+import ScanExamens from './pages/admin/ScanExamens';
 import Diplomes from './pages/admin/Diplomes';
 import Notes from './pages/admin/Notes';
 import GestionNotes from './pages/admin/GestionNotes';
@@ -58,6 +59,7 @@ export default function App() {
               <Route path="unites" element={<Unites />} />
               <Route path="formateurs" element={<Formateurs />} />
               <Route path="scan-cin" element={<ScanCin />} />
+              <Route path="scan-examens" element={<ScanExamens />} />
               <Route path="diplomes" element={<Diplomes />} />
               <Route path="notes" element={<Notes />} />
               <Route path="saisie-notes" element={<GestionNotes />} />

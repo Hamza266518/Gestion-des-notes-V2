@@ -144,6 +144,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/diplomes/{id}/printed', [DiplomeController::class, 'markPrinted']);
         Route::get('/diplomes/{id}/download', [DiplomeController::class, 'download']);
 
+        // Scan examens
+        Route::post('/scan-examens', [\App\Http\Controllers\Admin\ScanExamenController::class, 'scan']);
+        Route::post('/scan-examens/confirm', [\App\Http\Controllers\Admin\ScanExamenController::class, 'confirm']);
+        Route::get('/scan-examens/search-etudiants', [\App\Http\Controllers\Admin\ScanExamenController::class, 'searchEtudiants']);
+
         // Stage evaluations
         Route::get('/stage/search-students', [StageController::class, 'searchStudents']);
         Route::post('/stage/save', [StageController::class, 'save']);

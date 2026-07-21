@@ -25,6 +25,16 @@ export const scanApi = {
   checkExistingCins: (cins) =>
       apiClient.post('/admin/scan-cin/check-existing', { cins }),
 
+  // admin scans examens
+  scanExamens: (formData) =>
+    apiClient.post('/admin/scan-examens', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  confirmScanExamens: (data) =>
+    apiClient.post('/admin/scan-examens/confirm', data),
+  searchScanExamensEtudiants: (params) =>
+    apiClient.get('/admin/scan-examens/search-etudiants', { params }),
+
   // admin scans unites document
   scanUnitesDocument: (file, filiereId, semestre) => {
     const fd = new FormData();

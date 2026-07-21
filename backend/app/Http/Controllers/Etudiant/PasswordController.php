@@ -185,7 +185,6 @@ class PasswordController extends Controller
             $user->update([
                 'password' => Hash::make($request->new_password),
                 'password_encrypted' => $encryptedNew,
-                'password_original_encrypted' => $encryptedNew, // Update original for next forgot password
                 'password_changed_at' => now(),
             ]);
 

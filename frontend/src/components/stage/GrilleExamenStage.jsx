@@ -4,6 +4,7 @@ import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { stagesApi } from '../../api/stages';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
 import { useToast } from '../../context/ToastContext';
+import NoteStepper from './NoteStepper';
 
 const LIGNES_EXAMEN = [
   { element: 'Respect des règles d\'hygiène', bareme: 1 },
@@ -155,10 +156,10 @@ export default function GrilleExamenStage({ etudiant, onDataChange }) {
                   <td>{l.element}</td>
                   <td style={{textAlign:'center'}}>{l.bareme}</td>
                   <td>
-                    <input type="number" className="form-input form-input-sm" min="0" max={l.bareme} step="0.5"
+                    <NoteStepper
                       value={form.lignes[i]?.note ?? ''}
-                      onChange={e => updateLigne(i, 'note', Math.min(parseFloat(e.target.value) || 0, l.bareme).toString())}
-                      style={{width:60}} />
+                      onChange={v => updateLigne(i, 'note', v)}
+                      min={0} max={l.bareme} step={l.bareme <= 3 ? 0.1 : 0.5} />
                   </td>
                   <td>
                     <select className="form-select form-select-sm" value={form.lignes[i]?.observation ?? ''} onChange={e => updateLigne(i, 'observation', e.target.value)}>

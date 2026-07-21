@@ -17,6 +17,7 @@ class NoteController extends Controller
     public function index(Request $request)
     {
         $formateur = auth()->user()->formateur;
+        $currentAnneeId = AnneeAcademique::where('is_current', true)->first()?->id;
         $notes = Note::with(['etudiant.groupe', 'controle.sequence.unite'])
             ->whereHas('controle.sequence.formateurs', fn($q) =>
                 $q->where('formateur_id', $formateur->id)
@@ -24,6 +25,7 @@ class NoteController extends Controller
             ->when($request->controle_id, fn($q) => $q->where('controle_id', $request->controle_id))
             ->when($request->sequence_id, fn($q) => $q->whereHas('controle', fn($q) => $q->where('sequence_id', $request->sequence_id)))
             ->when($request->groupe_id, fn($q) => $q->whereHas('etudiant', fn($q) => $q->where('groupe_id', $request->groupe_id)))
+            ->when($currentAnneeId, fn($q) => $q->whereHas('etudiant', fn($q) => $q->where('annee_academique_id', $currentAnneeId)))
             ->get();
         return response()->json(['success' => true, 'data' => $notes]);
     }
@@ -155,12 +157,14 @@ class NoteController extends Controller
 
         $search = strtolower($search);
 
+        $currentAnneeId = AnneeAcademique::where('is_current', true)->first()?->id;
         $etudiants = Etudiant::with('groupe.niveau.filiere')
             ->where(function ($q) use ($search) {
                 $q->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $search . '%'])
                   ->orWhereRaw('LOWER(nom_ar) LIKE ?', ['%' . $search . '%'])
                   ->orWhereRaw('LOWER(numero_inscription) LIKE ?', ['%' . $search . '%']);
             })
+            ->when($currentAnneeId, fn($q) => $q->where('annee_academique_id', $currentAnneeId))
             ->orderBy('nom_prenom')
             ->limit(15)
             ->get();

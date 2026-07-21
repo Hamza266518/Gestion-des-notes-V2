@@ -58,6 +58,9 @@ export const adminApi = {
             headers: { 'Content-Type': 'multipart/form-data' },
         }),
 
+    getUnites: (params) =>
+        apiClient.get('/admin/unites', { params }),
+
     getActivityLogs: (params) =>
         apiClient.get('/admin/activity-logs', { params }),
 

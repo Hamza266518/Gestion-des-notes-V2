@@ -10,6 +10,7 @@ use App\Models\Groupe;
 use App\Models\Niveau;
 use App\Models\Note;
 use App\Models\ScanLog;
+use App\Models\ScanNameCache;
 use App\Models\SemestrePublication;
 use App\Services\GeminiService;
 use App\Services\NoteParserService;
@@ -109,8 +110,22 @@ class ScanController extends Controller
 
             foreach ($parsed as $item) {
                 $etudiant = null;
-                $searchName = trim($item['nom']);
+                $geminiNom = $item['nom'] ?? '';
+                $geminiNomAr = $item['nom_ar'] ?? '';
+                $searchName = trim($geminiNom);
+
+                // Try 0: scan name cache (remembered from previous scans)
                 if (!empty($searchName)) {
+                    $normalized = ScanNameCache::normalizeName($geminiNom);
+                    $cache = ScanNameCache::where('raw_nom_normalized', $normalized)->first();
+                    if ($cache) {
+                        $etudiant = Etudiant::with('groupe')->find($cache->etudiant_id);
+                    }
+                }
+
+                if (!empty($searchName) && !$etudiant) {
+                    $currentAnneeId = AnneeAcademique::where('is_current', true)->first()?->id;
+
                     $safeName = str_replace(['%', '_'], ['\\%', '\\_'], strtolower($searchName));
                     $safeName = preg_replace('/\s+/', ' ', $safeName);
                     $words = array_filter(explode(' ', $safeName));
@@ -118,11 +133,12 @@ class ScanController extends Controller
                     // Try 1: full name as substring
                     $etudiant = Etudiant::with('groupe')
                         ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $safeName . '%'])
+                        ->when($currentAnneeId, fn($q) => $q->where('annee_academique_id', $currentAnneeId))
                         ->first();
 
                     // Try 2: all words must appear in the name (handles reversed order)
                     if (!$etudiant && count($words) >= 2) {
-                        $q = Etudiant::with('groupe');
+                        $q = Etudiant::with('groupe')->when($currentAnneeId, fn($q) => $q->where('annee_academique_id', $currentAnneeId));
                         foreach ($words as $w) {
                             if (strlen($w) > 1) {
                                 $q->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $w . '%']);
@@ -139,8 +155,21 @@ class ScanController extends Controller
                             $etudiant = Etudiant::with('groupe')
                                 ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $first . '%'])
                                 ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $last . '%'])
+                                ->when($currentAnneeId, fn($q) => $q->where('annee_academique_id', $currentAnneeId))
                                 ->first();
                         }
+                    }
+
+                    // Cache the mapping if found
+                    if ($etudiant) {
+                        ScanNameCache::updateOrCreate(
+                            ['raw_nom' => $geminiNom, 'raw_nom_ar' => $geminiNomAr],
+                            [
+                                'raw_nom_normalized' => ScanNameCache::normalizeName($geminiNom),
+                                'etudiant_id' => $etudiant->id,
+                                'formateur_id' => $formateur->id,
+                            ]
+                        );
                     }
                 }
 
@@ -153,8 +182,10 @@ class ScanController extends Controller
 
                 $results[] = [
                     'etudiant_id'       => $etudiant?->id,
-                    'nom_prenom'        => $etudiant?->nom_prenom ?? $item['nom'],
-                    'nom_ar'            => $etudiant?->nom_ar ?? $item['nom_ar'] ?? '',
+                    'nom_prenom'        => $etudiant?->nom_prenom ?? $geminiNom,
+                    'nom_ar'            => $etudiant?->nom_ar ?? $geminiNomAr,
+                    'gemini_nom'        => $geminiNom,
+                    'gemini_nom_ar'     => $geminiNomAr,
                     'numero_inscription'=> $etudiant?->numero_inscription ?? '',
                     'groupe'            => $etudiant?->groupe?->nom ?? '',
                     'controle_id'       => $controle->id,
@@ -182,6 +213,8 @@ class ScanController extends Controller
             'notes.*.controle_id'    => 'required|exists:controles,id',
             'notes.*.valeur'         => 'required|numeric|min:0|max:20',
             'notes.*.chemin_image'   => 'nullable|string',
+            'notes.*.gemini_nom'     => 'nullable|string',
+            'notes.*.gemini_nom_ar'  => 'nullable|string',
         ]);
 
         $formateur = auth()->user()->formateur;
@@ -235,6 +268,21 @@ class ScanController extends Controller
                 ]
             );
             $saved[] = $note;
+
+            // Save the raw Gemini name → etudiant mapping to cache
+            if (!empty($item['gemini_nom'])) {
+                ScanNameCache::updateOrCreate(
+                    [
+                        'raw_nom'    => $item['gemini_nom'],
+                        'raw_nom_ar' => $item['gemini_nom_ar'] ?? '',
+                    ],
+                    [
+                        'raw_nom_normalized' => ScanNameCache::normalizeName($item['gemini_nom']),
+                        'etudiant_id'  => $item['etudiant_id'],
+                        'formateur_id' => $formateur->id,
+                    ]
+                );
+            }
         }
 
         if (count($alreadyConfirmed) > 0 && count($saved) === 0) {

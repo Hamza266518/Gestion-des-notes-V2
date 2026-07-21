@@ -26,9 +26,13 @@ class NoteAdminController extends Controller
     public function index(Request $request)
     {
         try {
+            $currentAnnee = \App\Models\AnneeAcademique::where('is_current', true)->first();
+            $anneeId = $request->annee_academique_id ?? $currentAnnee?->id;
+
             $notes = Note::with(['etudiant', 'controle.sequence.unite'])
                 ->when($request->controle_id, fn($q) => $q->where('controle_id', $request->controle_id))
                 ->when($request->groupe_id, fn($q) => $q->whereHas('etudiant', fn($q) => $q->where('groupe_id', $request->groupe_id)))
+                ->when($anneeId, fn($q) => $q->whereHas('etudiant', fn($q) => $q->where('annee_academique_id', $anneeId)))
                 ->get();
             return response()->json(['success' => true, 'data' => $notes]);
         } catch (\Exception $e) {
@@ -107,6 +111,8 @@ class NoteAdminController extends Controller
                 ->orderBy('nom_prenom')
                 ->get();
 
+            $anneeId = $groupe->annee_academique_id;
+
             // Build one subject per unite (not per sequence)
             $subjects = [];
             foreach ($unites as $unite) {
@@ -124,6 +130,7 @@ class NoteAdminController extends Controller
                     ->whereIn('unite_id', $unites->pluck('id'))
                     ->where('bloc', $examBloc)
                     ->where('type', $examType)
+                    ->where('annee_academique_id', $anneeId)
                     ->get();
                 foreach ($examRows as $ex) {
                     $examensByEtudiant[$ex->etudiant_id][$ex->unite_id] = $ex->valeur;
@@ -142,7 +149,7 @@ class NoteAdminController extends Controller
 
                     if ($controleType !== null) {
                         // MPCC: compute weighted CC average across all sequences in the unite
-                        $avg = $this->moyenneService->moyenneUnite($etudiant->id, $uniteId, $controleType);
+                        $avg = $this->moyenneService->moyenneUnite($etudiant->id, $uniteId, $controleType, $anneeId);
                     } elseif ($examType && $examBloc) {
                         // MPEFCF/MPEFCFP: read from examens table
                         $avg = $examensByEtudiant[$etudiant->id][$uniteId] ?? null;
