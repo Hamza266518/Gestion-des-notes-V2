@@ -26,6 +26,10 @@ class FormateurController extends Controller
     {
         try {
             $formateurs = Formateur::with(['user', 'sequences.unite.filiere'])->get();
+
+            // Admin-only: explicitly reveal the current password for the formateur list
+            $formateurs->each(fn (Formateur $f) => $f->user?->withPlainPassword());
+
             return response()->json(['success' => true, 'data' => $formateurs]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors du chargement des formateurs'], 500);
@@ -51,7 +55,7 @@ class FormateurController extends Controller
             ]);
 
             $formateur = Formateur::create(['user_id' => $user->id]);
-            $formateur->load('user');
+            $formateur->load('user')->user->withPlainPassword();
 
             return response()->json([
                 'success' => true,
@@ -236,7 +240,7 @@ class FormateurController extends Controller
     {
         try {
             $request->validate([
-                'image' => 'required|image',
+                'image' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             ]);
 
             $formateur = Formateur::findOrFail($id);
@@ -295,6 +299,8 @@ class FormateurController extends Controller
                 'password'           => Hash::make($request->password),
                 'password_encrypted' => Crypt::encryptString($request->password),
             ]);
+
+            $formateur->user->withPlainPassword();
 
             return response()->json([
                 'success' => true,

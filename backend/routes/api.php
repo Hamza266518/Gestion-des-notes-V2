@@ -6,7 +6,6 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Admin\FormateurController;
 use App\Http\Controllers\Admin\AnneeAcademiqueController;
 use App\Http\Controllers\Admin\FiliereController;
-use App\Http\Controllers\Admin\ImportController;
 use App\Http\Controllers\Admin\NiveauController;
 use App\Http\Controllers\Admin\GroupeController;
 use App\Http\Controllers\Admin\EtudiantController;
@@ -70,10 +69,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/etudiants', [EtudiantController::class, 'store']);
         Route::put('/etudiants/{id}', [EtudiantController::class, 'update']);
         Route::delete('/etudiants/{id}', [EtudiantController::class, 'destroy']);
-
-        // Import Excel etudiants
-        Route::post('/import', [ImportController::class, 'import']);
-        Route::post('/preview', [ImportController::class, 'preview']);
 
         // Scan CIN
         Route::post('/scan-cin', [ScanCinController::class, 'scan']);
@@ -193,6 +188,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
-// Forgot Password (unauthenticated - no auth:sanctum required)
-Route::post('/etudiant/password/forgot-verify', [\App\Http\Controllers\Etudiant\PasswordController::class, 'verifyForgotPassword']);
-Route::post('/etudiant/password/reset', [\App\Http\Controllers\Etudiant\PasswordController::class, 'resetForgotPassword']);
+// Forgot Password (unauthenticated - rate limited + single-use expiring tokens)
+Route::post('/etudiant/password/forgot-verify', [\App\Http\Controllers\Etudiant\PasswordController::class, 'verifyForgotPassword'])
+    ->middleware('throttle:6,1');
+Route::post('/etudiant/password/reset', [\App\Http\Controllers\Etudiant\PasswordController::class, 'resetForgotPassword'])
+    ->middleware('throttle:5,1');

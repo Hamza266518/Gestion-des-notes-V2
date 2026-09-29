@@ -68,7 +68,9 @@ async function ensureArabicFont() {
       }
       arabicFontB64 = btoa(binary);
     }
-  } catch {}
+  } catch {
+    // Font externe indisponible: le rendu PDF continue avec la police par défaut
+  }
 
   arabicFontLoaded = true;
 }

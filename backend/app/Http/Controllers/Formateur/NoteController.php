@@ -14,9 +14,10 @@ use Illuminate\Http\Request;
 
 class NoteController extends Controller
 {
+    use ResolvesFormateur;
     public function index(Request $request)
     {
-        $formateur = auth()->user()->formateur;
+        $formateur = $this->currentFormateur();
         $currentAnneeId = AnneeAcademique::where('is_current', true)->first()?->id;
         $notes = Note::with(['etudiant.groupe', 'controle.sequence.unite'])
             ->whereHas('controle.sequence.formateurs', fn($q) =>
@@ -32,7 +33,7 @@ class NoteController extends Controller
 
     public function mySequences(Request $request)
     {
-        $formateur = auth()->user()->formateur;
+        $formateur = $this->currentFormateur();
         $sequences = $formateur->sequences()->with(['unite.filiere', 'controles'])->get();
         return response()->json(['success' => true, 'data' => $sequences]);
     }
@@ -71,7 +72,7 @@ class NoteController extends Controller
 
     public function update(Request $request, $id)
     {
-        $formateur = auth()->user()->formateur;
+        $formateur = $this->currentFormateur();
         $note = Note::with('controle.sequence.unite')->findOrFail($id);
 
         $hasAccess = $formateur->sequences()->where('sequence_id', $note->controle->sequence_id)->exists();
@@ -87,7 +88,11 @@ class NoteController extends Controller
             return response()->json(['success' => false, 'message' => 'Les notes/bulletins ont été publiés pour ce groupe. Modification impossible.'], 403);
         }
 
-        $request->validate(['valeur' => 'required|numeric|min:0|max:20']);
+        // Each control carries its own scale (note_max).
+        $noteMax = $note->controle?->note_max ?: 20;
+        $request->validate([
+            'valeur' => ['required', 'numeric', 'min:0', "max:{$noteMax}"],
+        ]);
         $note->update(['valeur' => $request->valeur]);
 
         return response()->json(['success' => true, 'data' => $note, 'message' => 'Note mise à jour']);
@@ -95,7 +100,7 @@ class NoteController extends Controller
 
     public function sequenceEtudiants($sequenceId)
     {
-        $formateur = auth()->user()->formateur;
+        $formateur = $this->currentFormateur();
         $sequence = \App\Models\Sequence::with('unite')->findOrFail($sequenceId);
 
         $hasAccess = $formateur->sequences()->where('sequence_id', $sequenceId)->exists();
@@ -131,7 +136,7 @@ class NoteController extends Controller
 
     public function groupes()
     {
-        $formateur = auth()->user()->formateur;
+        $formateur = $this->currentFormateur();
         $sequenceIds = $formateur->sequences()->pluck('sequence_id');
         $uniteIds = \App\Models\Sequence::whereIn('id', $sequenceIds)->pluck('unite_id');
         $filiereIds = \App\Models\Unite::whereIn('id', $uniteIds)->pluck('filiere_id')->unique();
@@ -181,7 +186,7 @@ class NoteController extends Controller
 
     public function scanData(Request $request)
     {
-        $formateur = auth()->user()->formateur;
+        $formateur = $this->currentFormateur();
         $sequences = $formateur->sequences()->with(['unite.filiere', 'controles'])->get();
 
         $filieres = $sequences->pluck('unite.filiere')->filter()->unique('id')->values();

@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import apiClient from '../api/apiClient';
+import { useAuth } from './AuthContext';
 
 const AnneeAcademiqueContext = createContext(null);
 
 export function AnneeAcademiqueProvider({ children }) {
+  const { token } = useAuth();
   const [currentAnnee, setCurrentAnnee] = useState(null);
   const [annees, setAnnees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -11,7 +13,6 @@ export function AnneeAcademiqueProvider({ children }) {
   const [warning, setWarning] = useState(null);
 
   const fetchAnnees = useCallback(() => {
-    const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
     if (!token) {
       setCurrentAnnee(null);
@@ -53,20 +54,11 @@ export function AnneeAcademiqueProvider({ children }) {
           setLoading(false);
         });
     }
-  }, []);
-
-  const [prevToken, setPrevToken] = useState(() => localStorage.getItem('token'));
-  useEffect(() => {
-    const currentToken = localStorage.getItem('token');
-    if (currentToken !== prevToken) {
-      setPrevToken(currentToken);
-      fetchAnnees();
-    }
-  }, [prevToken, fetchAnnees]);
+  }, [token]);
 
   useEffect(() => {
     fetchAnnees();
-  }, [refreshTrigger]);
+  }, [token, refreshTrigger, fetchAnnees]);
 
   const refreshAnnees = useCallback(() => {
     setRefreshTrigger(prev => prev + 1);

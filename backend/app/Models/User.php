@@ -29,13 +29,29 @@ class User extends Authenticatable
         'password_original_encrypted',
     ];
 
-    protected $appends = [
-        'password_plain',
-    ];
-
     public function getPasswordPlainAttribute(): ?string
     {
-        return $this->password_encrypted ? Crypt::decryptString($this->password_encrypted) : null;
+        if (!$this->password_encrypted) {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString($this->password_encrypted);
+        } catch (\Exception $e) {
+            // A single unreadable row must not break the whole admin listing
+            return null;
+        }
+    }
+
+    /**
+     * Reveal the plaintext password on an admin-only response.
+     * Never appended globally: this must be called explicitly per endpoint.
+     */
+    public function withPlainPassword(): static
+    {
+        $this->append('password_plain');
+
+        return $this;
     }
 
     public static function generateStrongPassword(int $length = 14): string

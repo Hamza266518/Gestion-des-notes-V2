@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Etudiant;
 
 use App\Http\Controllers\Controller;
 use App\Models\Etudiant;
+use App\Models\EtudiantPasswordReset;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class PasswordController extends Controller
 {
@@ -129,18 +131,24 @@ class PasswordController extends Controller
                 return response()->json(['success' => false, 'message' => 'Erreur de vérification'], 500);
             }
 
-            // Identity verified - generate temporary token
-            $tempToken = base64_encode(json_encode([
-                'user_id' => $user->id,
-                'etudiant_id' => $etudiant->id,
-                'cin' => $etudiant->cin,
-                'timestamp' => now()->timestamp,
-            ]));
+            // Identity verified - issue a single-use, expiring, server-side token
+            $plainToken = Str::random(64);
+
+            EtudiantPasswordReset::where('user_id', $user->id)
+                ->whereNull('used_at')
+                ->update(['used_at' => now()]);
+
+            EtudiantPasswordReset::create([
+                'user_id'    => $user->id,
+                'token_hash' => EtudiantPasswordReset::hashToken($plainToken),
+                'expires_at' => now()->addMinutes(5),
+                'ip_address' => $request->ip(),
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Identité vérifiée',
-                'temp_token' => $tempToken,
+                'temp_token' => $plainToken,
                 'student_name' => $etudiant->nom_prenom,
             ]);
         } catch (\Exception $e) {
@@ -163,23 +171,26 @@ class PasswordController extends Controller
                 'new_password.regex' => 'Le mot de passe doit contenir au moins 10 caractères avec des majuscules, minuscules, chiffres et symboles',
             ]);
 
-            // Decode temp token
-            try {
-                $tokenData = json_decode(base64_decode($request->temp_token), true);
-                if (!$tokenData || !isset($tokenData['user_id'], $tokenData['timestamp'])) {
-                    return response()->json(['success' => false, 'message' => 'Token invalide'], 401);
-                }
+            // Consume the single-use token (stored hashed, expiring, already-used tokens are rejected)
+            $reset = EtudiantPasswordReset::where('token_hash', EtudiantPasswordReset::hashToken($request->temp_token))
+                ->whereNull('used_at')
+                ->where('expires_at', '>', now())
+                ->first();
 
-                // Check token expiry (5 minutes)
-                if (now()->timestamp - $tokenData['timestamp'] > 300) {
-                    return response()->json(['success' => false, 'message' => 'Token expiré. Veuillez recommencer.'], 401);
-                }
-            } catch (\Exception $e) {
-                return response()->json(['success' => false, 'message' => 'Token invalide'], 401);
+            if (!$reset) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token invalide ou expiré. Veuillez recommencer.',
+                ], 401);
             }
 
-            // Get user and reset password
-            $user = User::findOrFail($tokenData['user_id']);
+            $user = User::find($reset->user_id);
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'Compte introuvable'], 401);
+            }
+
+            $reset->update(['used_at' => now()]);
+
             $encryptedNew = Crypt::encryptString($request->new_password);
 
             $user->update([
@@ -187,6 +198,9 @@ class PasswordController extends Controller
                 'password_encrypted' => $encryptedNew,
                 'password_changed_at' => now(),
             ]);
+
+            // Password changed outside a session: revoke every active token
+            $user->tokens()->delete();
 
             return response()->json([
                 'success' => true,

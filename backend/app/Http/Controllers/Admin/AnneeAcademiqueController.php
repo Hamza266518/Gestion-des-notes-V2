@@ -145,9 +145,9 @@ class AnneeAcademiqueController extends Controller
 
     public function stats($id): JsonResponse
     {
-        try {
-            $annee = AnneeAcademique::with(['groupes.niveau.filiere', 'etudiants'])->findOrFail($id);
+        $annee = AnneeAcademique::with(['groupes.niveau.filiere', 'etudiants'])->findOrFail($id);
 
+        try {
             // Query students by status
             $graduates = Etudiant::where('annee_academique_id', $id)
                 ->where('status', 'graduate')

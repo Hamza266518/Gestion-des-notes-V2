@@ -25,7 +25,7 @@ class ScanUnitesController extends Controller
     {
         try {
             $request->validate([
-                'image'      => 'required|image',
+                'image'      => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
                 'filiere_id' => 'required|exists:filieres,id',
             ]);
 
@@ -35,7 +35,7 @@ class ScanUnitesController extends Controller
             $data = $this->parser->parseNotes($raw);
 
             if (empty($data)) {
-                Log::error('ScanUnitesController: JSON decode error', ['error' => json_last_error_msg(), 'raw' => $raw]);
+                Log::error('ScanUnitesController: JSON decode error', ['error' => json_last_error_msg()]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Erreur de lecture du document. Veuillez réessayer.',
@@ -46,7 +46,7 @@ class ScanUnitesController extends Controller
                 $data = [];
             }
 
-            Log::info('ScanUnitesController: decoded data', ['count' => count($data ?? []), 'sample' => json_encode(array_slice($data ?? [], 0, 1))]);
+            Log::info('ScanUnitesController: decoded data', ['count' => count($data ?? [])]);
 
             // Add filiere_id to each unite for preview
             foreach ($data as &$unite) {

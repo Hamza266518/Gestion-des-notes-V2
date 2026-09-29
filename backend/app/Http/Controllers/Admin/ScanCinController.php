@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Exceptions\GeminiTransportException;
 use App\Models\Etudiant;
 use App\Models\User;
+use App\Services\CinScanNormalizer;
 use App\Services\GeminiService;
 use App\Services\NoteParserService;
 use App\Services\NumeroInscriptionService;
+use App\Traits\ValidatesScanUploads;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -15,15 +18,22 @@ use Illuminate\Support\Facades\Hash;
 
 class ScanCinController extends Controller
 {
+    use ValidatesScanUploads;
     protected $gemini;
     protected $parser;
     protected $numeroService;
+    protected $normalizer;
 
-    public function __construct(GeminiService $gemini, NoteParserService $parser, NumeroInscriptionService $numeroService)
-    {
+    public function __construct(
+        GeminiService $gemini,
+        NoteParserService $parser,
+        NumeroInscriptionService $numeroService,
+        CinScanNormalizer $normalizer
+    ) {
         $this->gemini        = $gemini;
         $this->parser        = $parser;
         $this->numeroService = $numeroService;
+        $this->normalizer    = $normalizer;
     }
 
     public function scan(Request $request)
@@ -35,7 +45,9 @@ class ScanCinController extends Controller
                 'filiere_code'        => 'required|string',
             ]);
 
-            if ($request->hasFile('pdfs')) {
+            if ($request->hasFile('fichiers')) {
+                $pdfs = $request->file('fichiers');
+            } else if ($request->hasFile('pdfs')) {
                 $pdfs = $request->file('pdfs');
             } else if ($request->hasFile('pdf')) {
                 $pdfs = [$request->file('pdf')];
@@ -46,31 +58,53 @@ class ScanCinController extends Controller
             } else {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Aucun fichier PDF trouvé dans la requête',
+                    'message' => 'Aucun fichier envoyé',
                 ], 422);
             }
-            
+
             if (!is_array($pdfs)) {
                 $pdfs = [$pdfs];
+            }
+
+            $validated = $this->validateScanUploads($pdfs);
+            if ($validated !== null) {
+                return $validated;
             }
 
             $results = [];
             $errors  = [];
 
-            foreach ($pdfs as $pdf) {
+            foreach ($pdfs as $index => $pdf) {
                 $base64 = base64_encode(file_get_contents($pdf->getRealPath()));
-                $rawText = $this->gemini->scanCin($base64);
+                $mime   = $pdf->getMimeType() ?: 'application/octet-stream';
+
+                try {
+                    $rawText = $this->gemini->scanCin($base64, $mime);
+                } catch (GeminiTransportException $e) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Connexion sécurisée à l'API Gemini impossible. Vérifiez le certificat CA (CA_BUNDLE_PATH) et la clé API.",
+                    ], 502);
+                }
+
                 $students = $this->parser->parseCin($rawText);
 
                 if (empty($students)) {
                     $errors[] = ['message' => 'Document illisible'];
-                    \Log::warning('ScanCin: no students parsed', ['raw' => $rawText]);
+                    \Log::warning('ScanCin: no students parsed', ['file_index' => $index]);
                     continue;
                 }
 
                 foreach ($students as $student) {
-                    if (empty($student['nom_prenom'])) {
+                    $data = $this->normalizer->normalize($student);
+
+                    if (empty($data['nom_prenom'])) {
                         $errors[] = ['message' => 'Nom manquant pour un étudiant'];
+                        continue;
+                    }
+
+                    if (empty($data['cin'])) {
+                        $errors[] = ['message' => 'CIN illisible pour ' . $data['nom_prenom']];
                         continue;
                     }
 
@@ -79,24 +113,11 @@ class ScanCinController extends Controller
                         $request->annee_academique_id
                     );
 
-                    $results[] = [
-                        'nom_prenom'          => $student['nom_prenom'] ?? '',
-                        'nom_ar'              => $student['nom_ar'] ?? '',
-                        'cin'                 => strtoupper($student['cin'] ?? ''),
-                        'cin_ar'              => $student['cin_ar'] ?? '',
-                        'date_naissance'      => $student['date_naissance'] ?? '',
-                        'date_naissance_ar'   => $student['date_naissance_ar'] ?? '',
-                        'lieu_naissance'      => $student['lieu_naissance'] ?? '',
-                        'lieu_naissance_ar'   => $student['lieu_naissance_ar'] ?? '',
-                        'nationalite'         => $student['nationalite'] ?? '',
-                        'nationalite_ar'      => $student['nationalite_ar'] ?? '',
-                        'date_inscription'    => $student['date_inscription'] ?? '',
-                        'date_inscription_ar' => $student['date_inscription_ar'] ?? '',
+                    $results[] = array_merge($data, [
                         'numero_inscription'  => $numero,
-                        'numero_inscription_ar' => $student['numero_inscription_ar'] ?? '',
                         'groupe_id'           => $request->groupe_id,
                         'annee_academique_id' => $request->annee_academique_id,
-                    ];
+                    ]);
                 }
             }
 
@@ -151,15 +172,19 @@ class ScanCinController extends Controller
             $skipped = 0;
 
             foreach ($request->stagiaires as $item) {
-                $cin = strtoupper($item['cin']);
+                $cin = $this->normalizer->normalizeCin($item['cin']);
 
-                // Skip if student with this CIN already exists
+                if ($cin === '') {
+                    $skipped++;
+                    continue;
+                }
+
                 if (Etudiant::where('cin', $cin)->exists()) {
                     $skipped++;
                     continue;
                 }
 
-                $email    = strtolower(str_replace(' ', '.', $item['nom_prenom'])) . '@ifp.ma';
+                $email = strtolower(str_replace(' ', '.', $item['nom_prenom'])) . '@ifp.ma';
 
                 $password = User::generateStrongPassword();
 
@@ -172,24 +197,25 @@ class ScanCinController extends Controller
                     'role'               => 'etudiant',
                 ]);
 
+                $data = $this->normalizer->normalize(array_merge($item, ['cin' => $cin]));
+
                 Etudiant::create([
                     'user_id'             => $user->id,
                     'groupe_id'           => $item['groupe_id'],
                     'annee_academique_id' => $item['annee_academique_id'],
-                    'nom_prenom'          => $item['nom_prenom'],
-                    'nom_ar'              => $item['nom_ar'] ?? null,
-                    'cin'                 => $cin,
-                    'date_naissance'      => $item['date_naissance'] ?? null,
                     'numero_inscription'  => $item['numero_inscription'],
-                    'date_naissance_ar'        => $item['date_naissance_ar'] ?? null,
-                    'lieu_naissance'           => $item['lieu_naissance'] ?? null,
-                    'lieu_naissance_ar'        => $item['lieu_naissance_ar'] ?? null,
-                    'nationalite'              => $item['nationalite'] ?? null,
-                    'nationalite_ar'           => $item['nationalite_ar'] ?? null,
-                    'date_inscription'         => $item['date_inscription'] ?? null,
-                    'date_inscription_ar'      => $item['date_inscription_ar'] ?? null,
-                    'cin_ar'                   => $item['cin_ar'] ?? null,
-                    'numero_inscription_ar'    => $item['numero_inscription_ar'] ?? null,
+                    'cin'                 => $cin,
+                    'nom_ar'              => $data['nom_ar'] ?: null,
+                    'date_naissance'      => $data['date_naissance'],
+                    'date_naissance_ar'   => $data['date_naissance_ar'] ?: null,
+                    'lieu_naissance'      => $data['lieu_naissance'] ?: null,
+                    'lieu_naissance_ar'   => $data['lieu_naissance_ar'] ?: null,
+                    'nationalite'         => $data['nationalite'],
+                    'nationalite_ar'      => $data['nationalite_ar'] ?: null,
+                    'date_inscription'    => $data['date_inscription'],
+                    'date_inscription_ar' => $data['date_inscription_ar'] ?: null,
+                    'cin_ar'              => $data['cin_ar'] ?: null,
+                    'numero_inscription_ar' => $data['numero_inscription_ar'] ?: null,
                 ]);
 
                 $created++;

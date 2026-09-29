@@ -3,18 +3,22 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Exceptions\GeminiTransportException;
 use App\Models\Etudiant;
 use App\Models\Examen;
 use App\Models\Unite;
 use App\Models\ActivityLog;
 use App\Services\GeminiService;
 use App\Services\NoteParserService;
+use App\Traits\ValidatesScanUploads;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class ScanExamenController extends Controller
 {
+    use ValidatesScanUploads;
+
     protected $gemini;
     protected $parser;
 
@@ -45,14 +49,26 @@ class ScanExamenController extends Controller
             }
             if (!is_array($pdfs)) $pdfs = [$pdfs];
 
+            $invalid = $this->validateScanUploads($pdfs, ['pdf']);
+            if ($invalid !== null) {
+                return $invalid;
+            }
+
             $base64Pdfs = [];
             foreach ($pdfs as $pdf) {
                 $base64Pdfs[] = base64_encode(file_get_contents($pdf->getRealPath()));
             }
 
-            $rawText = $this->gemini->scanExamens($base64Pdfs);
-            $extracted = $this->parser->parseExamens($rawText);
+            try {
+                $rawText = $this->gemini->scanExamens($base64Pdfs);
+            } catch (GeminiTransportException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Connexion sécurisée à l'API Gemini impossible. Vérifiez le certificat CA (CA_BUNDLE_PATH) et la clé API.",
+                ], 502);
+            }
 
+            $extracted = $this->parser->parseExamens($rawText);
             if (empty($extracted)) {
                 return response()->json([
                     'success' => false,

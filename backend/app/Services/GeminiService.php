@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Exceptions\GeminiTransportException;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
 class GeminiService
@@ -29,6 +32,36 @@ class GeminiService
         if (empty($this->apiKeyUnites)) {
             \Log::warning('Gemini API key for unites is not configured');
         }
+    }
+
+    /**
+     * Sanitizes an error message before logging: the request URL carries the
+     * API key as a query parameter and must never reach the log files.
+     */
+    private function safeErrorMessage(\Throwable $e): string
+    {
+        $message = $e->getMessage();
+        $keys = array_filter([$this->apiKeyFormateur, $this->apiKeyStudents, $this->apiKeyUnites]);
+
+        return $keys ? str_replace($keys, '***', $message) : $message;
+    }
+
+    /**
+     * HTTP client with TLS verification ALWAYS enabled.
+     * On hosts without a system CA bundle (e.g. some Windows PHP installs),
+     * CA_BUNDLE_PATH points to a ca-bundle.crt file instead of disabling
+     * certificate verification, which would expose the API key to MITM.
+     */
+    private function http(?int $timeout = null): PendingRequest
+    {
+        $request = Http::timeout($timeout ?? $this->timeout);
+
+        $bundle = (string) config('services.gemini.ca_bundle', '');
+        if ($bundle !== '' && file_exists($bundle)) {
+            $request = $request->withOptions(['verify' => $bundle]);
+        }
+
+        return $request;
     }
 
     public function scanNotes(string $base64Pdf): string
@@ -60,7 +93,7 @@ class GeminiService
     private function tryScanNotes(string $apiKey, string $base64Pdf): ?string
     {
         try {
-            $response = Http::timeout($this->timeout)->withoutVerifying()->post($this->baseUrl . '?key=' . $apiKey, [
+            $response = $this->http()->post($this->baseUrl . '?key=' . $apiKey, [
                 'contents' => [[
                     'parts' => [
                         [
@@ -91,57 +124,66 @@ Rules:
             $data = $response->json();
 
             if (isset($data['error'])) {
-                \Log::warning('Gemini API error (notes): ' . json_encode($data['error']));
+                \Log::warning('Gemini API error (notes)', [
+                    'code' => $data['error']['code'] ?? null,
+                    'status' => $data['error']['status'] ?? null,
+                ]);
                 return null;
             }
 
             return $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+        } catch (ConnectionException $e) {
+            // Network/TLS failure: retrying with the other keys would fail the same way
+            \Log::warning('Gemini unreachable during notes scan', ['exception' => class_basename($e)]);
+            throw new GeminiTransportException('Gemini API unreachable', 0, $e);
         } catch (\Exception $e) {
-            \Log::warning('Gemini API exception for notes: ' . $e->getMessage());
+            \Log::warning('Gemini API exception for notes: ' . $this->safeErrorMessage($e));
             return null;
         }
     }
 
-    public function scanCin(string $base64Pdf): string
+    public function scanCin(string $base64File, string $mimeType = 'application/pdf'): string
     {
         if (empty($this->apiKeyStudents)) {
             \Log::error('Gemini API key for students/CIN is missing');
             return '[]';
         }
 
-        \Log::info('Calling Gemini API for CIN scan (PDF)...');
+        \Log::info('Calling Gemini API for CIN scan', ['mime_type' => $mimeType]);
 
         try {
-            $response = Http::timeout($this->timeout)->withoutVerifying()->post($this->baseUrl . '?key=' . $this->apiKeyStudents, [
+            $response = $this->http()->post($this->baseUrl . '?key=' . $this->apiKeyStudents, [
                 'contents' => [[
                     'parts' => [
                         [
-                            'text' => 'You are reading a PDF document containing a list of students from a Moroccan nursing school (Institut de Formation aux Professions Paramédicales).
-Extract ALL students from this document.
-Return ONLY a valid JSON array like: [{"nom_prenom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","cin":"AB123456","date_naissance":"1998-05-15","lieu_naissance":"CASABLANCA","nationalite":"MAROCAINE","cin_ar":"AB123456","date_naissance_ar":"15 مايو 1998","lieu_naissance_ar":"الدار البيضاء","nationalite_ar":"مغربية","numero_inscription_ar":"12345","date_inscription_ar":"15 سبتمبر 2023"}]
+                            'text' => 'You read Moroccan national identity cards (CIN) for a nursing school (Institut de Formation aux Professions Paramédicales).
+
+A Moroccan CIN is ONE single physical card. Its FRONT is printed in Latin script and its BACK in Arabic script. Both faces carry the SAME information: the holder name, the CIN number, the date of birth, the place of birth and the nationality. They are never two different people and never two different numbers.
+
+Each file you receive is one card (or a PDF containing several cards). Extract ONE object per card.
+
+Return ONLY a valid JSON array, e.g.:
+[{"nom_prenom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","cin":"AB123456","cin_ar":"AB123456","date_naissance":"1998-05-15","date_naissance_ar":"15 مايو 1998","lieu_naissance":"CASABLANCA","lieu_naissance_ar":"الدار البيضاء","nationalite":"MAROCAINE","nationalite_ar":"مغربية"}]
+
 Rules:
-- nom_prenom: full name in French/Latin script, CAPITAL LETTERS exactly as written in the PDF
-- nom_ar: full name in Arabic script as written in the PDF. If no Arabic name is present, use an empty string ""
-- cin: CIN code exactly as written (alphanumeric, typically 8 characters). If not found use ""
-- date_naissance: date of birth in YYYY-MM-DD format if found. If not found use ""
-- lieu_naissance: place of birth in Latin script. If not found use ""
-- nationalite: nationality in Latin script. If not found use ""
-- cin_ar: CIN code in Arabic script if present, otherwise same as cin
-- date_naissance_ar: date of birth in Arabic if found, otherwise empty string ""
-- lieu_naissance_ar: place of birth in Arabic if found, otherwise empty string ""
-- nationalite_ar: nationality in Arabic if found, otherwise empty string ""
-- numero_inscription_ar: registration number in Arabic if found, otherwise empty string ""
-- date_inscription_ar: registration date in Arabic if found, otherwise empty string ""
-- If multiple students appear in the PDF, extract ALL of them
-- Read carefully both French and Arabic sections of the document
-- If the PDF contains a table, extract each row as a student
-- If some fields are missing or unclear, leave them as empty strings ""
-- Return ONLY the JSON array, nothing else, no markdown, no code fences, no explanation'
+- The same card may be supplied twice, once photographed from the front and once from the back. Treat both files as the SAME student: merge them into a single object, never emit the person twice.
+- nom_prenom: full name in Latin script, CAPITALISED as printed.
+- nom_ar: the same person name in Arabic script, taken from the Arabic face of the card. If the Arabic face is not supplied, fall back to the Latin name in Latin script instead of leaving it empty.
+- cin: the CIN code, uppercase, letters and digits only, no spaces or dashes.
+- cin_ar: the very same code. The Arabic face prints the identical number, so copy cin unchanged rather than re-typing it.
+- date_naissance: date of birth as YYYY-MM-DD. Read the printed day and month, they are numeric on the card.
+- date_naissance_ar: the same date written with an Arabic month name, e.g. 15 مايو 1998. Do not translate the digits to another numbering system; keep them as printed.
+- lieu_naissance: place of birth in Latin script. lieu_naissance_ar: the same place in Arabic if the Arabic face is supplied, otherwise leave it empty.
+- nationalite: nationality in Latin script. If the card is not readable on this point, use "MAROCAINE".
+- nationalite_ar: the same nationality in Arabic, for example "مغربية". If it is not readable, use "مغربية".
+- Never invent a second person from the back of a card, and never merge two different people.
+- If a field is genuinely unreadable, use an empty string, except nationalite which defaults to MAROCAINE.
+- Output the JSON array only: no markdown, no code fences, no commentary.'
                         ],
                         [
                             'inline_data' => [
-                                'mime_type' => 'application/pdf',
-                                'data'      => $base64Pdf
+                                'mime_type' => $mimeType,
+                                'data'      => $base64File
                             ]
                         ]
                     ]
@@ -150,22 +192,23 @@ Rules:
 
             if ($response->failed()) {
                 \Log::error('Gemini API failed for CIN', [
-                    'status' => $response->status(),
-                    'body' => $response->body()
+                    'status' => $response->status()
                 ]);
                 return '[]';
             }
 
             $data = $response->json();
-            \Log::info('Gemini CIN raw response', ['data' => $data]);
+            \Log::info('Gemini CIN response received', ['has_data' => isset($data['candidates'])]);
 
             $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
             return $text;
 
+        } catch (ConnectionException $e) {
+            \Log::error('Gemini unreachable during CIN scan', ['exception' => class_basename($e)]);
+            throw new GeminiTransportException('Gemini API unreachable', 0, $e);
         } catch (\Exception $e) {
             \Log::error('Gemini API exception for CIN', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'exception' => get_class($e)
             ]);
             return '[]';
         }
@@ -180,10 +223,7 @@ Rules:
 
         try {
             \Log::info('Calling Gemini API for unites document...');
-            
-            $base64Length = strlen($base64Image);
-            \Log::info('Base64 image length: ' . $base64Length);
-            
+
             $payload = [
                 'contents' => [[
                     'parts' => [
@@ -222,8 +262,8 @@ Rules:
             ];
             
             \Log::info('Sending request to Gemini...');
-            
-            $response = Http::timeout(30)->withoutVerifying()->post($this->baseUrl . '?key=' . $this->apiKeyUnites, $payload);
+
+            $response = $this->http(30)->post($this->baseUrl . '?key=' . $this->apiKeyUnites, $payload);
 
             $data = $response->json();
             
@@ -232,18 +272,12 @@ Rules:
                 return '[]';
             }
             
-            \Log::info('Gemini raw response:', ['response' => $data]);
-            
             $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
-            \Log::info('Gemini extracted text:', ['text' => $text]);
-            
-            \Log::info('Gemini scan-unites: returning text', ['length' => strlen($text), 'preview' => substr($text, 0, 200)]);
-            
-            \Log::info('GeminiService: returning to controller', ['raw_text' => $text]);
-            
+            \Log::info('Gemini unites scan completed', ['length' => strlen($text)]);
+
             return $text;
         } catch (\Exception $e) {
-            \Log::error('Gemini scan-unites error: ' . $e->getMessage());
+            \Log::error('Gemini scan-unites error: ' . $this->safeErrorMessage($e));
             return '[]';
         }
     }
@@ -255,7 +289,7 @@ Rules:
             return '[]';
         }
 
-        $response = Http::withoutVerifying()->post($this->baseUrl . '?key=' . $this->apiKeyUnites, [
+        $response = $this->http()->post($this->baseUrl . '?key=' . $this->apiKeyUnites, [
             'contents' => [[
                 'parts' => [
                     [
@@ -325,22 +359,28 @@ Rules:
         }
 
         try {
-            $response = Http::timeout($this->timeout)->withoutVerifying()->post($this->baseUrl . '?key=' . $this->apiKeyFormateur, [
+            $response = $this->http()->post($this->baseUrl . '?key=' . $this->apiKeyFormateur, [
                 'contents' => [['parts' => $parts]]
             ]);
 
             $data = $response->json();
 
             if (isset($data['error'])) {
-                \Log::error('Gemini API error (examens): ' . json_encode($data['error']));
+                \Log::error('Gemini API error (examens)', [
+                    'code' => $data['error']['code'] ?? null,
+                    'status' => $data['error']['status'] ?? null,
+                ]);
                 return '[]';
             }
 
             $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
-            \Log::info('Gemini examens raw response', ['text' => substr($text, 0, 500)]);
+            \Log::info('Gemini examens scan completed', ['length' => strlen($text)]);
             return $text;
+        } catch (ConnectionException $e) {
+            \Log::error('Gemini unreachable during examens scan', ['exception' => class_basename($e)]);
+            throw new GeminiTransportException('Gemini API unreachable', 0, $e);
         } catch (\Exception $e) {
-            \Log::error('Gemini API exception for examens: ' . $e->getMessage());
+            \Log::error('Gemini API exception for examens: ' . $this->safeErrorMessage($e));
             return '[]';
         }
     }
@@ -354,7 +394,7 @@ Rules:
 
         \Log::info('Calling Gemini API for formateur sequences scan...');
 
-        $response = Http::timeout(30)->withoutVerifying()->post($this->baseUrl . '?key=' . $this->apiKeyUnites, [
+        $response = $this->http(30)->post($this->baseUrl . '?key=' . $this->apiKeyUnites, [
             'contents' => [[
                 'parts' => [
                     [
@@ -378,7 +418,7 @@ Rules:
         }
 
         $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
-        \Log::info('Gemini formateur sequences raw response', ['text' => $text]);
+        \Log::info('Gemini formateur sequences scan completed', ['length' => strlen($text)]);
         return $text;
     }
 }

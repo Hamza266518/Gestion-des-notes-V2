@@ -18,6 +18,8 @@ use Illuminate\Http\Request;
 
 class ScanController extends Controller
 {
+    use ResolvesFormateur;
+
     protected $gemini;
     protected $parser;
 
@@ -32,7 +34,7 @@ class ScanController extends Controller
         // verify formateur has access to this sequence
         $controle  = Controle::findOrFail($request->controle_id);
         $sequence  = $controle->sequence;
-        $formateur = auth()->user()->formateur;
+        $formateur = $this->currentFormateur();
 
         $hasAccess = $formateur->sequences()->where('sequence_id', $sequence->id)->exists();
 
@@ -59,15 +61,15 @@ class ScanController extends Controller
         ];
         
         if ($request->hasFile('pdfs')) {
-            $validateRules['pdfs'] = 'required|array';
-            $validateRules['pdfs.*'] = 'required|mimes:pdf|max:10240';
+            $validateRules['pdfs'] = 'required|array|max:10';
+            $validateRules['pdfs.*'] = 'required|file|mimes:pdf|max:10240';
         } else if ($request->hasFile('pdf')) {
-            $validateRules['pdf'] = 'required|mimes:pdf|max:10240';
+            $validateRules['pdf'] = 'required|file|mimes:pdf|max:10240';
         } else if ($request->hasFile('images')) {
-            $validateRules['images'] = 'required|array';
-            $validateRules['images.*'] = 'required|image';
+            $validateRules['images'] = 'required|array|max:10';
+            $validateRules['images.*'] = 'required|file|image|mimes:jpg,jpeg,png,webp|max:10240';
         } else {
-            $validateRules['image'] = 'required|image';
+            $validateRules['image'] = 'required|file|image|mimes:jpg,jpeg,png,webp|max:10240';
         }
         
         $request->validate($validateRules);
@@ -75,7 +77,7 @@ class ScanController extends Controller
         $controle  = Controle::findOrFail($request->controle_id);
         $results   = [];
         $errors    = [];
-        $formateur = auth()->user()->formateur;
+        $formateur = $this->currentFormateur();
 
         // Handle multiple file input names
         if ($request->hasFile('pdfs')) {
@@ -217,7 +219,7 @@ class ScanController extends Controller
             'notes.*.gemini_nom_ar'  => 'nullable|string',
         ]);
 
-        $formateur = auth()->user()->formateur;
+        $formateur = $this->currentFormateur();
 
         // Check publication for first controle (all notes should be for same controle)
         $firstControleId = $request->notes[0]['controle_id'] ?? null;

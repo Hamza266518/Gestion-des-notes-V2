@@ -59,7 +59,20 @@ class AuthController extends Controller
     {
         try {
             $user = $request->user()->load(['etudiant.groupe.niveau.filiere', 'formateur']);
-            return response()->json(['success' => true, 'data' => $user]);
+
+            // Whitelist: never serialize password material on a general-purpose endpoint
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'id'                  => $user->id,
+                    'name'                => $user->name,
+                    'email'               => $user->email,
+                    'role'                => $user->role,
+                    'password_changed_at' => $user->password_changed_at,
+                    'etudiant'            => $user->etudiant,
+                    'formateur'           => $user->formateur,
+                ],
+            ]);
         } catch (\Exception $e) {
             Log::error('Erreur profil utilisateur: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Erreur lors du chargement du profil'], 500);

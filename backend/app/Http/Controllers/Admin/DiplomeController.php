@@ -142,12 +142,12 @@ class DiplomeController extends Controller
 
     public function download($id)
     {
-        try {
-            $diplome = Diplome::with([
-                'etudiant.groupe.niveau.filiere',
-                'anneeAcademique'
-            ])->findOrFail($id);
+        $diplome = Diplome::with([
+            'etudiant.groupe.niveau.filiere',
+            'anneeAcademique'
+        ])->findOrFail($id);
 
+        try {
             $etudiant = $diplome->etudiant;
             $filiere  = $etudiant->groupe?->niveau?->filiere;
             $groupe   = $etudiant->groupe;
@@ -197,11 +197,11 @@ class DiplomeController extends Controller
 
     public function checkReadiness(Request $request)
     {
-        try {
-            $request->validate([
-                'annee_academique_id' => 'required|exists:annees_academiques,id',
-            ]);
+        $request->validate([
+            'annee_academique_id' => 'required|exists:annees_academiques,id',
+        ]);
 
+        try {
             $anneeId = $request->annee_academique_id;
 
             $etudiants = Etudiant::with('groupe.niveau.filiere')

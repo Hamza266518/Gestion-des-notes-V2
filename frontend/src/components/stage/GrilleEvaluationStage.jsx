@@ -4,6 +4,7 @@ import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { stagesApi } from '../../api/stages';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
 import { useToast } from '../../context/ToastContext';
+import NoteStepper from './NoteStepper';
 
 const CRITERES_COMPORTEMENT = [
   'Assiduité et ponctualité',
@@ -149,10 +150,15 @@ export default function GrilleEvaluationStage({ etudiant, onDataChange }) {
     w.document.close();
   };
 
-  const NoteSelect = ({ value, onChange }) => (
-    <select className="form-select" value={value} onChange={e => onChange(Number(e.target.value))}>
-      {[0, 1, 2, 3, 4].map(n => <option key={n} value={n}>{n}</option>)}
-    </select>
+  const NoteScale = ({ value, onChange }) => (
+    <NoteStepper
+      value={value}
+      onChange={v => onChange(Number(v))}
+      min={0}
+      max={4}
+      step={1}
+      incStep={1}
+    />
   );
 
   return (
@@ -170,7 +176,7 @@ export default function GrilleEvaluationStage({ etudiant, onDataChange }) {
             <thead><tr><th>Critères</th><th style={{width:80}}>Note (0-4)</th></tr></thead>
             <tbody>
               {CRITERES_COMPORTEMENT.map((c, i) => (
-                <tr key={i}><td>{c}</td><td><NoteSelect value={form.comportement[i]} onChange={v => { const n = [...form.comportement]; n[i] = v; set('comportement', n); }} /></td></tr>
+                <tr key={i}><td>{c}</td><td><NoteScale value={form.comportement[i]} onChange={v => { const n = [...form.comportement]; n[i] = v; set('comportement', n); }} /></td></tr>
               ))}
               <tr className="table-total"><td><strong>Total</strong></td><td><strong>{scoreComportement}/20</strong></td></tr>
             </tbody>
@@ -183,7 +189,7 @@ export default function GrilleEvaluationStage({ etudiant, onDataChange }) {
             <thead><tr><th>Critères</th><th style={{width:80}}>Note (0-4)</th></tr></thead>
             <tbody>
               {CRITERES_APTITUDES.map((c, i) => (
-                <tr key={i}><td>{c}</td><td><NoteSelect value={form.aptitudes[i]} onChange={v => { const n = [...form.aptitudes]; n[i] = v; set('aptitudes', n); }} /></td></tr>
+                <tr key={i}><td>{c}</td><td><NoteScale value={form.aptitudes[i]} onChange={v => { const n = [...form.aptitudes]; n[i] = v; set('aptitudes', n); }} /></td></tr>
               ))}
               <tr className="table-total"><td><strong>Total</strong></td><td><strong>{scoreAptitudes}/40</strong></td></tr>
             </tbody>

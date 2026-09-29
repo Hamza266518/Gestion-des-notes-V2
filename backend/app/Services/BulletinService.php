@@ -99,7 +99,7 @@ class BulletinService
                 ];
             }
 
-            $moyenneUnite = $this->moyenneService->moyenneUnite($etudiantId, $unite->id, $anneeAcademiqueId);
+            $moyenneUnite = $this->moyenneService->moyenneUnite($etudiantId, $unite->id, null, $anneeAcademiqueId);
 
             $unitesData[] = [
                 'id' => $unite->id,

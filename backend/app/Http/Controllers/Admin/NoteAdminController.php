@@ -42,41 +42,49 @@ class NoteAdminController extends Controller
 
     public function update(Request $request, $id)
     {
+        $note = Note::with(['controle.sequence.unite', 'etudiant'])->findOrFail($id);
+
+        $groupeId = $note->etudiant?->groupe_id;
+        $semestre = $note->controle?->sequence?->unite?->semestre;
+        $anneeAcademiqueId = $note->etudiant?->annee_academique_id;
+
+        $types = $semestre === 1 ? ['notes_s1', 'bulletin'] : ['notes_s2', 'bulletin'];
+        $published = SemestrePublication::where('groupe_id', $groupeId)
+            ->where('annee_academique_id', $anneeAcademiqueId)
+            ->whereIn('type', $types)
+            ->where('is_published', true)
+            ->exists();
+
+        if ($published) {
+            return response()->json(['success' => false, 'message' => 'Impossible de modifier une note publiée'], 403);
+        }
+
+        // Each control carries its own scale (note_max), so a value must be
+        // checked against that scale rather than a hardcoded 20.
+        $noteMax = $note->controle?->note_max ?: 20;
+        $request->validate([
+            'valeur' => ['required', 'numeric', 'min:0', "max:{$noteMax}"],
+        ]);
+
         try {
-            $request->validate(['valeur' => 'required|numeric|min:0|max:20']);
-            $note = Note::with(['controle.sequence.unite', 'etudiant'])->findOrFail($id);
-
-            $groupeId = $note->etudiant->groupe_id;
-            $semestre = $note->controle->sequence->unite->semestre;
-            $anneeAcademiqueId = $note->etudiant->annee_academique_id;
-
-            $types = $semestre === 1 ? ['notes_s1', 'bulletin'] : ['notes_s2', 'bulletin'];
-            $published = SemestrePublication::where('groupe_id', $groupeId)
-                ->where('annee_academique_id', $anneeAcademiqueId)
-                ->whereIn('type', $types)
-                ->where('is_published', true)
-                ->exists();
-
-            if ($published) {
-                return response()->json(['success' => false, 'message' => 'Impossible de modifier une note publiée'], 403);
-            }
-
             $note->update(['valeur' => $request->valeur]);
             return response()->json(['success' => true, 'data' => $note, 'message' => 'Note mise à jour']);
         } catch (\Exception $e) {
+            \Log::error('NoteAdminController::update error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Erreur lors de la mise à jour de la note'], 500);
         }
     }
 
     public function recapNotes(Request $request)
     {
-        try {
-            $request->validate([
-                'groupe_id' => 'required|exists:groupes,id',
-                'type' => 'required|string',
-            ]);
+        $request->validate([
+            'groupe_id' => 'required|exists:groupes,id',
+            'type' => 'required|string',
+        ]);
 
-            $groupe = \App\Models\Groupe::with('niveau.filiere')->findOrFail($request->groupe_id);
+        $groupe = \App\Models\Groupe::with('niveau.filiere')->findOrFail($request->groupe_id);
+
+        try {
             $filiereId = $groupe->niveau->filiere_id;
             $niveauNumero = $groupe->niveau->numero;
 
@@ -209,14 +217,14 @@ class NoteAdminController extends Controller
 
     public function bulletin(Request $request)
     {
-        try {
-            $request->validate([
-                'etudiant_id' => 'required|exists:etudiants,id',
-                'groupe_id' => 'required|exists:groupes,id',
-                'annee_academique_id' => 'required|exists:annees_academiques,id',
-                'semestre' => 'nullable|integer|in:1,2',
-            ]);
+        $request->validate([
+            'etudiant_id' => 'required|exists:etudiants,id',
+            'groupe_id' => 'required|exists:groupes,id',
+            'annee_academique_id' => 'required|exists:annees_academiques,id',
+            'semestre' => 'nullable|integer|in:1,2',
+        ]);
 
+        try {
             $bulletin = $this->bulletinService->calculateBulletin(
                 $request->etudiant_id,
                 $request->annee_academique_id,

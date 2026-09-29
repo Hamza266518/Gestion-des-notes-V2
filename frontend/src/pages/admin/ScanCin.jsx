@@ -5,9 +5,12 @@ import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
-import { formatNiveau, toWesternDigits } from '../../utils/helpers';
+import { formatNiveau, toWesternDigits, isoToArabicDate } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
+
+const DEFAULT_NATIONALITE = 'MAROCAINE';
+const DEFAULT_NATIONALITE_AR = 'مغربية';
 
 export default function ScanCin() {
   const [step, setStep]         = useState(1);
@@ -34,12 +37,13 @@ export default function ScanCin() {
   useEffect(() => {
     if (selFiliere) {
       adminApi.getNiveaux(selFiliere)
-        .then(res => setNiveaux(res.data.data));
+        .then(res => setNiveaux(res.data.data))
+        .catch(() => setNiveaux([]));
     } else {
       setNiveaux([]);
     }
     setSelNiveau('');
-    setGroupes([]);
+    setSelGroupe('');
   }, [selFiliere]);
 
   useEffect(() => {
@@ -63,9 +67,8 @@ export default function ScanCin() {
     }
   }, [selNiveau, currentAnnee]);
 
-  const handleImages = (e) => {
-    const files = Array.from(e.target.files);
-    setImages(files);
+  const handleFiles = (e) => {
+    setImages(Array.from(e.target.files));
   };
 
   const handleScan = async () => {
@@ -73,7 +76,7 @@ export default function ScanCin() {
     setScanning(true);
     try {
       const fd = new FormData();
-      images.forEach(img => fd.append('pdfs[]', img));
+      images.forEach(img => fd.append('fichiers[]', img));
       fd.append('groupe_id', selGroupe);
       fd.append('annee_academique_id', currentAnnee.id);
       fd.append('filiere_code', filiereCode);
@@ -83,9 +86,9 @@ export default function ScanCin() {
       const scanned = data.resultats || [];
 
       if (scanned.length === 0) {
-        toast.error('Aucun étudiant trouvé. Vérifiez que les fichiers PDF sont lisibles.');
+        toast.error('Aucun étudiant trouvé. Vérifiez que les fichiers sont lisibles.');
       } else {
-        setResults(scanned);
+        setResults(scanned.map(withDefaults));
         setStep(3);
       }
     } catch (error) {
@@ -95,6 +98,14 @@ export default function ScanCin() {
       setScanning(false);
     }
   };
+
+  const withDefaults = r => ({
+    ...r,
+    nationalite: r.nationalite || DEFAULT_NATIONALITE,
+    nationalite_ar: r.nationalite_ar || DEFAULT_NATIONALITE_AR,
+    nom_ar: r.nom_ar || r.nom_prenom || '',
+    cin_ar: r.cin_ar || r.cin || '',
+  });
 
   const handleConfirm = async () => {
     setSaving(true);
@@ -113,12 +124,12 @@ export default function ScanCin() {
           cin_ar: r.cin_ar || null,
           numero_inscription_ar: r.numero_inscription_ar || null,
         })),
-        filiere_code: filiereCode
+        filiere_code: filiereCode,
       });
-      toast.success(`${res.data.data.crees} étudiants créés`);
-      setStep(1);
+      toast.success(`${res.data.data.crees} étudiants enregistrés`);
       setResults([]);
       setImages([]);
+      setStep(2);
     } catch {
       toast.error('Erreur de confirmation');
     } finally {
@@ -127,7 +138,13 @@ export default function ScanCin() {
   };
 
   const updateResult = (i, key, val) => {
-    setResults(prev => prev.map((r, idx) => idx === i ? { ...r, [key]: val } : r));
+    setResults(prev => prev.map((r, idx) => {
+      if (idx !== i) return r;
+      const next = { ...r, [key]: val };
+      if (key === 'cin') next.cin_ar = toWesternDigits(val).toUpperCase();
+      if (key === 'date_naissance') next.date_naissance_ar = isoToArabicDate(val) || '';
+      return next;
+    }));
   };
 
   const removeResult = (i) => {
@@ -140,7 +157,6 @@ export default function ScanCin() {
         <h2 className="page-title">Scan CIN — Ajout Stagiaires</h2>
       </div>
 
-      {/* Steps */}
       <div className="steps" style={{ marginBottom: 28 }}>
         {['Sélection', 'Photos CIN', 'Vérification'].map((label, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
@@ -165,7 +181,6 @@ export default function ScanCin() {
         ))}
       </div>
 
-      {/* Step 1 */}
       {step === 1 && (
         <div className="card card-body" style={{ maxWidth: 500 }}>
           <div className="form-group">
@@ -177,7 +192,7 @@ export default function ScanCin() {
           </div>
           <div className="form-group">
             <label className="form-label">Niveau</label>
-            <select className="form-select" value={selNiveau} onChange={e => setSelNiveau(e.target.value)} disabled={!selFiliere}>
+            <select className="form-select" value={selNiveau} onChange={e => { setSelNiveau(e.target.value); setSelGroupe(''); }} disabled={!selFiliere}>
               <option value="">Sélectionner</option>
               {niveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
             </select>
@@ -195,37 +210,39 @@ export default function ScanCin() {
               {groupes.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
             </select>
           </div>
-          <button
-            className="btn btn-primary"
-            disabled={!selGroupe}
-            onClick={() => setStep(2)}
-          >
+          <button className="btn btn-primary" disabled={!selGroupe} onClick={() => setStep(2)}>
             Suivant →
           </button>
         </div>
       )}
 
-      {/* Step 2 */}
       {step === 2 && (
-        <div className="card card-body" style={{ maxWidth: 500 }}>
+        <div className="card card-body" style={{ maxWidth: 620 }}>
           <div className="upload-zone">
             <input
               type="file"
-              accept=".pdf"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
               multiple
-              onChange={handleImages}
+              onChange={handleFiles}
             />
-            <div className="upload-zone-icon">📄</div>
+            <div className="upload-zone-icon">🪪</div>
             <div className="upload-zone-text">
-              <strong>Cliquer ou glisser</strong> les fichiers PDF ici
+              <strong>Cliquer ou glisser</strong> les photos de la CIN ici
+            </div>
+            <div className="upload-zone-hint">
+              (recto et verso de la même carte, ou un PDF). Une carte = un étudiant.
             </div>
           </div>
 
           {images.length > 0 && (
             <div style={{ marginTop: 12, fontSize: 13, color: 'var(--gray-600)' }}>
-              {images.length} fichier(s) PDF sélectionné(s)
+              {images.length} fichier(s) sélectionné(s)
             </div>
           )}
+
+          <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--gray-500)' }}>
+            Groupe {groupes.find(g => String(g.id) === String(selGroupe))?.nom || ''} conservé — vous pouvez enchaîner les CIN suivantes.
+          </div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button className="btn btn-outline" onClick={() => setStep(1)}>← Retour</button>
@@ -234,7 +251,7 @@ export default function ScanCin() {
               disabled={images.length === 0 || scanning}
               onClick={handleScan}
             >
-              {scanning ? 'Lecture en cours...' : 'Scanner les PDF'}
+              {scanning ? 'Lecture en cours...' : 'Scanner les CIN'}
             </button>
           </div>
 
@@ -242,156 +259,106 @@ export default function ScanCin() {
         </div>
       )}
 
-      {/* Step 3 */}
       {step === 3 && (
         <div>
           <div className="alert alert-info" style={{ marginBottom: 16 }}>
-            Vérifiez et corrigez les informations avant de confirmer
+            Corrigez si nécessaire, puis confirmez. La nationalité est réglée sur Marocaine par défaut.
           </div>
 
-          <div className="table-wrap" style={{ marginBottom: 16, overflowX: 'auto' }}>
-            <table style={{ minWidth: '800px' }}>
-              <thead>
-                <tr>
-                  <th>Nom et Prénom</th>
-                  <th>الاسم بالعربية</th>
-                  <th>CIN</th>
-                  <th>رقم البطاقة</th>
-                  <th>تاريخ الميلاد</th>
-                  <th>Date naissance</th>
-                  <th>مكان الميلاد</th>
-                  <th>Lieu naissance</th>
-                  <th>الجنسية</th>
-                  <th>Nationalité</th>
-                  <th>Date inscription</th>
-                  <th>تاريخ التسجيل</th>
-                  <th>رقم التسجيل</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.length === 0 ? (
-                  <tr><td colSpan={14} className="table-empty">Aucun résultat</td></tr>
-                ) : results.map((r, i) => (
-                  <tr key={i}>
-                    <td>
-                      <input
-                        className="form-input"
-                        value={r.nom_prenom}
-                        onChange={e => updateResult(i, 'nom_prenom', e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        value={toWesternDigits(r.nom_ar || '')}
-                        onChange={e => updateResult(i, 'nom_ar', toWesternDigits(e.target.value))}
-                        style={{ direction: 'rtl', textAlign: 'right' }}
-                      />
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <input
-                          className="form-input"
-                          value={r.cin}
-                          onChange={e => updateResult(i, 'cin', e.target.value)}
-                          style={{ width: '100px' }}
-                        />
-                        {r.existing && <Badge label="Exist" color="red" />}
-                      </div>
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        value={toWesternDigits(r.cin_ar || '')}
-                        onChange={e => updateResult(i, 'cin_ar', toWesternDigits(e.target.value))}
-                        style={{ direction: 'rtl', textAlign: 'right', width: '120px' }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        value={toWesternDigits(r.date_naissance_ar || '')}
-                        onChange={e => updateResult(i, 'date_naissance_ar', toWesternDigits(e.target.value))}
-                        style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        value={r.date_naissance || ''}
-                        onChange={e => updateResult(i, 'date_naissance', e.target.value)}
-                        style={{ width: '130px' }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        value={toWesternDigits(r.lieu_naissance_ar || '')}
-                        onChange={e => updateResult(i, 'lieu_naissance_ar', toWesternDigits(e.target.value))}
-                        style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        value={r.lieu_naissance || ''}
-                        onChange={e => updateResult(i, 'lieu_naissance', e.target.value)}
-                        style={{ width: '130px' }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        value={toWesternDigits(r.nationalite_ar || '')}
-                        onChange={e => updateResult(i, 'nationalite_ar', toWesternDigits(e.target.value))}
-                        style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        value={r.nationalite || ''}
-                        onChange={e => updateResult(i, 'nationalite', e.target.value)}
-                        style={{ width: '130px' }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        value={r.date_inscription || ''}
-                        onChange={e => updateResult(i, 'date_inscription', e.target.value)}
-                        style={{ width: '130px' }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        value={toWesternDigits(r.date_inscription_ar || '')}
-                        onChange={e => updateResult(i, 'date_inscription_ar', toWesternDigits(e.target.value))}
-                        style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="form-input"
-                        value={toWesternDigits(r.numero_inscription_ar || '')}
-                        onChange={e => updateResult(i, 'numero_inscription_ar', toWesternDigits(e.target.value))}
-                        style={{ direction: 'rtl', textAlign: 'right', width: '130px' }}
-                      />
-                    </td>
-                    <td>
-                      <button className="btn btn-sm btn-danger" onClick={() => removeResult(i)}>
-                        Retirer
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="cin-list">
+            {results.map((r, i) => (
+              <div key={i} className="cin-card">
+                <div className="cin-card-head">
+                  <span className="cin-card-index">{i + 1}</span>
+                  <div className="cin-head-fields">
+                    <input
+                      className="form-input cin-name"
+                      value={r.nom_prenom || ''}
+                      onChange={e => updateResult(i, 'nom_prenom', toWesternDigits(e.target.value))}
+                      placeholder="Nom et prénom"
+                    />
+                    <input
+                      className="form-input cin-name-ar"
+                      value={toWesternDigits(r.nom_ar || '')}
+                      onChange={e => updateResult(i, 'nom_ar', e.target.value)}
+                      placeholder="الاسم بالعربية"
+                      style={{ direction: 'rtl', textAlign: 'right' }}
+                    />
+                  </div>
+                  {r.existing && <Badge label="Déjà existant" color="red" />}
+                  <button className="btn btn-sm btn-danger" onClick={() => removeResult(i)}>
+                    Retirer
+                  </button>
+                </div>
+
+                <div className="cin-card-grid">
+                  <div className="cin-field">
+                    <label className="form-label">CIN</label>
+                    <input
+                      className="form-input"
+                      value={r.cin || ''}
+                      onChange={e => updateResult(i, 'cin', toWesternDigits(e.target.value))}
+                      style={{ textTransform: 'uppercase' }}
+                    />
+                    <span className="cin-ar-auto">الرقم: {toWesternDigits(r.cin_ar || '')}</span>
+                  </div>
+
+                  <div className="cin-field">
+                    <label className="form-label">Date de naissance</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={r.date_naissance || ''}
+                      onChange={e => updateResult(i, 'date_naissance', e.target.value)}
+                    />
+                    <span className="cin-ar-auto">{r.date_naissance_ar || ''}</span>
+                  </div>
+
+                  <div className="cin-field">
+                    <label className="form-label">Lieu de naissance</label>
+                    <input
+                      className="form-input"
+                      value={r.lieu_naissance || ''}
+                      onChange={e => updateResult(i, 'lieu_naissance', toWesternDigits(e.target.value))}
+                    />
+                    <input
+                      className="form-input cin-ar-input"
+                      value={r.lieu_naissance_ar || ''}
+                      onChange={e => updateResult(i, 'lieu_naissance_ar', e.target.value)}
+                      style={{ direction: 'rtl', textAlign: 'right' }}
+                    />
+                  </div>
+
+                  <div className="cin-field">
+                    <label className="form-label">Nationalité</label>
+                    <input
+                      className="form-input"
+                      value={r.nationalite || ''}
+                      onChange={e => updateResult(i, 'nationalite', toWesternDigits(e.target.value))}
+                    />
+                    <input
+                      className="form-input cin-ar-input"
+                      value={r.nationalite_ar || ''}
+                      onChange={e => updateResult(i, 'nationalite_ar', e.target.value)}
+                      style={{ direction: 'rtl', textAlign: 'right' }}
+                    />
+                  </div>
+
+                  <div className="cin-field">
+                    <label className="form-label">N° inscription</label>
+                    <input
+                      className="form-input"
+                      value={r.numero_inscription || ''}
+                      readOnly
+                      style={{ background: 'var(--gray-50)', color: 'var(--gray-500)' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 16 }}>
             <button className="btn btn-outline" onClick={() => setStep(2)}>← Retour</button>
             {results.some(r => r.existing) && (
               <span style={{ color: 'var(--danger)', fontSize: 13 }}>Retirez les étudiants en double pour confirmer</span>
@@ -402,6 +369,9 @@ export default function ScanCin() {
               onClick={handleConfirm}
             >
               {saving ? 'Enregistrement...' : `Confirmer ${results.length} étudiant(s)`}
+            </button>
+            <button className="btn btn-outline" style={{ marginLeft: 'auto' }} onClick={() => { setResults([]); setStep(1); }}>
+              Terminer
             </button>
           </div>
         </div>

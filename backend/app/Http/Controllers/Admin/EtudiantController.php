@@ -56,6 +56,10 @@ class EtudiantController extends Controller
             }
 
             $etudiants = $query->orderBy('nom_prenom')->get();
+
+            // Admin-only: explicitly reveal the current password for the student list
+            $etudiants->each(fn (Etudiant $e) => $e->user?->withPlainPassword());
+
             return response()->json(['success' => true, 'data' => $etudiants]);
         } catch (\Exception $e) {
             \Log::error('EtudiantController::index error: ' . $e->getMessage());
