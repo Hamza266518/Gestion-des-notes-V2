@@ -368,13 +368,18 @@ export default function Scanner() {
         showSuccess(toast, msg);
       }
 
+      // The backend is the source of truth for what was refused and why; the
+      // local count would lump together rows it skipped for different reasons.
+      const skippedRows = data.skipped || [];
+
       // Show what landed immediately instead of throwing the screen away.
       setSavedSummary({
         controle: (filteredControles.find(c => String(c.id) === String(sel.controle_id)) || {}).label
           || controlLabel({ numero: '?', type: '' }),
         count: savedCount,
         absent: savedAbsent,
-        skipped: results.length - savedCount,
+        skipped: skippedRows.length,
+        skippedReasons: [...new Set(skippedRows.map(s => s.raison).filter(Boolean))],
       });
       // Work is done: drop the stored copy so a later visit starts clean.
       try { window.sessionStorage.removeItem(SCAN_KEY); } catch { /* ignore */ }
@@ -819,7 +824,10 @@ export default function Scanner() {
           )}
           {savedSummary.skipped > 0 && (
             <p style={{ color: 'var(--gray-500)', fontSize: 14 }}>
-              {savedSummary.skipped} ligne(s) non enregistrée(s).
+              {savedSummary.skipped} ligne(s) non enregistrée(s)
+              {savedSummary.skippedReasons?.length > 0 && (
+                <> — {savedSummary.skippedReasons.join(' · ')}</>
+              )}
             </p>
           )}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>

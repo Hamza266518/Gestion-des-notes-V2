@@ -147,7 +147,7 @@ class ScanController extends Controller
                     $geminiNom,
                     $groupeIds,
                     $currentAnneeId,
-                    $formateur->id
+                    $item['numero_inscription'] ?? null
                 );
 
                 $alreadyConfirmed = $etudiant
@@ -165,6 +165,12 @@ class ScanController extends Controller
                     'nom_ar'            => $etudiant?->nom_ar ?? $geminiNomAr,
                     'gemini_nom'        => $geminiNom,
                     'gemini_nom_ar'     => $geminiNomAr,
+                    // What the sheet showed, kept apart from the resolved value so
+                    // a failed lookup can be diagnosed ("no N on the sheet" is a
+                    // different problem from "N that matches nobody").
+                    'gemini_numero'     => is_scalar($item['numero_inscription'] ?? null)
+                        ? (string) ($item['numero_inscription'] ?? '')
+                        : '',
                     'numero_inscription'=> $etudiant?->numero_inscription ?? '',
                     'groupe'            => $etudiant?->groupe?->nom ?? '',
                     'groupe_id'         => $etudiant?->groupe_id,
@@ -352,7 +358,12 @@ class ScanController extends Controller
             $msg .= '. ' . count($alreadyConfirmed) . ' étudiant(s) déjà confirmé(s) ignoré(s) — contactez l\'administrateur pour les modifier.';
         }
         if (count($skipped) > 0) {
-            $msg .= '. ' . count($skipped) . ' ligne(s) non enregistrée(s) : note illisible.';
+            // Report the actual reasons instead of a fixed wording, since a row
+            // can be refused either for an unreadable grade or for being outside
+            // the group targeted by the scan.
+            $motifs = collect($skipped)->countBy(fn ($s) => $s['raison'] ?? 'raison inconnue');
+            $detail = $motifs->map(fn ($n, $raison) => $n . ' (' . $raison . ')')->implode(', ');
+            $msg .= '. ' . count($skipped) . ' ligne(s) non enregistrée(s) : ' . $detail . '.';
         }
 
         return response()->json([
@@ -396,10 +407,10 @@ class ScanController extends Controller
      * Find the student a scanned name belongs to, strictly inside the perimeter.
      *
      * Strategies, from strictest to loosest:
-     *   0. the remembered scan-name cache
-     *   1. the whole name as a substring
-     *   2. every word present (handles a reversed name)
-     *   3. first word + last word (handles middle-name variations)
+     *   0. the registration number printed on the sheet, when Gemini read it
+     *   1. the remembered scan-name cache
+     *   3. every word present (handles a reversed name)
+     *   4. first word + last word (handles middle-name variations)
      *
      * Every strategy is restricted to $groupeIds. When more than one student
      * matches, the row stays "introuvable" rather than guessing: a wrong guess
@@ -409,18 +420,43 @@ class ScanController extends Controller
         string $geminiNom,
         $groupeIds,
         ?int $currentAnneeId,
-        ?int $formateurId = null
+        ?string $numeroScanne = null
     ): ?Etudiant {
         $searchName = trim($geminiNom);
+        $numeroScanne = $numeroScanne !== null ? trim($numeroScanne) : '';
 
-        if ($searchName === '' || !is_countable($groupeIds) || count($groupeIds) === 0) {
+        if (!is_countable($groupeIds) || count($groupeIds) === 0) {
+            return null;
+        }
+        // A row is only worth matching when we have at least one identifier.
+        if ($searchName === '' && $numeroScanne === '') {
             return null;
         }
 
         $inPerimetre = fn ($q) => $q->whereIn('groupe_id', $groupeIds)
             ->when($currentAnneeId, fn ($q2) => $q2->where('annee_academique_id', $currentAnneeId));
 
-        // 0. remembered mapping from an earlier scan
+        // 0. the registration number printed on the sheet. Strictest check, so
+        // it runs first; still bounded by the perimeter.
+        if ($numeroScanne !== '') {
+            $parNumero = $inPerimetre(Etudiant::with('groupe'))
+                ->whereRaw('REPLACE(numero_inscription, " ", "") = ?', [
+                    str_replace(' ', '', $numeroScanne),
+                ])
+                ->get();
+
+            if ($parNumero->count() === 1) {
+                return $parNumero->first();
+            }
+            // Several students sharing the number, or none: fall through to the
+            // name rather than guessing on an unreliable read.
+        }
+
+        if ($searchName === '') {
+            return null;
+        }
+
+        // 1. remembered mapping from an earlier scan
         $normalized = ScanNameCache::normalizeName($geminiNom);
         if ($normalized !== '') {
             $cache = ScanNameCache::where('raw_nom_normalized', $normalized)->first();
@@ -436,7 +472,7 @@ class ScanController extends Controller
         $safeName = preg_replace('/\s+/', ' ', $safeName) ?: $safeName;
         $words = array_values(array_filter(explode(' ', $safeName), fn ($w) => mb_strlen($w) > 1));
 
-        // 1. full name as a substring
+        // 2. full name as a substring
         $exact = $inPerimetre(Etudiant::with('groupe'))
             ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $safeName . '%'])
             ->get();
@@ -447,7 +483,7 @@ class ScanController extends Controller
             return null; // ambiguous: better "introuvable" than a wrong student
         }
 
-        // 2. all words present, in any order
+        // 3. all words present, in any order
         if (count($words) >= 2) {
             $q = $inPerimetre(Etudiant::with('groupe'));
             foreach ($words as $w) {
@@ -459,7 +495,7 @@ class ScanController extends Controller
             }
         }
 
-        // 3. first word + last word only
+        // 4. first word + last word only
         if (count($words) >= 2) {
             $first = $words[0];
             $last = $words[count($words) - 1];

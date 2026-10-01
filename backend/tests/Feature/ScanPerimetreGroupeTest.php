@@ -176,11 +176,11 @@ class ScanPerimetreGroupeTest extends TestCase
         $this->creerEtudiant($groupeB, $nomB);
 
         // Searching group A alone must not find them.
-        $trouveA = $m->invoke($this->controller(), $nomB, collect([$groupeA->id]), $this->annee->id, $this->formateur->id);
+        $trouveA = $m->invoke($this->controller(), $nomB, collect([$groupeA->id]), $this->annee->id, null);
         $this->assertNull($trouveA, 'A student of another group must stay introuvable.');
 
         // Searching group B finds them.
-        $trouveB = $m->invoke($this->controller(), $nomB, collect([$groupeB->id]), $this->annee->id, $this->formateur->id);
+        $trouveB = $m->invoke($this->controller(), $nomB, collect([$groupeB->id]), $this->annee->id, null);
         $this->assertNotNull($trouveB);
     }
 

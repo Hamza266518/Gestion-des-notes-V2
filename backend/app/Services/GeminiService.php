@@ -99,10 +99,11 @@ class GeminiService
                         [
                             'text' => 'You are reading a PDF document containing student grades from a nursing school in Morocco (Institut de Formation aux Professions Paramédicales).
 Extract ALL students and their grades from this PDF.
-Return ONLY a valid JSON array like: [{"nom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","note":14}]
+Return ONLY a valid JSON array like: [{"nom":"FATIMA ZAHRA IDRISSI","nom_ar":"فاطمة الزهراء الإدريسي","numero_inscription":"IP3-0125","note":14}]
 Rules:
 - nom: full name in French/Latin script, exactly as written in the PDF (CAPITAL LETTERS preferred)
 - nom_ar: full name in Arabic script as written in the PDF. If no Arabic name is present, use an empty string ""
+- numero_inscription: the registration number (numéro d\'inscription, N° d\'insc, matricule) printed next to the name, as written. If the sheet has none, use an empty string "". Never invent one: a wrong number is worse than none, since an empty one is simply not used.
 - note: numeric score only (0-20), extract just the number without /20
 - If the grade is written as 14/20 extract only 14
 - ABSENCE: if the student was absent, the cell is empty, crossed out, or written as AB, ABS, ABSENT, X, "-" or "N/A", then output the STRING "AB" for note (never 0). A real grade of zero must be output as the number 0.

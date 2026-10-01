@@ -45,6 +45,30 @@ class ScanIntrouvableTest extends TestCase
         parent::tearDown();
     }
 
+    private function creerEtudiant(Groupe $groupe, string $nom, string $numero): Etudiant
+    {
+        $user = User::create([
+            'name'     => $nom,
+            'email'    => 'scan.tmp.' . bin2hex(random_bytes(5)) . '@ifp.ma',
+            'password' => Hash::make('secret123'),
+            'role'     => 'etudiant',
+        ]);
+        $this->createdUsers[] = $user->id;
+
+        $e = Etudiant::create([
+            'user_id'             => $user->id,
+            'groupe_id'           => $groupe->id,
+            'annee_academique_id' => $this->annee->id,
+            'status'              => 'active',
+            'nom_prenom'          => $nom,
+            'cin'                 => 'CIN' . bin2hex(random_bytes(5)),
+            'numero_inscription'  => $numero,
+        ]);
+        $this->createdEtudiants[] = $e->id;
+
+        return $e;
+    }
+
     public function test_no_route_can_create_a_student_from_a_scan(): void
     {
         // The endpoint must not exist at all: 404, and definitely not a 2xx.
@@ -118,7 +142,7 @@ class ScanIntrouvableTest extends TestCase
         }
 
         $emptyPerimetre = collect();
-        $found = $m->invoke($controller, $etudiant->nom_prenom, $emptyPerimetre, $this->annee->id, $this->formateur->id);
+        $found = $m->invoke($controller, $etudiant->nom_prenom, $emptyPerimetre, $this->annee->id, null);
 
         $this->assertNull($found, 'An empty perimeter must match nobody.');
     }
@@ -150,7 +174,7 @@ class ScanIntrouvableTest extends TestCase
         }
 
         $groupeIds = collect([$etudiant->groupe_id]);
-        $found = $m->invoke($controller, $etudiant->nom_prenom, $groupeIds, $this->annee->id, $this->formateur->id);
+        $found = $m->invoke($controller, $etudiant->nom_prenom, $groupeIds, $this->annee->id, null);
 
         $this->assertNotNull($found, 'A student inside the perimeter must still be matched.');
         $this->assertSame($etudiant->id, $found->id);
@@ -168,9 +192,90 @@ class ScanIntrouvableTest extends TestCase
         $groupeIds = Groupe::where('annee_academique_id', $this->annee->id)->pluck('id');
         $ghost = 'ZZINTROUVABLEFANTOME' . bin2hex(random_bytes(4));
 
-        $found = $m->invoke($controller, $ghost, $groupeIds, $this->annee->id, $this->formateur->id);
+        $found = $m->invoke($controller, $ghost, $groupeIds, $this->annee->id, null);
 
         $this->assertNull($found);
+    }
+
+    public function test_the_registration_number_wins_over_the_name(): void
+    {
+        $controller = new \App\Http\Controllers\Formateur\ScanController(
+            app(\App\Services\GeminiService::class),
+            app(\App\Services\NoteParserService::class),
+        );
+        $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
+        $m->setAccessible(true);
+
+        $groupe = Groupe::where('annee_academique_id', $this->annee->id)->first();
+        if (!$groupe) {
+            $this->markTestSkipped('No group fixture.');
+        }
+
+        $numero = 'NUM' . bin2hex(random_bytes(4));
+        $etudiant = $this->creerEtudiant(
+            $groupe,
+            'NUM' . bin2hex(random_bytes(3)) . ' Cible Numero',
+            $numero
+        );
+
+        // The name is unreadable, but the sheet's N identifies the student.
+        $found = $m->invoke($controller, '', collect([$groupe->id]), $this->annee->id, $numero);
+
+        $this->assertNotNull($found, 'A readable N must be enough to match.');
+        $this->assertSame($etudiant->id, $found->id);
+    }
+
+    public function test_the_registration_number_is_bounded_by_the_group(): void
+    {
+        $controller = new \App\Http\Controllers\Formateur\ScanController(
+            app(\App\Services\GeminiService::class),
+            app(\App\Services\NoteParserService::class),
+        );
+        $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
+        $m->setAccessible(true);
+
+        $groupe = Groupe::where('annee_academique_id', $this->annee->id)->first();
+        if (!$groupe) {
+            $this->markTestSkipped('No group fixture.');
+        }
+
+        $numero = 'HORS' . bin2hex(random_bytes(4));
+        $this->creerEtudiant($groupe, 'HORS' . bin2hex(random_bytes(3)) . ' Autre', $numero);
+
+        // Searching a different group: the N must not carry the grade across.
+        $autre = Groupe::where('annee_academique_id', $this->annee->id)
+            ->where('id', '!=', $groupe->id)
+            ->first();
+        if (!$autre) {
+            $this->markTestSkipped('Need a second group fixture.');
+        }
+
+        $trouve = $m->invoke($controller, '', collect([$autre->id]), $this->annee->id, $numero);
+        $this->assertNull($trouve, 'A correct N from another group must not match.');
+    }
+
+    public function test_a_wrong_number_falls_back_to_the_name(): void
+    {
+        $controller = new \App\Http\Controllers\Formateur\ScanController(
+            app(\App\Services\GeminiService::class),
+            app(\App\Services\NoteParserService::class),
+        );
+        $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
+        $m->setAccessible(true);
+
+        $groupe = Groupe::where('annee_academique_id', $this->annee->id)->first();
+        if (!$groupe) {
+            $this->markTestSkipped('No group fixture.');
+        }
+
+        $nom = 'FALLBACK' . bin2hex(random_bytes(3)) . ' Bon Nom';
+        $etudiant = $this->creerEtudiant($groupe, $nom, 'VRAI' . bin2hex(random_bytes(4)));
+
+        // Gemini misread the number; the name is still correct.
+        $trouve = $m->invoke($controller, $nom, collect([$groupe->id]), $this->annee->id, 'FAUX' . bin2hex(random_bytes(4)));
+
+        $this->assertNotNull($trouve, 'A wrong N must not prevent a name match.');
+        $this->assertSame($etudiant->id, $trouve->id);
     }
 
     public function test_an_ambiguous_name_is_left_unresolved(): void
@@ -210,7 +315,7 @@ class ScanIntrouvableTest extends TestCase
             $this->createdEtudiants[] = $e->id;
         }
 
-        $found = $m->invoke($controller, $sharedName, collect([$groupe->id]), $this->annee->id, $this->formateur->id);
+        $found = $m->invoke($controller, $sharedName, collect([$groupe->id]), $this->annee->id, null);
 
         $this->assertNull($found, 'Two equally-good candidates must not be guessed between.');
     }
