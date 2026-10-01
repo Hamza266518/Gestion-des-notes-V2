@@ -20,6 +20,10 @@ export default function Scanner() {
     filiere_id: '', sequence_id: '', controle_id: '', groupe_id: ''
   });
   const [groupesParPerimetre, setGroupesParPerimetre] = useState({});
+  // Mirror of `sel` readable inside async callbacks, where the state value
+  // captured by the closure would still be the stale one.
+  const selRef = useRef(sel);
+  useEffect(() => { selRef.current = sel; }, [sel]);
 
   const [pdfs, setPdfs] = useState([]);
   const [results, setResults] = useState([]);
@@ -65,6 +69,9 @@ export default function Scanner() {
       // back to 1/2 is harmless but the user may prefer to pick a control first.
       if (Array.isArray(saved.results) && saved.results.length) {
         setResults(saved.results);
+        // Restored alongside the rows, otherwise step 3 comes back as if work
+        // were still pending when in fact every grade was already confirmed.
+        setAllConfirmed(saved.allConfirmed === true);
         setStep(saved.step === 4 ? 4 : 3);
       }
     } catch {
@@ -80,11 +87,11 @@ export default function Scanner() {
         window.sessionStorage.removeItem(SCAN_KEY);
         return;
       }
-      window.sessionStorage.setItem(SCAN_KEY, JSON.stringify({ sel, results, step }));
+      window.sessionStorage.setItem(SCAN_KEY, JSON.stringify({ sel, results, step, allConfirmed }));
     } catch {
       // Quota exceeded or storage disabled: the scan still works in memory.
     }
-  }, [sel, results, step]);
+  }, [sel, results, step, allConfirmed]);
 
   const clearScanWork = () => {
     try { window.sessionStorage.removeItem(SCAN_KEY); } catch { /* ignore */ }
@@ -162,6 +169,32 @@ export default function Scanner() {
         setSequences(data.sequences || []);
         setPublicationMap(data.publication_map || {});
         setGroupesParPerimetre(data.groupes_par_perimetre || {});
+
+        // A restored session can outlive the control it targeted: the formateur
+        // may have been unassigned, or the notes published meanwhile. Those
+        // rows are unusable, so drop them rather than showing a step-3 screen
+        // that cannot be saved. Done outside the setState updater so the
+        // updater stays pure.
+        const controleIds = (data.sequences || [])
+          .flatMap(s => s.controles || [])
+          .map(c => c.id);
+
+        setSel(prev => {
+          if (!prev.controle_id) return prev;
+          const existe = controleIds.some(id => String(id) === String(prev.controle_id));
+          if (existe && !data.publication_map?.[prev.controle_id]) return prev;
+          return { filiere_id: '', sequence_id: '', controle_id: '', groupe_id: '' };
+        });
+
+        if (selRef.current?.controle_id) {
+          const id = selRef.current.controle_id;
+          const existe = controleIds.some(cid => String(cid) === String(id));
+          if (!existe || data.publication_map?.[id]) {
+            setResults([]);
+            setAllConfirmed(false);
+            setStep(1);
+          }
+        }
       })
       .catch((err) => {
         const info = handleApiError(err, toast, { showToast: false });
