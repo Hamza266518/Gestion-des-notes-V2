@@ -18,7 +18,7 @@ const LIGNES_EXAMEN = [
 
 const OBSERVATIONS_OPTIONS = ['', 'Très bien', 'Bien', 'Moyen', 'Insuffisant'];
 
-export default function GrilleExamenStage({ etudiant, onDataChange }) {
+export default function GrilleExamenStage({ etudiant, onDataChange, onSaved }) {
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
   const [form, setForm] = useState({
@@ -66,6 +66,7 @@ export default function GrilleExamenStage({ etudiant, onDataChange }) {
         data: form,
       });
       showSuccess(toast, 'Grille d\'examen enregistrée');
+      onSaved?.();
     } catch (err) {
       handleApiError(err, toast);
     } finally {

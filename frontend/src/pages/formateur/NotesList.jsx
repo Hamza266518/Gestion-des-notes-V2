@@ -63,7 +63,7 @@ export default function NotesList() {
                 <tr>
                   <th>Unite</th>
                   <th>Sequence</th>
-                  <th>Coef</th>
+                  <th>Coef. unité</th>
                   <th>Controles</th>
                 </tr>
               </thead>
@@ -75,8 +75,8 @@ export default function NotesList() {
                     <tr key={seq.id}>
                       <td><strong>{seq.unite?.nom}</strong></td>
                       <td>{seq.nom}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 600 }}>{seq.coefficient ?? '—'}</td>
-                      <td>{seq.nombre_controles || 0} controle(s)</td>
+                      <td style={{ textAlign: 'center', fontWeight: 600 }}>{seq.unite?.coefficient ?? '—'}</td>
+                      <td>{seq.controles?.length ?? seq.nombre_controles ?? 0} controle(s)</td>
                     </tr>
                   ))
                 )}

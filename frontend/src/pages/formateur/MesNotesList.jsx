@@ -3,6 +3,7 @@ import { FiSearch, FiX, FiRefreshCw } from 'react-icons/fi';
 import { formateursApi } from '../../api/formateurs';
 import { useToast } from '../../context/ToastContext';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
+import { controlLabel, noteDisplayStyle } from '../../utils/helpers';
 import Badge from '../../components/common/Badge';
 import Spinner from '../../components/common/Spinner';
 import '../../css/components.css';
@@ -258,8 +259,6 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
     return list;
   }, [allEtudiants, searchTerm, selectedGroupeId]);
 
-  const controlLabel = (ctrl) => `C${ctrl.numero}`;
-
   return (
     <div className="card mb-2" style={{ border: '1px solid var(--gray-200)', borderRadius: 10, overflow: 'hidden' }}>
       <div
@@ -355,6 +354,18 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
                                     disabled={saving}
                                     autoFocus
                                   />
+                                ) : note.est_absent ? (
+                                  <span
+                                    style={{ ...noteDisplayStyle(), cursor: (note.is_confirmed || published) ? 'default' : 'pointer', borderBottom: (note.is_confirmed || published) ? 'none' : '1px dashed var(--gray-300)' }}
+                                    onClick={() => {
+                                      if (note.is_confirmed || published) return;
+                                      setEditingNote(note.id);
+                                      setEditValue('');
+                                    }}
+                                    title={(note.is_confirmed || published) ? 'Absent' : 'Cliquer pour corriger'}
+                                  >
+                                    Absent
+                                  </span>
                                 ) : note.is_confirmed || published ? (
                                   <span style={{ fontWeight: 600, fontSize: 13 }}>{note.valeur ?? '—'}</span>
                                 ) : (

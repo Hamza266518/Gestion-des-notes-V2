@@ -94,6 +94,43 @@ export function formatTimeAgo(date) {
     ' a ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
+export const CONTROL_TYPE_LABELS = {
+  cc: 'CC',
+  theorique: 'Théorique',
+  pratique: 'Pratique',
+};
+
+export function controlTypeLabel(type) {
+  return CONTROL_TYPE_LABELS[type] || 'CC';
+}
+
+export function controlLabel(controle) {
+  if (!controle) return '';
+  const n = controle.numero ?? '';
+  return `Contrôle ${n} (${controlTypeLabel(controle.type)})`;
+}
+
+export function controlCellKey(controle) {
+  return `${controle.numero}-${controle.type || 'cc'}`;
+}
+
+/**
+ * An absent student is stored with valeur 0 so the average stays correct, but
+ * it must never be shown or printed as a real zero. Every place that renders a
+ * grade has to go through this so "Absent" is used instead of 0.
+ */
+export function noteDisplay(note) {
+  if (!note) return { absent: false, text: '—' };
+  if (note.est_absent) return { absent: true, text: 'Absent' };
+  return { absent: false, text: note.valeur ?? '—' };
+}
+
+export function noteDisplayStyle(compact = false) {
+  return compact
+    ? { color: '#b91c1c', fontWeight: 600, fontSize: 12 }
+    : { color: '#b91c1c', fontWeight: 600, fontSize: 13 };
+}
+
 export function calculateStats(notes) {
   const valid = notes.filter(n => n.valeur !== null && n.valeur !== undefined);
   if (valid.length === 0) {

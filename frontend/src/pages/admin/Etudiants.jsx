@@ -43,8 +43,7 @@ export default function Etudiants() {
   const [printNiveaux, setPrintNiveaux] = useState([]);
   const [printGroupes, setPrintGroupes] = useState([]);
   const [visiblePasswords, setVisiblePasswords] = useState({});
-
-  // ─── load does NOT depend on currentAnnee — it just sends whatever filters exist ───
+// ─── load does NOT depend on currentAnnee — it just sends whatever filters exist ───
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
@@ -363,7 +362,7 @@ export default function Etudiants() {
           <option value="">Tous les niveaux</option>
           {niveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
         </select>
-      </div>
+        </div>
 
       {loading ? (
         <div className="text-center mt-5">
@@ -408,7 +407,7 @@ export default function Etudiants() {
                     <tr key={e.id}>
                       <td>{i + 1}</td>
                       <td><strong>{e.nom_prenom}</strong></td>
-                      <td>{e.cin}</td>
+<td>{e.cin ?? '—'}</td>
                       <td>{e.date_naissance ?? '—'}</td>
                       <td><Badge label={e.numero_inscription} color="blue" /></td>
                       <td style={{ fontSize: 12 }}>{e.user?.email ?? '—'}</td>

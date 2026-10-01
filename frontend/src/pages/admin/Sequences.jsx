@@ -85,7 +85,13 @@ export default function Sequences() {
   const handleCreate = async () => {
     setSaving(true);
     try {
-      await sequencesApi.createSequence({ ...form, unite_id: selUnite });
+      // The sequence "coefficient" is derived: it only mirrors the control
+      // count and is never used as a weight in any average.
+      await sequencesApi.createSequence({
+        ...form,
+        coefficient: form.nombre_controles,
+        unite_id: selUnite,
+      });
       toast.success('Séquence créée');
       setOpen(false);
       setForm({ unite_id: '', nom: '', coefficient: '', nombre_controles: 2 });
@@ -193,7 +199,6 @@ export default function Sequences() {
               <tr>
                 <th>#</th>
                 <th>Nom</th>
-                <th>Coefficient</th>
                 <th>Nb Contrôles</th>
                 <th>Statut</th>
                 <th>Actions</th>
@@ -201,13 +206,12 @@ export default function Sequences() {
             </thead>
             <tbody>
               {sequences.length === 0 ? (
-                <tr><td colSpan={6} className="table-empty">Aucune séquence</td></tr>
+                <tr><td colSpan={5} className="table-empty">Aucune séquence</td></tr>
               ) : sequences.map((s, i) => (
                 <tr key={s.id}>
                   <td>{i + 1}</td>
                   <td><strong>{s.nom}</strong></td>
-                  <td><Badge label={`Coeff ${s.coefficient}`} color="blue" /></td>
-                  <td><Badge label={`${s.nombre_controles} contrôle(s)`} color="gray" /></td>
+                  <td><Badge label={`${s.nombre_controles} contrôle(s)`} color="blue" /></td>
                   <td>
                     <Badge
                       label={s.is_active ? 'Actif' : 'Inactif'}
@@ -247,20 +251,11 @@ export default function Sequences() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="form-group">
-            <label className="form-label">Coefficient</label>
-            <input
-              type="number"
-              className="form-input"
-              value={form.coefficient}
-              onChange={e => setForm(p => ({ ...p, coefficient: e.target.value }))}
-            />
-          </div>
-          <div className="form-group">
             <label className="form-label">Nombre de contrôles</label>
             <select
               className="form-select"
               value={form.nombre_controles}
-              onChange={e => setForm(p => ({ ...p, nombre_controles: e.target.value }))}
+              onChange={e => setForm(p => ({ ...p, nombre_controles: e.target.value, coefficient: e.target.value }))}
             >
               <option value="1">1</option>
               <option value="2">2</option>

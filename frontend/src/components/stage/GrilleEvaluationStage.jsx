@@ -27,7 +27,7 @@ const CRITERES_APTITUDES = [
   'Respect des procédures',
 ];
 
-export default function GrilleEvaluationStage({ etudiant, onDataChange }) {
+export default function GrilleEvaluationStage({ etudiant, onDataChange, onSaved }) {
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
   const [form, setForm] = useState({
@@ -74,6 +74,7 @@ export default function GrilleEvaluationStage({ etudiant, onDataChange }) {
         data: form,
       });
       showSuccess(toast, 'Grille d\'évaluation enregistrée');
+      onSaved?.();
     } catch (err) {
       handleApiError(err, toast);
     } finally {

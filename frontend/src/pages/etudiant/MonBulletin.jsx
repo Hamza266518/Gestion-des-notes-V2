@@ -131,9 +131,13 @@ function BulletinUniteAccordion({ unite }) {
                 {unite.sequences?.map((seq, sIdx) => (
                   <tr key={sIdx}>
                     <td>{seq.nom}</td>
-                    <td><Badge label={seq.coefficient ?? unite.coefficient} color="info" /></td>
+                    <td><Badge label={`${(seq.controles || []).length} ctrl`} color="info" /></td>
                     {seq.controles?.map((ctrl, cIdx) => (
-                      <td key={cIdx}><strong>{ctrl.valeur ?? '—'}</strong></td>
+                      <td key={cIdx}>
+                        <strong style={ctrl.est_absent ? { color: '#b91c1c' } : undefined}>
+                          {ctrl.est_absent ? 'Absent' : (ctrl.valeur ?? '—')}
+                        </strong>
+                      </td>
                     ))}
                   </tr>
                 ))}

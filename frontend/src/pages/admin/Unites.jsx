@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { adminApi } from '../../api/admin';
 import { unitesApi } from '../../api/unites';
 import { sequencesApi } from '../../api/sequences';
@@ -49,6 +49,7 @@ export default function Unites() {
   const [formS, setFormS] = useState({ nom: '', coefficient: '', nombre_controles: 2, formateur_id: '' });
   const [formErrors, setFormErrors] = useState({});
   const [editingCtrl, setEditingCtrl] = useState({});
+  const [seqSearch, setSeqSearch] = useState('');
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
 
@@ -65,6 +66,38 @@ export default function Unites() {
   }, [filters]);
 
   useEffect(() => { load(); }, [load]);
+
+  const formateursBySequence = useMemo(() => {
+    const map = {};
+    formateurs.forEach(f => {
+      (f.sequences || []).forEach(s => {
+        if (!map[s.id]) map[s.id] = [];
+        map[s.id].push({ id: f.id, nom: f.user?.name || '—', masse_horaire: s.masse_horaire ?? s.pivot?.masse_horaire });
+      });
+    });
+    return map;
+  }, [formateurs]);
+
+  const sequenceSearchResults = useMemo(() => {
+    const q = seqSearch.trim().toLowerCase();
+    if (q.length < 2) return [];
+
+    const rows = [];
+    unites.forEach(u => {
+      (u.sequences || []).forEach(s => {
+        const assigned = formateursBySequence[s.id] || [];
+        const formateursText = assigned.map(a => a.nom).join(' ');
+        if (!s.nom.toLowerCase().includes(q) && !formateursText.toLowerCase().includes(q)) return;
+        rows.push({
+          sequence: s,
+          unite: u,
+          filiere: u.filiere,
+          formateurs: assigned,
+        });
+      });
+    });
+    return rows;
+  }, [seqSearch, unites, formateursBySequence]);
 
   useEffect(() => {
     Promise.all([
@@ -327,6 +360,14 @@ export default function Unites() {
       )}
 
       <div className="filter-bar">
+        <input
+          className="form-input"
+          type="search"
+          placeholder="Rechercher une séquence ou un formateur…"
+          value={seqSearch}
+          onChange={e => setSeqSearch(e.target.value)}
+          style={{ flex: 2, minWidth: 260 }}
+        />
         <select
           className="form-select"
           value={filters.filiere_id}
@@ -361,6 +402,63 @@ export default function Unites() {
           {groupes.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
         </select>
       </div>
+
+      {seqSearch.trim().length >= 2 && (
+        <div className="card mb-2" style={{ border: '1px solid var(--gray-200)', borderRadius: 10, overflow: 'hidden' }}>
+          <div className="card-header" style={{ padding: '10px 16px', fontSize: 13, fontWeight: 600, background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
+            {sequenceSearchResults.length} séquence(s) trouvée(s)
+            <span style={{ float: 'right', fontWeight: 400, color: 'var(--gray-500)' }}>
+              filtre filière / niveau / groupe ignoré pour cette recherche
+            </span>
+          </div>
+          {sequenceSearchResults.length === 0 ? (
+            <div className="p-3 empty-state">Aucune séquence ne correspond à « {seqSearch} »</div>
+          ) : (
+            <div className="table-wrap">
+              <table className="table mb-0" style={{ fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: '8px 12px' }}>Séquence</th>
+                    <th style={{ padding: '8px 12px' }}>Unité</th>
+                    <th style={{ padding: '8px 12px' }}>Filière</th>
+                    <th style={{ padding: '8px 12px' }}>Année</th>
+                    <th style={{ padding: '8px 12px' }}>Formateur(s)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sequenceSearchResults.map(({ sequence, unite, filiere, formateurs: assigned }) => (
+                    <tr key={sequence.id}>
+                      <td style={{ padding: '8px 12px', fontWeight: 500 }}>{sequence.nom}</td>
+                      <td style={{ padding: '8px 12px', color: 'var(--gray-600)' }}>{unite.nom}</td>
+                      <td style={{ padding: '8px 12px' }}>
+                        {filiere ? <>{filiere.nom} <span style={{ color: 'var(--gray-400)' }}>({filiere.code})</span></> : '—'}
+                      </td>
+                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                        {formatNiveau(unite.numero_annee)} · S{unite.semestre}
+                      </td>
+                      <td style={{ padding: '8px 12px' }}>
+                        {assigned.length === 0 ? (
+                          <Badge label="Non assigné" color="red" />
+                        ) : assigned.length > 1 ? (
+                          <span>
+                            {assigned.map(a => a.nom).join(', ')}
+                            <Badge label={`${assigned.length} formateurs`} color="orange" />
+                          </span>
+                        ) : (
+                          <span>
+                            {assigned[0].nom}
+                            {assigned[0].masse_horaire ? <span style={{ color: 'var(--gray-400)' }}> · {assigned[0].masse_horaire}h</span> : null}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {unites.length === 0 && !error ? (
         <div className="text-center mt-5" style={{ padding: 40 }}>
@@ -414,7 +512,7 @@ export default function Unites() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontWeight: 500 }}>{s.nom}</span>
-                        <Badge label={`Coeff ${s.coefficient}`} color="teal" />
+                        <Badge label={`${s.controles?.length ?? 0} contrôle(s)`} color="teal" />
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button className="btn btn-sm btn-outline" onClick={() => { setEditingSeq(s); setEditNombre(s.nombre_controles ?? 2); setOpenEditSeq(true); }}>
@@ -719,7 +817,7 @@ export default function Unites() {
                     <td style={{ padding: '12px 16px' }}>
                       {u.sequences?.map((s, i) => (
                         <div key={i} style={{ fontSize: 14, marginBottom: 6, padding: '4px 0' }}>
-                          <strong>{s.nom}</strong> (Coeff {s.coefficient}, {s.nombre_controles} contrôle(s))
+                          <strong>{s.nom}</strong> ({s.controles?.length ?? s.nombre_controles ?? 0} contrôle(s))
                         </div>
                       ))}
                     </td>

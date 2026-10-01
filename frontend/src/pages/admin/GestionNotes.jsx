@@ -9,6 +9,7 @@ import FiliereCascade from '../../components/common/FiliereCascade';
 import Spinner from '../../components/common/Spinner';
 import EmptyState from '../../components/common/EmptyState';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
+import { controlLabel, noteDisplayStyle } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -23,7 +24,6 @@ export default function GestionNotes() {
   const [selectedUniteId, setSelectedUniteId] = useState('');
   const [sequences, setSequences] = useState([]);
   const [selectedSequenceId, setSelectedSequenceId] = useState('');
-  const [allControlNums, setAllControlNums] = useState([]);
   const [notesByControl, setNotesByControl] = useState({});
   const [examens, setExamens] = useState({}); // { theorique: { studentId: valeur }, pratique: { studentId: valeur } }
   const [loading, setLoading] = useState(false);
@@ -72,8 +72,6 @@ export default function GestionNotes() {
         .then(res => {
           const data = res.data.data || [];
           setSequences(data);
-          const nums = [...new Set(data.flatMap(s => (s.controles || []).map(c => c.numero)))].sort((a, b) => a - b);
-          setAllControlNums(nums);
           if (data.length > 0) setSelectedSequenceId(data[0].id);
           else setSelectedSequenceId('');
         })
@@ -89,8 +87,12 @@ export default function GestionNotes() {
     }
   }, [selectedUniteId]);
 
-  const loadNotesForSequence = useCallback(async () => {
-    const seq = sequences.find(s => s.id === selectedSequenceId);
+  const seqControles = useMemo(
+    () => sequences.find(s => s.id === selectedSequenceId)?.controles || [],
+    [sequences, selectedSequenceId]
+  );
+
+  const loadNotesForSequence = useCallback(async () => {    const seq = sequences.find(s => s.id === selectedSequenceId);
     if (!seq) return;
     const ctrlIds = seq.controles?.map(c => c.id) || [];
     if (ctrlIds.length === 0) return;
@@ -335,8 +337,8 @@ export default function GestionNotes() {
                 <thead>
                   <tr>
                     <th>Étudiant</th>
-                    {allControlNums.map(num => (
-                      <th key={num}>C{num}</th>
+                    {seqControles.map(ctrl => (
+                      <th key={ctrl.id}>{controlLabel(ctrl)}</th>
                     ))}
                     {showExamCols && <th>Théorique</th>}
                     {showExamCols && <th>Pratique</th>}
@@ -345,9 +347,8 @@ export default function GestionNotes() {
                 <tbody>
                   {filteredEtudiants.map((etudiant) => {
                     const seq = sequences.find(s => s.id === selectedSequenceId);
-                    const ctrlCells = allControlNums.map(num => {
-                      const ctrl = seq?.controles?.find(c => c.numero === num);
-                      const note = ctrl ? (notesByControl[ctrl.id] || []).find(n => n.etudiant_id === etudiant.id) : null;
+                    const ctrlCells = seqControles.map(ctrl => {
+                      const note = (notesByControl[ctrl.id] || []).find(n => n.etudiant_id === etudiant.id);
                       return { ctrl, note };
                     });
                     const theoEx = examens.theorique?.[etudiant.id];
@@ -374,6 +375,17 @@ export default function GestionNotes() {
                                   disabled={saving}
                                   autoFocus
                                 />
+                              ) : note.est_absent ? (
+                                <span
+                                  style={{ ...noteDisplayStyle(), cursor: 'pointer' }}
+                                  onClick={() => {
+                                    setEditingNote(note.id);
+                                    setEditValue('');
+                                  }}
+                                  title="Absent — cliquer pour corriger"
+                                >
+                                  Absent
+                                </span>
                               ) : (
                                 <span
                                   style={{ cursor: 'pointer' }}
@@ -409,6 +421,17 @@ export default function GestionNotes() {
                                   disabled={saving}
                                   autoFocus
                                 />
+                              ) : theoEx.est_absent ? (
+                                <span
+                                  style={{ ...noteDisplayStyle(), cursor: 'pointer' }}
+                                  onClick={() => {
+                                    setEditingExam({ etudiant_id: etudiant.id, type: 'theorique' });
+                                    setEditExamValue('');
+                                  }}
+                                  title="Absent — cliquer pour corriger"
+                                >
+                                  Absent
+                                </span>
                               ) : (
                                 <span
                                   style={{ cursor: 'pointer' }}
@@ -443,6 +466,17 @@ export default function GestionNotes() {
                                   disabled={saving}
                                   autoFocus
                                 />
+                              ) : praEx.est_absent ? (
+                                <span
+                                  style={{ ...noteDisplayStyle(), cursor: 'pointer' }}
+                                  onClick={() => {
+                                    setEditingExam({ etudiant_id: etudiant.id, type: 'pratique' });
+                                    setEditExamValue('');
+                                  }}
+                                  title="Absent — cliquer pour corriger"
+                                >
+                                  Absent
+                                </span>
                               ) : (
                                 <span
                                   style={{ cursor: 'pointer' }}

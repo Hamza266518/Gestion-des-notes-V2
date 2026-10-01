@@ -21,6 +21,8 @@ class NoteWritePathTest extends TestCase
     private Unite $unite;
     private Sequence $sequence;
     private int $controleId;
+    /** @var \Illuminate\Support\Collection */
+    private $publications;
 
     protected function setUp(): void
     {
@@ -71,18 +73,20 @@ class NoteWritePathTest extends TestCase
             'note_max'    => 20,
         ])->id;
 
-        // A published semester would mask the validation behaviour.
-        SemestrePublication::where('groupe_id', $this->etudiant->groupe_id)
+        // A published semester would mask the validation behaviour. Remember it
+        // so tearDown can put the seeded state back.
+        $this->publications = SemestrePublication::where('groupe_id', $this->etudiant->groupe_id)
             ->where('annee_academique_id', $this->annee->id)
-            ->delete();
+            ->get();
+        SemestrePublication::whereIn('id', $this->publications->pluck('id'))->delete();
     }
 
     protected function tearDown(): void
     {
-        if (isset($this->etudiant)) {
-            Note::where('etudiant_id', $this->etudiant->id)->delete();
-        }
+        // Only remove what this test created. Notes are keyed by controle, so
+        // scoping to the test controle keeps every other grade of this student.
         if (isset($this->controleId)) {
+            Note::where('controle_id', $this->controleId)->delete();
             Controle::where('id', $this->controleId)->delete();
         }
         if (isset($this->sequence)) {
@@ -90,6 +94,19 @@ class NoteWritePathTest extends TestCase
         }
         if (isset($this->unite)) {
             $this->unite->delete();
+        }
+
+        foreach ($this->publications ?? [] as $publication) {
+            SemestrePublication::updateOrCreate(
+                ['id' => $publication->id],
+                [
+                    'groupe_id'          => $publication->groupe_id,
+                    'annee_academique_id' => $publication->annee_academique_id,
+                    'type'               => $publication->type,
+                    'is_published'       => $publication->is_published,
+                    'published_at'       => $publication->published_at,
+                ]
+            );
         }
 
         parent::tearDown();

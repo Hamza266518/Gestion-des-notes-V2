@@ -37,6 +37,40 @@ export default function Stage() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [activeTab, setActiveTab] = useState('garde_nuit');
   const [loadingEtudiants, setLoadingEtudiants] = useState(false);
+  const [moyennes, setMoyennes] = useState({});
+
+  // Re-read what the grids pushed into the notes tables, so the effect on the
+  // average is visible right after a save without reloading the page.
+  useEffect(() => {
+    if (!selectedStudent?.id || !currentAnnee?.id) {
+      setMoyennes({});
+      return;
+    }
+    let cancelled = false;
+    setMoyennes({});
+    stagesApi.load({
+      etudiant_id: selectedStudent.id,
+      annee_academique_id: currentAnnee.id,
+      type: 'grille_evaluation',
+    })
+      .then(res => { if (!cancelled) setMoyennes(res.data.moyennes || {}); })
+      .catch(() => { if (!cancelled) setMoyennes({}); });
+    return () => { cancelled = true; };
+  }, [selectedStudent?.id, currentAnnee?.id]);
+
+  // Called by a grid right after it saves, to show the notes it just wrote.
+  // Not memoized on purpose: it is only invoked from a child's click handler,
+  // never from a dependency array.
+  const refreshMoyennes = () => {
+    if (!selectedStudent?.id || !currentAnnee?.id) return;
+    stagesApi.load({
+      etudiant_id: selectedStudent.id,
+      annee_academique_id: currentAnnee.id,
+      type: 'grille_evaluation',
+    })
+      .then(res => setMoyennes(res.data.moyennes || {}))
+      .catch(() => setMoyennes({}));
+  };
 
   // Text search fallback
   const [search, setSearch] = useState('');
@@ -132,12 +166,17 @@ export default function Stage() {
       return <div className="empty-state"><p>Sélectionnez un étudiant pour commencer.</p></div>;
     }
     switch (activeTab) {
-      case 'garde_nuit': return <GardeDeNuit etudiant={displayStudent} />;
-      case 'grille_evaluation': return <GrilleEvaluationStage etudiant={displayStudent} />;
-      case 'grille_examen': return <GrilleExamenStage etudiant={displayStudent} />;
+      case 'garde_nuit':
+        return <GardeDeNuit etudiant={displayStudent} onSaved={refreshMoyennes} />;
+      case 'grille_evaluation':
+        return <GrilleEvaluationStage etudiant={displayStudent} onSaved={refreshMoyennes} />;
+      case 'grille_examen':
+        return <GrilleExamenStage etudiant={displayStudent} onSaved={refreshMoyennes} />;
       default: return null;
     }
   };
+
+  const syncedMarks = Object.values(moyennes || {}).filter(m => m && m.valeur !== null && m.valeur !== undefined);
 
   return (
     <div className="page">
@@ -153,6 +192,28 @@ export default function Stage() {
           </div>
         ) : null}
       </div>
+
+      {selectedStudent && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-body" style={{ padding: '10px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+              <strong style={{ fontSize: 13 }}>Pris en compte dans la moyenne (Stage, coef 4) :</strong>
+              {syncedMarks.length === 0 ? (
+                <span style={{ fontSize: 13, color: 'var(--gray-500)' }}>
+                  aucune note reportée — remplissez une grille d'évaluation ou d'examen
+                </span>
+              ) : syncedMarks.map(m => (
+                <span key={m.controle} style={{
+                  padding: '3px 10px', background: '#dcfce7', color: '#166534',
+                  borderRadius: 6, fontSize: 13, fontWeight: 600
+                }}>
+                  {m.controle} : {Number(m.valeur).toFixed(2)}/20
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {!selectedStudent && (
         <div className="card" style={{marginBottom:16}}>

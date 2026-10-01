@@ -5,7 +5,7 @@ import { stagesApi } from '../../api/stages';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
 import { useToast } from '../../context/ToastContext';
 
-export default function GardeDeNuit({ etudiant, onDataChange }) {
+export default function GardeDeNuit({ etudiant, onDataChange, onSaved }) {
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
   const [form, setForm] = useState({ clinique: '' });
@@ -34,6 +34,7 @@ export default function GardeDeNuit({ etudiant, onDataChange }) {
     try {
       await stagesApi.save({ etudiant_id: etudiant.id, annee_academique_id: currentAnnee.id, type: 'garde_nuit', data: form });
       showSuccess(toast, 'Garde de nuit enregistrée');
+      onSaved?.();
     } catch (err) {
       handleApiError(err, toast);
     } finally {

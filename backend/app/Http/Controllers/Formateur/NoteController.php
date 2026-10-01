@@ -90,12 +90,17 @@ class NoteController extends Controller
 
         // Each control carries its own scale (note_max).
         $noteMax = $note->controle?->note_max ?: 20;
+        $estAbsent = $request->boolean('est_absent');
         $request->validate([
-            'valeur' => ['required', 'numeric', 'min:0', "max:{$noteMax}"],
+            'valeur'     => [$estAbsent ? 'nullable' : 'required', 'numeric', 'min:0', "max:{$noteMax}"],
+            'est_absent' => 'nullable|boolean',
         ]);
-        $note->update(['valeur' => $request->valeur]);
+        $note->update([
+            'valeur'     => $estAbsent ? 0 : $request->valeur,
+            'est_absent' => $estAbsent,
+        ]);
 
-        return response()->json(['success' => true, 'data' => $note, 'message' => 'Note mise à jour']);
+        return response()->json(['success' => true, 'data' => $note, 'message' => $estAbsent ? 'Marqué absent' : 'Note mise à jour']);
     }
 
     public function sequenceEtudiants($sequenceId)
@@ -134,12 +139,14 @@ class NoteController extends Controller
         return response()->json(['success' => true, 'data' => $etudiants]);
     }
 
-    public function groupes()
+    public function groupes(Request $request)
     {
         $formateur = $this->currentFormateur();
         $sequenceIds = $formateur->sequences()->pluck('sequence_id');
-        $uniteIds = \App\Models\Sequence::whereIn('id', $sequenceIds)->pluck('unite_id');
-        $filiereIds = \App\Models\Unite::whereIn('id', $uniteIds)->pluck('filiere_id')->unique();
+
+        $filiereIds = \App\Models\Unite::whereIn('id',
+            \App\Models\Sequence::whereIn('id', $sequenceIds)->pluck('unite_id')
+        )->pluck('filiere_id')->unique();
 
         $currentAnnee = \App\Models\AnneeAcademique::where('is_current', true)->first();
         if (!$currentAnnee) {
@@ -152,17 +159,62 @@ class NoteController extends Controller
             ->orderBy('nom')
             ->get();
 
+        // Optional: restrict to the filière/année of one control, so the scan
+        // dialog only offers groups the backend will actually accept.
+        if ($controleId = $request->query('controle_id')) {
+            $unite = Controle::with('sequence.unite')->find($controleId)?->sequence?->unite;
+            if (!$unite) {
+                return response()->json(['success' => false, 'message' => 'Contrôle introuvable'], 404);
+            }
+            if (!$formateur->sequences()->where('sequence_id', $unite->sequence_id ?? 0)->exists()
+                && \App\Models\Sequence::where('unite_id', $unite->id)->whereIn('id', $sequenceIds)->exists() === false) {
+                return response()->json(['success' => false, 'message' => 'Accès refusé'], 403);
+            }
+
+            $groupes = $groupes->filter(fn($g) => $g->niveau?->filiere_id === $unite->filiere_id
+                && (string) $g->niveau?->numero === (string) $unite->numero_annee
+            )->values();
+        }
+
         return response()->json(['success' => true, 'data' => $groupes]);
     }
 
     public function searchEtudiants(Request $request)
     {
-        $request->validate(['search' => 'required|string|min:1']);
-        $search = $request->search;
-
-        $search = strtolower($search);
+        $request->validate([
+            'search'      => 'required|string|min:1',
+            'controle_id' => 'nullable|integer',
+            'groupe_id'   => 'nullable|integer',
+        ]);
+        $search = strtolower($request->search);
 
         $currentAnneeId = AnneeAcademique::where('is_current', true)->first()?->id;
+
+        // When the scanner passes the control (and optionally the chosen group),
+        // the suggestions are restricted to that perimeter: linking a scanned
+        // row by hand must not offer a student from a sibling cohort.
+        $groupeIds = null;
+        if ($request->filled('controle_id')) {
+            $unite = Controle::with('sequence.unite')->find($request->controle_id)?->sequence?->unite;
+            $niveau = $unite
+                ? Niveau::where('filiere_id', $unite->filiere_id)->where('numero', $unite->numero_annee)->first()
+                : null;
+
+            if ($niveau && $currentAnneeId) {
+                $groupeIds = Groupe::where('niveau_id', $niveau->id)
+                    ->where('annee_academique_id', $currentAnneeId)
+                    ->pluck('id');
+
+                if ($request->filled('groupe_id')) {
+                    $groupeIds = $groupeIds->contains((int) $request->groupe_id)
+                        ? collect([(int) $request->groupe_id])
+                        : collect();
+                }
+            } else {
+                $groupeIds = collect();
+            }
+        }
+
         $etudiants = Etudiant::with('groupe.niveau.filiere')
             ->where(function ($q) use ($search) {
                 $q->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $search . '%'])
@@ -170,6 +222,7 @@ class NoteController extends Controller
                   ->orWhereRaw('LOWER(numero_inscription) LIKE ?', ['%' . $search . '%']);
             })
             ->when($currentAnneeId, fn($q) => $q->where('annee_academique_id', $currentAnneeId))
+            ->when($groupeIds !== null, fn($q) => $q->whereIn('groupe_id', $groupeIds))
             ->orderBy('nom_prenom')
             ->limit(15)
             ->get();
@@ -198,12 +251,32 @@ class NoteController extends Controller
             }
         }
 
+        // Groups of the current year, keyed by filière/année so the scanner can
+        // offer the exact cohort of the chosen control and match only inside it.
+        $currentAnnee = \App\Models\AnneeAcademique::where('is_current', true)->first();
+        $groupesParPerimetre = [];
+        if ($currentAnnee) {
+            foreach (Groupe::with('niveau')
+                ->where('annee_academique_id', $currentAnnee->id)
+                ->orderBy('nom')
+                ->get() as $groupe) {
+                $key = $groupe->niveau?->filiere_id . '|' . $groupe->niveau?->numero;
+                $groupesParPerimetre[$key][] = [
+                    'id'         => $groupe->id,
+                    'nom'        => $groupe->nom,
+                    'filiere_id' => $groupe->niveau?->filiere_id,
+                    'numero'     => $groupe->niveau?->numero,
+                ];
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
                 'filieres' => $filieres,
                 'sequences' => $sequences,
                 'publication_map' => $publicationMap,
+                'groupes_par_perimetre' => $groupesParPerimetre,
             ],
         ]);
     }

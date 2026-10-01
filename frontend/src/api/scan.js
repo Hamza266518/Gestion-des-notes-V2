@@ -11,6 +11,10 @@ export const scanApi = {
   confirm: (data) =>
       apiClient.post('/formateur/confirm', data),
 
+// No student-creation endpoint exists on purpose: a scanned sheet can never
+  // add anybody to the database. An unmatched name stays "introuvable" and is
+  // created by an admin from the Students page if genuinely missing.
+
   // formateur notes list
   getNotes: (params) =>
       apiClient.get('/formateur/notes', { params }),

@@ -34,7 +34,9 @@ export default function NotesTable({ modules, semestre }) {
         unite: unite.nom,
         seq: seq.nom,
         seqId: seq.id,
-        seqCoeff: seq.coefficient,
+        // The sequence "coefficient" only mirrors the control count and is not
+        // a real weight, so show how many controls there are instead.
+        nbControles: (seq.controles || []).length,
         controles: seq.controles || [],
       });
     });
@@ -62,17 +64,19 @@ export default function NotesTable({ modules, semestre }) {
                 <td className="seq-cell">
                   <div className="seq-info">
                     <span className="seq-name">{row.seq}</span>
-                    <span className="seq-coeff">Coef. {row.seqCoeff}</span>
+                    <span className="seq-coeff">{row.nbControles} contrôle(s)</span>
                   </div>
                 </td>
                 {[0, 1, 2].map((i) => (
                   <td key={i} className="grade-cell">
-                    {row.controles[i] && row.controles[i].valeur != null ? (
+                    {row.controles[i] === undefined ? (
+                      <span className="no-grade">-</span>
+                    ) : row.controles[i].est_absent ? (
+                      <span style={{ color: '#b91c1c', fontWeight: 600, fontSize: 12 }}>Absent</span>
+                    ) : row.controles[i].valeur != null ? (
                       <span className={getGradeClass(row.controles[i].valeur)}>
                         {Number(row.controles[i].valeur).toFixed(2)}/20
                       </span>
-                    ) : row.controles[i] === undefined ? (
-                      <span className="no-grade">-</span>
                     ) : (
                       <span></span>
                     )}

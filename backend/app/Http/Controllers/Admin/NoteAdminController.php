@@ -62,13 +62,18 @@ class NoteAdminController extends Controller
         // Each control carries its own scale (note_max), so a value must be
         // checked against that scale rather than a hardcoded 20.
         $noteMax = $note->controle?->note_max ?: 20;
+        $estAbsent = $request->boolean('est_absent');
         $request->validate([
-            'valeur' => ['required', 'numeric', 'min:0', "max:{$noteMax}"],
+            'valeur'     => [$estAbsent ? 'nullable' : 'required', 'numeric', 'min:0', "max:{$noteMax}"],
+            'est_absent' => 'nullable|boolean',
         ]);
 
         try {
-            $note->update(['valeur' => $request->valeur]);
-            return response()->json(['success' => true, 'data' => $note, 'message' => 'Note mise à jour']);
+            $note->update([
+                'valeur'     => $estAbsent ? 0 : $request->valeur,
+                'est_absent' => $estAbsent,
+            ]);
+            return response()->json(['success' => true, 'data' => $note, 'message' => $estAbsent ? 'Marqué absent' : 'Note mise à jour']);
         } catch (\Exception $e) {
             \Log::error('NoteAdminController::update error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Erreur lors de la mise à jour de la note'], 500);

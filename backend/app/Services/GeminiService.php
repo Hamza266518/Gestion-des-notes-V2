@@ -105,6 +105,8 @@ Rules:
 - nom_ar: full name in Arabic script as written in the PDF. If no Arabic name is present, use an empty string ""
 - note: numeric score only (0-20), extract just the number without /20
 - If the grade is written as 14/20 extract only 14
+- ABSENCE: if the student was absent, the cell is empty, crossed out, or written as AB, ABS, ABSENT, X, "-" or "N/A", then output the STRING "AB" for note (never 0). A real grade of zero must be output as the number 0.
+- Keep decimals exactly as written, using a DOT as decimal separator: "12,5" must be output as 12.5
 - If multiple students appear in the PDF, extract ALL of them
 - Read carefully both French and Arabic sections of the document
 - If the PDF contains a table, extract each row as a student with their grade
@@ -342,6 +344,8 @@ Rules:
 - cin: CIN code if available from the key sheet, otherwise empty string ""
 - note: numeric score only (0-20), extract just the number without /20
 - If a grade is written as 14/20 extract only 14
+- ABSENCE: if the student was absent, the cell is empty, crossed out, or written as AB, ABS, ABSENT, X, "-" or "N/A", then output the STRING "AB" for note (never 0). A real grade of zero must be output as the number 0.
+- Keep decimals exactly as written, using a DOT as decimal separator: "12,5" must be output as 12.5
 - Match each code from graded sheets to the corresponding student on the key sheet
 - If no key sheet is found, return what you can with empty nom_prenom and code as identifier
 - If some fields are missing or unclear, use empty strings ""

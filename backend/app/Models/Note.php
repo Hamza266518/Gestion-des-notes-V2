@@ -10,12 +10,15 @@ class Note extends Model
         'etudiant_id',
         'controle_id',
         'valeur',
+        'est_absent',
         'chemin_image',
         'is_confirmed',
         'confirmed_at',
     ];
 
     protected $casts = [
+        'valeur' => 'float',
+        'est_absent' => 'boolean',
         'is_confirmed' => 'boolean',
         'confirmed_at' => 'datetime',
     ];

@@ -119,11 +119,16 @@ class ScanExamenController extends Controller
                     }
                 }
 
+                $parsedValue = $this->parser->parseValue($item['note'] ?? null);
+
                 $results[] = [
                     'code'               => $code,
                     'nom_prenom'         => $nom,
                     'cin'                => $item['cin'] ?? '',
-                    'note'               => $note !== null ? (float) $note : null,
+                    'note'               => $parsedValue['valeur'],
+                    'est_absent'         => $parsedValue['est_absent'],
+                    'raw_note'           => is_scalar($item['note'] ?? null) ? (string) $item['note'] : null,
+                    'note_invalide'      => $parsedValue['invalid'],
                     'etudiant_id'        => $etudiant?->id,
                     'numero_inscription' => $etudiant?->numero_inscription ?? '',
                     'groupe'             => $etudiant?->groupe?->nom ?? '',
@@ -190,7 +195,8 @@ class ScanExamenController extends Controller
             $request->validate([
                 'resultats'            => 'required|array',
                 'resultats.*.etudiant_id' => 'required|exists:etudiants,id',
-                'resultats.*.note'     => 'nullable|numeric|min:0|max:20',
+                'resultats.*.note'     => 'nullable|numeric|min:0',
+                'resultats.*.est_absent' => 'nullable|boolean',
                 'unite_id'             => 'required|exists:unites,id',
                 'bloc'                 => 'required|integer|in:1,2',
                 'type'                 => 'required|in:theorique,pratique',
@@ -202,7 +208,12 @@ class ScanExamenController extends Controller
             $saved = 0;
 
             foreach ($request->resultats as $item) {
-                if ($item['note'] === null || $item['note'] === '') continue;
+                $estAbsent = (bool) ($item['est_absent'] ?? false);
+                $valeur = $estAbsent
+                    ? 0.0
+                    : $this->parser->parseValue($item['note'] ?? null)['valeur'];
+
+                if (!$estAbsent && $valeur === null) continue;
 
                 Examen::updateOrCreate(
                     [
@@ -213,7 +224,7 @@ class ScanExamenController extends Controller
                         'semestre'           => $request->semestre,
                         'annee_academique_id' => $request->annee_academique_id,
                     ],
-                    ['valeur' => $item['note']]
+                    ['valeur' => $valeur, 'est_absent' => $estAbsent]
                 );
                 $saved++;
             }

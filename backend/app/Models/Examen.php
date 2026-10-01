@@ -17,10 +17,12 @@ class Examen extends Model
         'semestre',
         'annee_academique_id',
         'valeur',
+        'est_absent',
     ];
 
     protected $casts = [
         'valeur' => 'float',
+        'est_absent' => 'boolean',
     ];
 
     public function etudiant()

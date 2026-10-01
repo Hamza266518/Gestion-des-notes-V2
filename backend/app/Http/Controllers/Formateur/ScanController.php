@@ -12,9 +12,14 @@ use App\Models\Note;
 use App\Models\ScanLog;
 use App\Models\ScanNameCache;
 use App\Models\SemestrePublication;
+use App\Models\User;
 use App\Services\GeminiService;
 use App\Services\NoteParserService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class ScanController extends Controller
 {
@@ -58,6 +63,7 @@ class ScanController extends Controller
         // Handle both 'pdfs' array, single 'pdf', or fallback to 'images'
         $validateRules = [
             'controle_id' => 'required|exists:controles,id',
+            'groupe_id'   => 'nullable|integer',
         ];
         
         if ($request->hasFile('pdfs')) {
@@ -78,6 +84,25 @@ class ScanController extends Controller
         $results   = [];
         $errors    = [];
         $formateur = $this->currentFormateur();
+
+        // Matching is confined to the control's filière/année, and when the
+        // formateur picked a group it is narrowed to that single group so a
+        // sibling cohort's student can never absorb the grade.
+        [$perimetreIds, $currentAnneeId] = $this->perimetrePourControle($controle->id);
+        $groupeIds = $perimetreIds;
+
+        if ($request->filled('groupe_id')) {
+            $groupeId = (int) $request->groupe_id;
+
+            if (!$perimetreIds->contains($groupeId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce groupe n\'appartient pas à la filière/année de ce contrôle.',
+                ], 422);
+            }
+
+            $groupeIds = collect([$groupeId]);
+        }
 
         // Handle multiple file input names
         if ($request->hasFile('pdfs')) {
@@ -111,69 +136,19 @@ class ScanController extends Controller
             }
 
             foreach ($parsed as $item) {
-                $etudiant = null;
                 $geminiNom = $item['nom'] ?? '';
                 $geminiNomAr = $item['nom_ar'] ?? '';
-                $searchName = trim($geminiNom);
 
-                // Try 0: scan name cache (remembered from previous scans)
-                if (!empty($searchName)) {
-                    $normalized = ScanNameCache::normalizeName($geminiNom);
-                    $cache = ScanNameCache::where('raw_nom_normalized', $normalized)->first();
-                    if ($cache) {
-                        $etudiant = Etudiant::with('groupe')->find($cache->etudiant_id);
-                    }
-                }
-
-                if (!empty($searchName) && !$etudiant) {
-                    $currentAnneeId = AnneeAcademique::where('is_current', true)->first()?->id;
-
-                    $safeName = str_replace(['%', '_'], ['\\%', '\\_'], strtolower($searchName));
-                    $safeName = preg_replace('/\s+/', ' ', $safeName);
-                    $words = array_filter(explode(' ', $safeName));
-
-                    // Try 1: full name as substring
-                    $etudiant = Etudiant::with('groupe')
-                        ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $safeName . '%'])
-                        ->when($currentAnneeId, fn($q) => $q->where('annee_academique_id', $currentAnneeId))
-                        ->first();
-
-                    // Try 2: all words must appear in the name (handles reversed order)
-                    if (!$etudiant && count($words) >= 2) {
-                        $q = Etudiant::with('groupe')->when($currentAnneeId, fn($q) => $q->where('annee_academique_id', $currentAnneeId));
-                        foreach ($words as $w) {
-                            if (strlen($w) > 1) {
-                                $q->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $w . '%']);
-                            }
-                        }
-                        $etudiant = $q->first();
-                    }
-
-                    // Try 3: first word + last word (handles middle name variations)
-                    if (!$etudiant && count($words) >= 2) {
-                        $first = reset($words);
-                        $last  = end($words);
-                        if (strlen($first) > 1 && strlen($last) > 1) {
-                            $etudiant = Etudiant::with('groupe')
-                                ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $first . '%'])
-                                ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $last . '%'])
-                                ->when($currentAnneeId, fn($q) => $q->where('annee_academique_id', $currentAnneeId))
-                                ->first();
-                        }
-                    }
-
-                    // Cache the mapping if found
-                    if ($etudiant) {
-                        ScanNameCache::updateOrCreate(
-                            ['raw_nom' => $geminiNom, 'raw_nom_ar' => $geminiNomAr],
-                            [
-                                'raw_nom_normalized' => ScanNameCache::normalizeName($geminiNom),
-                                'etudiant_id' => $etudiant->id,
-                                'formateur_id' => $formateur->id,
-                            ]
-                        );
-                    }
-                }
+                // A name is only ever matched against students of the scanned
+                // control's filiere/annee. A name that exists somewhere else in
+                // the school must NOT be linked: it belongs to a different
+                // cohort, so the grade would land on the wrong record.
+                $etudiant = $this->matchEtudiantDansPerimetre(
+                    $geminiNom,
+                    $groupeIds,
+                    $currentAnneeId,
+                    $formateur->id
+                );
 
                 $alreadyConfirmed = $etudiant
                     ? Note::where('etudiant_id', $etudiant->id)
@@ -181,6 +156,8 @@ class ScanController extends Controller
                         ->where('is_confirmed', true)
                         ->exists()
                     : false;
+
+                $parsedValue = $this->parser->parseValue($item['note'] ?? null, (float) $controle->note_max);
 
                 $results[] = [
                     'etudiant_id'       => $etudiant?->id,
@@ -190,10 +167,18 @@ class ScanController extends Controller
                     'gemini_nom_ar'     => $geminiNomAr,
                     'numero_inscription'=> $etudiant?->numero_inscription ?? '',
                     'groupe'            => $etudiant?->groupe?->nom ?? '',
+                    'groupe_id'         => $etudiant?->groupe_id,
                     'controle_id'       => $controle->id,
-                    'note'              => $item['note'],
+                    'note'              => $parsedValue['valeur'],
+                    'est_absent'        => $parsedValue['est_absent'],
+                    'raw_note'          => is_scalar($item['note'] ?? null) ? (string) $item['note'] : null,
+                    'note_invalide'     => $parsedValue['invalid'],
                     'chemin_image'      => $imagePath,
                     'found'             => $etudiant !== null,
+                    // No student is ever created from a scan. Anything that could
+                    // not be matched inside the perimeter is simply "introuvable"
+                    // and the admin handles it manually.
+                    'introuvable'       => $etudiant === null,
                     'already_confirmed' => $alreadyConfirmed,
                 ];
             }
@@ -213,10 +198,14 @@ class ScanController extends Controller
             'notes'                  => 'required|array',
             'notes.*.etudiant_id'    => 'required|exists:etudiants,id',
             'notes.*.controle_id'    => 'required|exists:controles,id',
-            'notes.*.valeur'         => 'required|numeric|min:0|max:20',
+            'notes.*.valeur'         => 'nullable|numeric|min:0',
+            'notes.*.est_absent'     => 'nullable|boolean',
             'notes.*.chemin_image'   => 'nullable|string',
             'notes.*.gemini_nom'     => 'nullable|string',
             'notes.*.gemini_nom_ar'  => 'nullable|string',
+            // The cohort the sheet was scanned for. When present, every saved
+            // student must belong to it, not merely to the filière/année.
+            'groupe_id'             => 'nullable|integer',
         ]);
 
         $formateur = $this->currentFormateur();
@@ -225,6 +214,18 @@ class ScanController extends Controller
         $firstControleId = $request->notes[0]['controle_id'] ?? null;
         if ($firstControleId && $this->isPublishedForControle($firstControleId)) {
             return response()->json(['success' => false, 'message' => 'Les notes/bulletins ont été publiés pour ce groupe. Enregistrement impossible.'], 403);
+        }
+
+        // A groupe_id outside the control's filière/année would silently skip
+        // every row, so it is rejected outright instead.
+        if ($firstControleId && $request->filled('groupe_id')) {
+            [$perimetreIds] = $this->perimetrePourControle($firstControleId);
+            if (!$perimetreIds->contains((int) $request->groupe_id)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ce groupe n\'appartient pas à la filière/année de ce contrôle.',
+                ], 422);
+            }
         }
 
         $alreadyConfirmed = [];
@@ -240,7 +241,7 @@ class ScanController extends Controller
                 $alreadyConfirmed[] = [
                     'etudiant_id' => $item['etudiant_id'],
                     'nom_prenom'  => $etudiant?->nom_prenom ?? 'Inconnu',
-                    'note_actuelle' => $existing->valeur,
+                    'note_actuelle' => $existing->est_absent ? 'absent' : $existing->valeur,
                 ];
             }
         }
@@ -248,6 +249,7 @@ class ScanController extends Controller
         $alreadyIds = collect($alreadyConfirmed)->pluck('etudiant_id')->toArray();
 
         $saved = [];
+        $skipped = [];
 
         foreach ($request->notes as $item) {
             if (in_array($item['etudiant_id'], $alreadyIds)) continue;
@@ -260,10 +262,59 @@ class ScanController extends Controller
 
             if (!$hasAccess) continue;
 
+            // The scanned row may be linked by hand from the search box, so the
+            // saved student must be re-checked against the control's own
+            // filière/année here too. Without this, a hand-linked student from a
+            // sibling cohort would receive the grade.
+            $etudiant = Etudiant::find($item['etudiant_id']);
+            if (!$etudiant) continue;
+
+            [$perimetreIds, $currentAnneeId] = $this->perimetrePourControle($controle->id);
+
+            $cibleIds = $perimetreIds;
+            $cibleAnnee = $currentAnneeId;
+
+            // When the scan was narrowed to one group, confirm must enforce the
+            // same cohort: a hand-linked sibling would otherwise still receive
+            // the grade even though the scan refused to match it.
+            if ($request->filled('groupe_id')) {
+                $cibleIds = collect([(int) $request->groupe_id]);
+            }
+
+            $inPerimetre = $cibleIds->contains($etudiant->groupe_id)
+                && (!$cibleAnnee || (int) $etudiant->annee_academique_id === (int) $cibleAnnee);
+
+            if (!$inPerimetre) {
+                $skipped[] = [
+                    'etudiant_id' => $item['etudiant_id'],
+                    'raison'      => 'étudiant hors du groupe ciblé par ce scan',
+                ];
+                continue;
+            }
+
+            $estAbsent = (bool) ($item['est_absent'] ?? false);
+
+            // Absent is stored as 0 so it counts in the averages, but flagged
+            // so it is never displayed or printed as a real zero.
+            $valeur = $estAbsent
+                ? 0.0
+                : $this->parser->parseValue($item['valeur'] ?? null, (float) $controle->note_max)['valeur'];
+
+            if (!$estAbsent && $valeur === null) {
+                // Nothing usable on the sheet. Report it instead of silently
+                // dropping the row, which would look like a successful save.
+                $skipped[] = [
+                    'etudiant_id' => $item['etudiant_id'],
+                    'raison'      => 'note illisible ou absente de la feuille',
+                ];
+                continue;
+            }
+
             $note = Note::updateOrCreate(
                 ['etudiant_id' => $item['etudiant_id'], 'controle_id' => $item['controle_id']],
                 [
-                    'valeur'        => $item['valeur'],
+                    'valeur'        => $valeur,
+                    'est_absent'    => $estAbsent,
                     'chemin_image'  => $item['chemin_image'] ?? null,
                     'is_confirmed'  => true,
                     'confirmed_at'  => now(),
@@ -271,7 +322,7 @@ class ScanController extends Controller
             );
             $saved[] = $note;
 
-            // Save the raw Gemini name → etudiant mapping to cache
+            // Remember the scanned name so the next sheet matches instantly.
             if (!empty($item['gemini_nom'])) {
                 ScanNameCache::updateOrCreate(
                     [
@@ -300,13 +351,128 @@ class ScanController extends Controller
         if (count($alreadyConfirmed) > 0) {
             $msg .= '. ' . count($alreadyConfirmed) . ' étudiant(s) déjà confirmé(s) ignoré(s) — contactez l\'administrateur pour les modifier.';
         }
+        if (count($skipped) > 0) {
+            $msg .= '. ' . count($skipped) . ' ligne(s) non enregistrée(s) : note illisible.';
+        }
 
         return response()->json([
             'success' => true,
             'data'    => $saved,
+            'skipped' => $skipped,
             'already_confirmed' => $alreadyConfirmed,
             'message' => $msg,
         ]);
+    }
+
+    /**
+     * Groupes of the control's fili�re/ann�e plus the current academic year,
+     * i.e. the only students a scanned sheet may legitimately be matched to.
+     *
+     * @return array{0:\Illuminate\Support\Collection,1:int|null}
+     */
+    private function perimetrePourControle(int $controleId): array
+    {
+        $controle = Controle::with('sequence.unite')->find($controleId);
+        $unite = $controle?->sequence?->unite;
+        if (!$unite) return [collect(), null];
+
+        $niveau = Niveau::where('filiere_id', $unite->filiere_id)
+            ->where('numero', $unite->numero_annee)
+            ->first();
+        if (!$niveau) return [collect(), null];
+
+        $currentAnneeId = AnneeAcademique::where('is_current', true)->first()?->id;
+        if (!$currentAnneeId) return [collect(), null];
+
+        $groupeIds = Groupe::where('niveau_id', $niveau->id)
+            ->where('annee_academique_id', $currentAnneeId)
+            ->orderBy('nom')
+            ->pluck('id');
+
+        return [$groupeIds, $currentAnneeId];
+    }
+
+    /**
+     * Find the student a scanned name belongs to, strictly inside the perimeter.
+     *
+     * Strategies, from strictest to loosest:
+     *   0. the remembered scan-name cache
+     *   1. the whole name as a substring
+     *   2. every word present (handles a reversed name)
+     *   3. first word + last word (handles middle-name variations)
+     *
+     * Every strategy is restricted to $groupeIds. When more than one student
+     * matches, the row stays "introuvable" rather than guessing: a wrong guess
+     * would write the grade onto the wrong person.
+     */
+    private function matchEtudiantDansPerimetre(
+        string $geminiNom,
+        $groupeIds,
+        ?int $currentAnneeId,
+        ?int $formateurId = null
+    ): ?Etudiant {
+        $searchName = trim($geminiNom);
+
+        if ($searchName === '' || !is_countable($groupeIds) || count($groupeIds) === 0) {
+            return null;
+        }
+
+        $inPerimetre = fn ($q) => $q->whereIn('groupe_id', $groupeIds)
+            ->when($currentAnneeId, fn ($q2) => $q2->where('annee_academique_id', $currentAnneeId));
+
+        // 0. remembered mapping from an earlier scan
+        $normalized = ScanNameCache::normalizeName($geminiNom);
+        if ($normalized !== '') {
+            $cache = ScanNameCache::where('raw_nom_normalized', $normalized)->first();
+            if ($cache) {
+                $cached = $inPerimetre(Etudiant::with('groupe'))->find($cache->etudiant_id);
+                if ($cached) {
+                    return $cached;
+                }
+            }
+        }
+
+        $safeName = str_replace(['%', '_'], ['\\%', '\\_'], mb_strtolower($searchName));
+        $safeName = preg_replace('/\s+/', ' ', $safeName) ?: $safeName;
+        $words = array_values(array_filter(explode(' ', $safeName), fn ($w) => mb_strlen($w) > 1));
+
+        // 1. full name as a substring
+        $exact = $inPerimetre(Etudiant::with('groupe'))
+            ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $safeName . '%'])
+            ->get();
+        if ($exact->count() === 1) {
+            return $exact->first();
+        }
+        if ($exact->count() > 1) {
+            return null; // ambiguous: better "introuvable" than a wrong student
+        }
+
+        // 2. all words present, in any order
+        if (count($words) >= 2) {
+            $q = $inPerimetre(Etudiant::with('groupe'));
+            foreach ($words as $w) {
+                $q->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $w . '%']);
+            }
+            $all = $q->get();
+            if ($all->count() === 1) {
+                return $all->first();
+            }
+        }
+
+        // 3. first word + last word only
+        if (count($words) >= 2) {
+            $first = $words[0];
+            $last = $words[count($words) - 1];
+            $partial = $inPerimetre(Etudiant::with('groupe'))
+                ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $first . '%'])
+                ->whereRaw('LOWER(nom_prenom) LIKE ?', ['%' . $last . '%'])
+                ->get();
+            if ($partial->count() === 1) {
+                return $partial->first();
+            }
+        }
+
+        return null;
     }
 
     private function isPublishedForControle($controleId): bool

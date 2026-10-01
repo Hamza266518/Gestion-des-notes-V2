@@ -86,8 +86,10 @@ class BulletinService
                         'id' => $ctrl->id,
                         'numero' => $ctrl->numero,
                         'type' => $ctrl->type,
-                        'nom' => $ctrl->nom,
+                        'nom' => 'C' . $ctrl->numero,
+                        'note_max' => $ctrl->note_max,
                         'valeur' => $note?->valeur,
+                        'est_absent' => (bool) ($note?->est_absent ?? false),
                     ];
                 }
                 $sequencesData[] = [
@@ -164,19 +166,17 @@ class BulletinService
 
     private function moyenneTypeForUnite(int $etudiantId, Unite $unite, string $type): ?float
     {
-        $totalNote = 0;
-        $totalCoef = 0;
+        $notes = [];
 
         foreach ($unite->sequences as $seq) {
             $seqAvg = $this->moyenneTypeForSequence($etudiantId, $seq, $type);
             if ($seqAvg !== null) {
-                $totalNote += $seqAvg * $seq->coefficient;
-                $totalCoef += $seq->coefficient;
+                $notes[] = $seqAvg;
             }
         }
 
-        if ($totalCoef === 0) return null;
-        return round($totalNote / $totalCoef, 2);
+        if (empty($notes)) return null;
+        return round(array_sum($notes) / count($notes), 2);
     }
 
     private function moyenneTypeForSequence(int $etudiantId, $sequence, string $type): ?float

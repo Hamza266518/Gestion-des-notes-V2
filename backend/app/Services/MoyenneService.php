@@ -29,20 +29,18 @@ class MoyenneService
 
     public function moyenneUnite(int $etudiantId, int $uniteId, ?string $controleType = null, ?int $anneeAcademiqueId = null): ?float
     {
-        $unite      = \App\Models\Unite::with('sequences')->findOrFail($uniteId);
-        $totalPoids = 0;
-        $totalNote  = 0;
+        $unite = \App\Models\Unite::with('sequences')->findOrFail($uniteId);
+        $notes = [];
 
         foreach ($unite->sequences as $sequence) {
             $moy = $this->moyenneSequence($etudiantId, $sequence->id, $controleType, $anneeAcademiqueId);
             if ($moy !== null) {
-                $totalNote  += $moy * $sequence->coefficient;
-                $totalPoids += $sequence->coefficient;
+                $notes[] = $moy;
             }
         }
 
-        if ($totalPoids === 0) return null;
-        return round($totalNote / $totalPoids, 2);
+        if (empty($notes)) return null;
+        return round(array_sum($notes) / count($notes), 2);
     }
 
     public function moyenneGenerale(int $etudiantId, ?int $semestre, int $anneeAcademiqueId): ?float
@@ -51,6 +49,7 @@ class MoyenneService
         $filiereId = $etudiant->groupe->niveau->filiere_id;
 
         $unites = Unite::where('filiere_id', $filiereId)
+            ->where('numero_annee', $etudiant->groupe->niveau->numero)
             ->when($semestre !== null, fn($q) => $q->where('semestre', $semestre))
             ->where('is_active', true)
             ->get();

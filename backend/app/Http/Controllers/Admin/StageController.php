@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Etudiant;
 use App\Models\StageEvaluation;
 use App\Models\AnneeAcademique;
+use App\Services\StageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class StageController extends Controller
 {
+    public function __construct(private StageService $stageService) {}
+
     public function searchStudents(Request $request): JsonResponse
     {
         $request->validate(['search' => 'required|string|min:1']);
@@ -61,7 +64,21 @@ class StageController extends Controller
             ['data' => $request->data]
         );
 
-        return response()->json(['success' => true, 'data' => $evaluation]);
+        // Push the grids into the Stage unit's controls so the official
+        // coefficient 4 counts in the averages. No mark is written for a grid
+        // that is still empty.
+        $etudiant = Etudiant::with('groupe.niveau')->find($request->etudiant_id);
+        $sync = ['synced' => [], 'message' => ''];
+        if ($etudiant) {
+            $sync = $this->stageService->syncForEtudiant($etudiant, (int) $request->annee_academique_id);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data'    => $evaluation,
+            'moyennes'  => $sync['synced'],
+            'message'   => $sync['message'],
+        ]);
     }
 
     public function load(Request $request): JsonResponse
@@ -78,9 +95,14 @@ class StageController extends Controller
             'type' => $request->type,
         ])->first();
 
+        $etudiant = Etudiant::with('groupe.niveau')->find($request->etudiant_id);
+
         return response()->json([
             'success' => true,
             'data' => $evaluation ? $evaluation->data : null,
+            'moyennes' => $etudiant
+                ? $this->stageService->syncedMarksForEtudiant($etudiant, (int) $request->annee_academique_id)
+                : [],
         ]);
     }
 }
