@@ -69,6 +69,40 @@ class NoteValueParserTest extends TestCase
         $this->assertSame(8.0, $onTen['valeur']);
     }
 
+    /**
+     * Regression: the dot was stripped as sentence punctuation before the fraction
+     * regex ran, so "14.5/20" became "145/20" and was clamped to a perfect 20/20.
+     */
+    public function test_dot_decimal_fractions_are_not_clamped_up_to_full_marks(): void
+    {
+        foreach ([
+            '14.5/20' => 14.5,
+            '14.5 sur 20' => 14.5,
+            '8.5/10' => 8.5,
+            '9.75 sur 10' => 9.75,
+            '12.25/20' => 12.25,
+            '0.5/20' => 0.5,
+        ] as $raw => $expected) {
+            $result = $this->parser->parseValue($raw);
+            $this->assertFalse($result['invalid'], "'{$raw}' should be readable");
+            $this->assertFalse($result['est_absent'], "'{$raw}' is a grade, not an absence");
+            $this->assertSame($expected, $result['valeur'], "'{$raw}' should parse as {$expected}");
+        }
+    }
+
+    /**
+     * A numerator above the denominator is a misread, never a perfect score.
+     */
+    public function test_incoherent_fraction_needs_a_human_instead_of_awarding_full_marks(): void
+    {
+        foreach (['145/20', '150/20', '14/2', '12.5/1'] as $raw) {
+            $result = $this->parser->parseValue($raw);
+            $this->assertTrue($result['invalid'], "'{$raw}' should need a human");
+            $this->assertNull($result['valeur'], "'{$raw}' must not be stored as a real grade");
+            $this->assertFalse($result['est_absent']);
+        }
+    }
+
     public function test_values_are_clamped_to_the_note_maximum(): void
     {
         $this->assertSame(20.0, $this->parser->parseValue('25')['valeur']);

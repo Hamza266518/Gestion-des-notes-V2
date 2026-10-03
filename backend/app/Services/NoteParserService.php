@@ -71,6 +71,15 @@ class NoteParserService
         $norm = trim(preg_replace('/\s+/', ' ', $norm));
         $norm = str_replace(['é', 'è', 'ê'], 'e', $norm);
 
+        // Same normalisation but dots survive, because a dot is the decimal point
+        // in "14.5/20". Using $norm here would turn that into "145/20" and clamp
+        // a 14.5 up to a perfect 20. The dot-stripped $norm stays for the token
+        // and marker checks below, where dropping sentence punctuation is correct.
+        $fracNorm = mb_strtolower($text);
+        $fracNorm = str_replace(['’', "'"], [' ', ' '], $fracNorm);
+        $fracNorm = trim(preg_replace('/\s+/', ' ', $fracNorm));
+        $fracNorm = str_replace(['é', 'è', 'ê'], 'e', $fracNorm);
+
         // "N/A" -> "n a" so it matches the pure absence token below. Kept separate
         // from $norm because slashes are meaningful in "14/20".
         $noSlash = trim(preg_replace('/\s+/', ' ', str_replace('/', ' ', $norm)));
@@ -92,11 +101,17 @@ class NoteParserService
             return ['valeur' => 0.0, 'est_absent' => true, 'invalid' => false];
         }
 
-        // "14/20", "14 sur 20", "14,5/20"
-        if (preg_match('#^(\d+(?:[.,]\d+)?)\s*(?:/|sur)\s*(\d+(?:[.,]\d+)?)#', $norm, $m)) {
+        // "14/20", "14 sur 20", "14,5/20", "14.5/20"
+        if (preg_match('#^(\d+(?:[.,]\d+)?)\s*(?:/|sur)\s*(\d+(?:[.,]\d+)?)#', $fracNorm, $m)) {
             $den = (float) str_replace(',', '.', $m[2]);
             $num = (float) str_replace(',', '.', $m[1]);
             if ($den > 0) {
+                // A numerator above the denominator means the read is incoherent
+                // ("145/20", "14/2"), not that the student scored full marks.
+                // Clamping would silently award a perfect grade, so hand it to a human.
+                if ($num > $den) {
+                    return ['valeur' => null, 'est_absent' => false, 'invalid' => true];
+                }
                 $noteMax = $den;
                 $value = $num;
                 return $this->clamp($value, $noteMax);
