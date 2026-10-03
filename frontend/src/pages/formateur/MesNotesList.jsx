@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FiSearch, FiX, FiRefreshCw } from 'react-icons/fi';
 import { formateursApi } from '../../api/formateurs';
 import { useToast } from '../../context/ToastContext';
@@ -50,6 +50,17 @@ export default function MesNotesList() {
     if (!selectedSeqId) return sequences;
     return sequences.filter(s => s.id === Number(selectedSeqId));
   }, [sequences, selectedSeqId]);
+
+  // The endpoint already narrows to the instructor's filières, but not to the
+  // year of the sequences they actually teach, so the list also offered groups
+  // from other years that could never match a row here.
+  const scopedGroupes = useMemo(() => {
+    if (sequences.length === 0) return [];
+    const annees = new Set(
+      sequences.map(s => `${s.unite?.filiere_id}|${s.unite?.numero_annee}`)
+    );
+    return groupes.filter(g => annees.has(`${g.niveau?.filiere_id}|${g.niveau?.numero}`));
+  }, [groupes, sequences]);
 
   const resetFilters = () => {
     setSearchTerm('');
@@ -113,7 +124,7 @@ export default function MesNotesList() {
                   <label className="form-label" style={{ fontSize: 12, marginBottom: 4 }}>Groupe</label>
                   <select className="form-select" value={selectedGroupeId} onChange={e => setSelectedGroupeId(e.target.value)}>
                     <option value="">Tous les groupes</option>
-                    {groupes.map(g => (
+                    {scopedGroupes.map(g => (
                       <option key={g.id} value={g.id}>{g.nom} — {g.niveau?.filiere?.nom || ''}</option>
                     ))}
                   </select>
@@ -173,47 +184,101 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
   const [notesByControl, setNotesByControl] = useState({});
   const [allEtudiants, setAllEtudiants] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [published, setPublished] = useState(false);
+  // Locking is per control *and* per group: a publication on one group must
+  // leave the instructor's other groups editable, so a sequence-wide flag
+  // cannot be used to gate the cells.
+  const [lockedByControl, setLockedByControl] = useState({});
   const toast = useToast();
+  const saveInFlight = useRef(false);
+
+  const verrouille = useCallback(
+    (ctrl, note, etudiant) => {
+      if (!ctrl) return false;
+      // The API already resolves this per note; fall back to the control's
+      // locked-group list for rows that have no grade yet.
+      if (note && note.verrouille !== undefined) return !!note.verrouille;
+      const locked = lockedByControl[ctrl.id];
+      return !!locked && locked.groupes.includes(etudiant?.groupe_id);
+    },
+    [lockedByControl]
+  );
+
+  const lockedGroupes = useMemo(() => {
+    const set = new Set();
+    Object.values(lockedByControl).forEach(l => l.groupes.forEach(g => set.add(g)));
+    return set;
+  }, [lockedByControl]);
+
+  // Nothing at all is editable only when every control has its whole perimeter
+  // published. A partially published sequence still has to render its table.
+  const toutVerrouille = useMemo(
+    () => Object.keys(lockedByControl).length > 0
+      && Object.values(lockedByControl).every(l => l.all),
+    [lockedByControl]
+  );
 
   const ctrlIds = useMemo(() => sequence.controles?.map(c => c.id) || [], [sequence.controles]);
 
   useEffect(() => {
-    if (isOpen) {
-      setLoading(true);
-      const ids = ctrlIds;
+    if (!isOpen) return;
 
-      Promise.all([
-        ...ids.map(id =>
-          import('../../api/formateurs').then(m => m.formateursApi.getPublicationStatus(id))
-        ),
-        ...ids.map(id =>
-          import('../../api/formateurs').then(m => m.formateursApi.getNotes({ controle_id: id }))
-        ),
-        import('../../api/formateurs').then(m => m.formateursApi.getSequenceEtudiants(sequence.id)),
-      ]).then(responses => {
-        const pubResults = responses.slice(0, ids.length);
-        const noteResults = responses.slice(ids.length, ids.length * 2);
-        const etuResult = responses[ids.length * 2];
+    setLoading(true);
+    const ids = ctrlIds;
+    // Collapsing and re-expanding used to let an older response land last and
+    // overwrite the newer one, showing grades that no longer matched.
+    let ignore = false;
 
-        setPublished(pubResults.some(r => r.data?.data?.published));
+    Promise.all([
+      ...ids.map(id =>
+        import('../../api/formateurs').then(m => m.formateursApi.getPublicationStatus(id))
+      ),
+      ...ids.map(id =>
+        import('../../api/formateurs').then(m => m.formateursApi.getNotes({ controle_id: id }))
+      ),
+      import('../../api/formateurs').then(m => m.formateursApi.getSequenceEtudiants(sequence.id)),
+    ]).then(responses => {
+      if (ignore) return;
 
-        const map = {};
-        noteResults.forEach((res, idx) => {
-          map[ids[idx]] = res.data?.data || [];
-        });
-        setNotesByControl(map);
+      const pubResults = responses.slice(0, ids.length);
+      const noteResults = responses.slice(ids.length, ids.length * 2);
+      const etuResult = responses[ids.length * 2];
 
-        setAllEtudiants(etuResult.data?.data || []);
-      }).catch(() => {
-        setNotesByControl({});
-        setAllEtudiants([]);
-      }).finally(() => setLoading(false));
-    }
-  }, [isOpen, ctrlIds, sequence.id]);
+      const locks = {};
+      pubResults.forEach((res, idx) => {
+        locks[ids[idx]] = {
+          groupes: res.data?.data?.groupes_verrouilles || [],
+          all: !!res.data?.data?.published_all,
+        };
+      });
+      setLockedByControl(locks);
+
+      const map = {};
+      noteResults.forEach((res, idx) => {
+        map[ids[idx]] = res.data?.data || [];
+      });
+      setNotesByControl(map);
+
+      setAllEtudiants(etuResult.data?.data || []);
+    }).catch(err => {
+      if (ignore) return;
+      // Swallowed errors left an empty table that reads as "no grades recorded".
+      handleApiError(err, toast);
+      setNotesByControl({});
+      setAllEtudiants([]);
+    }).finally(() => {
+      if (!ignore) setLoading(false);
+    });
+
+    return () => { ignore = true; };
+  }, [isOpen, ctrlIds, sequence.id, toast]);
 
   const handleSave = async (noteId) => {
+    // Enter triggers a save and the input then unmounts, which fires blur and
+    // used to fire a second identical PUT and a duplicate toast.
+    if (saveInFlight.current) return;
     if (editValue === '' || editValue === null) return;
+
+    saveInFlight.current = true;
     setSaving(true);
     try {
       const { formateursApi } = await import('../../api/formateurs');
@@ -236,6 +301,7 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
     } catch (err) {
       handleApiError(err, toast);
     } finally {
+      saveInFlight.current = false;
       setSaving(false);
     }
   };
@@ -269,8 +335,14 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
         <div className="d-flex justify-content-between align-items-center" style={{ fontSize: 14, fontWeight: 600 }}>
           <span>
             {sequence.unite?.nom} — {sequence.nom}
-            <Badge color="info" className="ml-2" style={{ fontSize: 11 }}>Coef: {sequence.coefficient}</Badge>
-            {published && <Badge color="danger" style={{ fontSize: 11, marginLeft: 6 }}>Publié</Badge>}
+            <Badge label={`Coef: ${sequence.coefficient}`} color="info" className="ml-2" style={{ fontSize: 11 }} />
+            {lockedGroupes.size > 0 && (
+              <Badge
+                label={toutVerrouille ? 'Publié' : `${lockedGroupes.size} groupe(s) publié(s)`}
+                color="danger"
+                style={{ fontSize: 11, marginLeft: 6 }}
+              />
+            )}
           </span>
           <span style={{ fontSize: 12, color: 'var(--gray-400)' }}>{isOpen ? '▲' : '▼'}</span>
         </div>
@@ -279,10 +351,10 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
         <div className="card-body p-0">
           {loading ? (
             <div className="p-3"><Spinner /></div>
-          ) : published ? (
+          ) : toutVerrouille ? (
             <div className="p-3">
               <div className="alert alert-danger mb-0">
-                <strong>Période terminée.</strong> Les notes/bulletins ont déjà été publiés pour ce groupe.
+                <strong>Période terminée.</strong> Les notes/bulletins ont déjà été publiés pour tous les groupes de cette séquence.
                 Modification impossible. Contactez l'administrateur si nécessaire.
               </div>
             </div>
@@ -298,6 +370,11 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
                     <span key={c.id}><strong>{controlLabel(c)}</strong> {c.date && `— ${c.date}`}</span>
                   ))}
                   <span style={{ marginLeft: 'auto' }}>{mergedEtudiants.length} étudiant(s)</span>
+                </div>
+              )}
+              {lockedGroupes.size > 0 && !toutVerrouille && (
+                <div className="alert alert-warning mb-0 mx-3 mt-3 py-2" style={{ fontSize: 12 }}>
+                  Une partie des groupes est déjà publiée : leurs notes restent visibles mais ne sont plus modifiables.
                 </div>
               )}
               <div className="table-wrap">
@@ -336,7 +413,9 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
                           <td style={{ padding: '8px 12px', fontSize: 12, color: 'var(--gray-500)' }}>
                             {etudiant.groupe?.nom || '—'}
                           </td>
-                          {ctrlCells.map(({ ctrl, note }) => (
+                      {ctrlCells.map(({ ctrl, note }) => {
+                        const locked = verrouille(ctrl, note, etudiant);
+                        return (
                             <td key={ctrl?.id} style={{ textAlign: 'center', padding: '6px 8px', verticalAlign: 'middle' }}>
                               {note ? (
                                 editingNote === note.id ? (
@@ -345,7 +424,7 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
                                     className="form-input form-input-sm"
                                     value={editValue}
                                     min="0"
-                                    max="20"
+                                    max={ctrl?.note_max ?? 20}
                                     step="0.25"
                                     style={{ width: 64, textAlign: 'center', padding: '4px 6px', fontSize: 13 }}
                                     onChange={e => setEditValue(e.target.value)}
@@ -356,18 +435,20 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
                                   />
                                 ) : note.est_absent ? (
                                   <span
-                                    style={{ ...noteDisplayStyle(), cursor: (note.is_confirmed || published) ? 'default' : 'pointer', borderBottom: (note.is_confirmed || published) ? 'none' : '1px dashed var(--gray-300)' }}
+                                    style={{ ...noteDisplayStyle(), cursor: (note.is_confirmed || locked) ? 'default' : 'pointer', borderBottom: (note.is_confirmed || locked) ? 'none' : '1px dashed var(--gray-300)' }}
                                     onClick={() => {
-                                      if (note.is_confirmed || published) return;
+                                      if (note.is_confirmed || locked) return;
                                       setEditingNote(note.id);
                                       setEditValue('');
                                     }}
-                                    title={(note.is_confirmed || published) ? 'Absent' : 'Cliquer pour corriger'}
+                                    title={locked ? 'Publié — non modifiable' : (note.is_confirmed ? 'Absent' : 'Cliquer pour corriger')}
                                   >
                                     Absent
                                   </span>
-                                ) : note.is_confirmed || published ? (
-                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{note.valeur ?? '—'}</span>
+                                ) : note.is_confirmed || locked ? (
+                                  <span style={{ fontWeight: 600, fontSize: 13, opacity: locked && !note.is_confirmed ? 0.7 : 1 }} title={locked ? 'Publié — non modifiable' : undefined}>
+                                    {note.valeur ?? '—'}
+                                  </span>
                                 ) : (
                                   <span
                                     style={{ cursor: 'pointer', fontWeight: 600, fontSize: 13, borderBottom: '1px dashed var(--gray-300)' }}
@@ -384,16 +465,19 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
                                 <span
                                   style={{
                                     display: 'inline-block', width: 32, height: 32, lineHeight: '32px',
-                                    borderRadius: '50%', background: '#FFF0F0', color: '#E74C3C',
+                                    borderRadius: '50%',
+                                    background: locked ? 'var(--gray-100)' : '#FFF0F0',
+                                    color: locked ? 'var(--gray-400)' : '#E74C3C',
                                     fontWeight: 600, fontSize: 11,
                                   }}
-                                  title="Aucune note saisie"
+                                  title={locked ? 'Publié — non modifiable' : 'Aucune note saisie'}
                                 >
                                   —
                                 </span>
                               )}
                             </td>
-                          ))}
+                          );
+                        })}
                         </tr>
                       );
                     })}

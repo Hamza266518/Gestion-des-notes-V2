@@ -1,7 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
 import { formateursApi } from '../../api/formateurs';
 import { useToast } from '../../context/ToastContext';
-import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Spinner from '../../components/common/Spinner';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
 import '../../css/components.css';
@@ -12,7 +11,6 @@ export default function NotesList() {
   const [error, setError] = useState(null);
   const [sequences, setSequences] = useState([]);
   const toast = useToast();
-  const { currentAnnee } = useAnneeAcademique();
 
   const loadSequences = useCallback(async () => {
     setLoading(true);
@@ -40,7 +38,7 @@ export default function NotesList() {
       <div className="page">
         <div className="alert alert-danger">
           <p>{error}</p>
-          <button className="btn btn-outline mt-2" onClick={loadSequences}>Reessayer</button>
+          <button className="btn btn-outline mt-2" onClick={loadSequences}>Réessayer</button>
         </div>
       </div>
     );
@@ -49,34 +47,31 @@ export default function NotesList() {
   return (
     <div className="page">
       <div className="page-header">
-        <h2 className="page-title">Mes Unites et Sequences</h2>
+        <h2 className="page-title">Mes Unités et Séquences</h2>
       </div>
 
       <div className="card mb-3">
-        <div className="card-header">
-          <h5 className="mb-0">Mes Unites et Sequences</h5>
-        </div>
         <div className="card-body">
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Unite</th>
-                  <th>Sequence</th>
+                  <th>Unité</th>
+                  <th>Séquence</th>
                   <th>Coef. unité</th>
-                  <th>Controles</th>
+                  <th>Contrôles</th>
                 </tr>
               </thead>
               <tbody>
                 {sequences.length === 0 ? (
-                  <tr><td colSpan="4" className="text-center">Aucune sequence assignee</td></tr>
+                  <tr><td colSpan="4" className="text-center">Aucune séquence assignée</td></tr>
                 ) : (
                   sequences.map((seq) => (
                     <tr key={seq.id}>
                       <td><strong>{seq.unite?.nom}</strong></td>
                       <td>{seq.nom}</td>
                       <td style={{ textAlign: 'center', fontWeight: 600 }}>{seq.unite?.coefficient ?? '—'}</td>
-                      <td>{seq.controles?.length ?? seq.nombre_controles ?? 0} controle(s)</td>
+                      <td>{seq.controles?.length ?? seq.nombre_controles ?? 0} contrôle(s)</td>
                     </tr>
                   ))
                 )}

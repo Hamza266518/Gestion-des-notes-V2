@@ -46,13 +46,16 @@ class PublicationController extends Controller
 
     public function publish(Request $request)
     {
-        try {
-            $request->validate([
-                'groupe_id'           => 'required|exists:groupes,id',
-                'annee_academique_id' => 'required|exists:annees_academiques,id',
-                'type'                => 'required|in:notes_s1,notes_s2,bulletin',
-            ]);
+        // Outside the try on purpose: validate() throws ValidationException,
+        // which extends Exception, so catching it here turned every bad payload
+        // into a 500 instead of a 422 naming the offending field.
+        $request->validate([
+            'groupe_id'           => 'required|exists:groupes,id',
+            'annee_academique_id' => 'required|exists:annees_academiques,id',
+            'type'                => 'required|in:notes_s1,notes_s2,bulletin',
+        ]);
 
+        try {
             $publication = SemestrePublication::updateOrCreate(
                 [
                     'groupe_id'           => $request->groupe_id,
@@ -84,12 +87,12 @@ class PublicationController extends Controller
 
     public function publishAll(Request $request)
     {
-        try {
-            $request->validate([
-                'annee_academique_id' => 'required|exists:annees_academiques,id',
-                'type'                => 'required|in:notes_s1,notes_s2,bulletin',
-            ]);
+        $request->validate([
+            'annee_academique_id' => 'required|exists:annees_academiques,id',
+            'type'                => 'required|in:notes_s1,notes_s2,bulletin',
+        ]);
 
+        try {
             $groupes = \App\Models\Groupe::where('annee_academique_id', $request->annee_academique_id)->get();
 
             if ($groupes->isEmpty()) {
@@ -127,18 +130,27 @@ class PublicationController extends Controller
 
     public function unpublish(Request $request)
     {
-        try {
-            $request->validate([
-                'groupe_id'           => 'required|exists:groupes,id',
-                'annee_academique_id' => 'required|exists:annees_academiques,id',
-                'type'                => 'required|in:notes_s1,notes_s2,bulletin',
-            ]);
+        $request->validate([
+            'groupe_id'           => 'required|exists:groupes,id',
+            'annee_academique_id' => 'required|exists:annees_academiques,id',
+            'type'                => 'required|in:notes_s1,notes_s2,bulletin',
+        ]);
 
+        try {
+            // An explicit 404 rather than firstOrFail(): ModelNotFoundException
+            // was being caught by the catch-all below and reported as a 500.
             $publication = SemestrePublication::where([
                 'groupe_id'           => $request->groupe_id,
                 'annee_academique_id' => $request->annee_academique_id,
                 'type'                => $request->type,
-            ])->firstOrFail();
+            ])->first();
+
+            if (!$publication) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Publication introuvable pour ce groupe et ce type',
+                ], 404);
+            }
 
             $publication->update(['is_published' => false, 'published_at' => null]);
 
@@ -154,12 +166,12 @@ class PublicationController extends Controller
 
     public function unpublishAll(Request $request)
     {
-        try {
-            $request->validate([
-                'annee_academique_id' => 'required|exists:annees_academiques,id',
-                'type'                => 'required|in:notes_s1,notes_s2,bulletin',
-            ]);
+        $request->validate([
+            'annee_academique_id' => 'required|exists:annees_academiques,id',
+            'type'                => 'required|in:notes_s1,notes_s2,bulletin',
+        ]);
 
+        try {
             $count = SemestrePublication::where([
                 'annee_academique_id' => $request->annee_academique_id,
                 'type'                => $request->type,

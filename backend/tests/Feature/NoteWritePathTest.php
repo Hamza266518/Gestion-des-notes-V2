@@ -73,12 +73,25 @@ class NoteWritePathTest extends TestCase
             'note_max'    => 20,
         ])->id;
 
-        // A published semester would mask the validation behaviour. Remember it
-        // so tearDown can put the seeded state back.
+        // A published semester would mask the validation behaviour. Snapshot by
+        // content, not by id: a test below creates a publication for this same
+        // (groupe, annee, type), and restoring the old rows by id would leave
+        // that new row behind next to them.
         $this->publications = SemestrePublication::where('groupe_id', $this->etudiant->groupe_id)
             ->where('annee_academique_id', $this->annee->id)
-            ->get();
-        SemestrePublication::whereIn('id', $this->publications->pluck('id'))->delete();
+            ->get()
+            ->map(fn ($p) => [
+                'groupe_id'           => $p->groupe_id,
+                'annee_academique_id' => $p->annee_academique_id,
+                'type'                => $p->type,
+                'is_published'        => $p->is_published,
+                'published_at'        => $p->published_at?->toDateTimeString(),
+            ])
+            ->all();
+
+        SemestrePublication::where('groupe_id', $this->etudiant->groupe_id)
+            ->where('annee_academique_id', $this->annee->id)
+            ->delete();
     }
 
     protected function tearDown(): void
@@ -96,15 +109,22 @@ class NoteWritePathTest extends TestCase
             $this->unite->delete();
         }
 
+        // Drop whatever was published for this group during the test, then put
+        // the snapshot back, so no duplicate (groupe, annee, type) is left.
+        SemestrePublication::where('groupe_id', $this->etudiant->groupe_id)
+            ->where('annee_academique_id', $this->annee->id)
+            ->delete();
+
         foreach ($this->publications ?? [] as $publication) {
             SemestrePublication::updateOrCreate(
-                ['id' => $publication->id],
                 [
-                    'groupe_id'          => $publication->groupe_id,
-                    'annee_academique_id' => $publication->annee_academique_id,
-                    'type'               => $publication->type,
-                    'is_published'       => $publication->is_published,
-                    'published_at'       => $publication->published_at,
+                    'groupe_id'           => $publication['groupe_id'],
+                    'annee_academique_id' => $publication['annee_academique_id'],
+                    'type'                => $publication['type'],
+                ],
+                [
+                    'is_published' => $publication['is_published'],
+                    'published_at' => $publication['published_at'],
                 ]
             );
         }

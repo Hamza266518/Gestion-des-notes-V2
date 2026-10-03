@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { FiX } from 'react-icons/fi';
 import { formateursApi } from '../../api/formateurs';
 import { scanApi } from '../../api/scan';
@@ -9,6 +9,15 @@ import { controlLabel } from '../../utils/helpers';
 
 import '../../css/components.css';
 import '../../css/layout.css';
+
+// A French locale renders the decimal separator as a comma, and `Number('12,5')`
+// is NaN. Anything that is not a finite number becomes null so a grade is never
+// stored as NaN.
+const toGrade = (v) => {
+  if (v === null || v === undefined || String(v).trim() === '') return null;
+  const n = Number(String(v).replace(',', '.').trim());
+  return Number.isFinite(n) ? n : null;
+};
 
 export default function Scanner() {
   const [step, setStep] = useState(1);
@@ -32,6 +41,10 @@ export default function Scanner() {
   const [pdfUrls, setPdfUrls] = useState([]);
   const [allConfirmed, setAllConfirmed] = useState(false);
   const [publicationMap, setPublicationMap] = useState({});
+  // Locked groups per control. publicationMap only marks a control as dead when
+  // *every* group in its perimeter is published, so the actual blocking of a
+  // scan has to be resolved against the group the sheet belongs to.
+  const [lockedGroupes, setLockedGroupes] = useState({});
   const [savedSummary, setSavedSummary] = useState(null);
 
   const processing = scanning || savingResults;
@@ -40,9 +53,22 @@ export default function Scanner() {
 
   const [searchQueries, setSearchQueries] = useState({});
   const [searchMatches, setSearchMatches] = useState({});
-  const [searchActiveIndex, setSearchActiveIndex] = useState(null);
+  // Every row carries a stable rowId, and all per-row UI state is keyed by it.
+  // Addressing rows by array index meant that deleting one row shifted every
+  // later row down by one: a half-typed search, its suggestion list and any
+  // pending debounce stayed on the old index and silently moved onto a different
+  // student, so clicking a suggestion overwrote that other student's row and
+  // their grade was filed under the wrong name.
+  const [searchActiveRowId, setSearchActiveRowId] = useState(null);
   const [searchDropdownStyle, setSearchDropdownStyle] = useState({});
-  const searchTimer = useRef(null);
+  // One timer per row: a single shared timer meant typing in one row cancelled
+  // another row's pending lookup, which was then dropped without a word.
+  const searchTimers = useRef({});
+  // Ids of the rows that currently exist, readable from async callbacks where
+  // the `results` captured by the closure would be stale.
+  const liveRowIds = useRef(new Set());
+  const rowIdSeq = useRef(0);
+  const newRowId = () => `r${++rowIdSeq.current}`;
 
   // A scanned name that does not match a student inside the control's
   // filière/année is simply "introuvable". Nothing is ever created from a
@@ -68,7 +94,9 @@ export default function Scanner() {
       // step 3 (results) and 4 (summary) are the ones worth restoring; going
       // back to 1/2 is harmless but the user may prefer to pick a control first.
       if (Array.isArray(saved.results) && saved.results.length) {
-        setResults(saved.results);
+        // Sheets persisted before rowIds existed would all carry `undefined` and
+        // collide, so any row without one gets a fresh id here.
+        setResults(saved.results.map(r => (r.rowId ? r : { ...r, rowId: newRowId() })));
         // Restored alongside the rows, otherwise step 3 comes back as if work
         // were still pending when in fact every grade was already confirmed.
         setAllConfirmed(saved.allConfirmed === true);
@@ -93,6 +121,10 @@ export default function Scanner() {
     }
   }, [sel, results, step, allConfirmed]);
 
+  useEffect(() => {
+    liveRowIds.current = new Set(results.map(r => r.rowId));
+  }, [results]);
+
   const clearScanWork = () => {
     try { window.sessionStorage.removeItem(SCAN_KEY); } catch { /* ignore */ }
     setResults([]);
@@ -107,45 +139,59 @@ export default function Scanner() {
 
   const skipStudent = (row) => {
     setResults(prev => prev.filter(r => r !== row));
+    // Drop this row's search state too, otherwise it leaks onto the row that
+    // takes the freed index.
+    setSearchQueries(prev => { const n = { ...prev }; delete n[row.rowId]; return n; });
+    setSearchMatches(prev => { const n = { ...prev }; delete n[row.rowId]; return n; });
+    setSearchActiveRowId(cur => (cur === row.rowId ? null : cur));
     toast.info(`« ${row.nom} » ignoré.`);
   };
 
   useEffect(() => {
-    const handleClick = () => setSearchActiveIndex(null);
+    const handleClick = () => setSearchActiveRowId(null);
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  const handleSearchChange = (index, value) => {
-    setSearchQueries(prev => ({ ...prev, [index]: value }));
-    if (searchTimer.current) clearTimeout(searchTimer.current);
+  const handleSearchChange = (rowId, value) => {
+    setSearchQueries(prev => ({ ...prev, [rowId]: value }));
+    if (searchTimers.current[rowId]) {
+      clearTimeout(searchTimers.current[rowId]);
+      delete searchTimers.current[rowId];
+    }
     if (value.length < 2) {
-      setSearchMatches(prev => ({ ...prev, [index]: [] }));
+      setSearchMatches(prev => ({ ...prev, [rowId]: [] }));
       return;
     }
-    searchTimer.current = setTimeout(async () => {
+    searchTimers.current[rowId] = setTimeout(async () => {
+      delete searchTimers.current[rowId];
+      // Read the selection when the lookup runs, not when it was scheduled:
+      // changing the control mid-debounce used to search the previous one.
+      const current = selRef.current;
       try {
         // Suggestions are scoped to the control's périmètre (and the chosen group),
         // so a hand-linked row cannot pull in a student from a sibling cohort.
         const res = await formateursApi.searchEtudiants(value, {
-          controle_id: sel.controle_id || undefined,
-          groupe_id: sel.groupe_id || undefined,
+          controle_id: current?.controle_id || undefined,
+          groupe_id: current?.groupe_id || undefined,
         });
         const data = res.data.data || [];
-        if (data.length === 1) {
-          selectStudent(index, data[0]);
-        } else {
-          setSearchMatches(prev => ({ ...prev, [index]: data }));
-        }
+        // The row may have been removed while the lookup was in flight; applying
+        // a suggestion to it would then be a silent no-op at best.
+        if (!liveRowIds.current.has(rowId)) return;
+        // The dropdown is always shown, even for a single hit. Auto-linking a
+        // lone partial match could grade the wrong student with no way for the
+        // instructor to notice before confirming.
+        setSearchMatches(prev => ({ ...prev, [rowId]: data }));
       } catch {
-        setSearchMatches(prev => ({ ...prev, [index]: [] }));
+        setSearchMatches(prev => ({ ...prev, [rowId]: [] }));
       }
     }, 300);
   };
 
-  const selectStudent = (index, student) => {
-    setResults(prev => prev.map((r, i) =>
-      i === index ? {
+  const selectStudent = (rowId, student) => {
+    setResults(prev => prev.map((r) =>
+      r.rowId === rowId ? {
         ...r,
         etudiant_id: student.id,
         nom: student.nom_prenom,
@@ -155,10 +201,34 @@ export default function Scanner() {
         found: true
       } : r
     ));
-    setSearchQueries(prev => { const n = { ...prev }; delete n[index]; return n; });
-    setSearchMatches(prev => { const n = { ...prev }; delete n[index]; return n; });
-    setSearchActiveIndex(null);
+    setSearchQueries(prev => { const n = { ...prev }; delete n[rowId]; return n; });
+    setSearchMatches(prev => { const n = { ...prev }; delete n[rowId]; return n; });
+    setSearchActiveRowId(cur => (cur === rowId ? null : cur));
   };
+
+  // `toast` changes identity whenever a toast appears. Listing it in the initial
+  // load effect would refetch the whole page each time a message was shown.
+  const toastRef = useRef(toast);
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
+
+  // True when the group this sheet targets is already published. When no group
+  // is chosen yet the perimeter-wide map is the best answer available.
+  const groupeVerrouille = useCallback((controleId, groupeId) => {
+    if (!controleId) return false;
+    if (groupeId) {
+      const locked = lockedGroupes[controleId];
+      return Array.isArray(locked) && locked.includes(Number(groupeId));
+    }
+    return !!publicationMap[controleId];
+  }, [lockedGroupes, publicationMap]);
+
+  const selectionVerrouillee = useMemo(
+    () => groupeVerrouille(sel.controle_id, sel.groupe_id),
+    [groupeVerrouille, sel.controle_id, sel.groupe_id]
+  );
+
 
   useEffect(() => {
     setLoading(true);
@@ -168,6 +238,7 @@ export default function Scanner() {
         setFilieres(data.filieres || []);
         setSequences(data.sequences || []);
         setPublicationMap(data.publication_map || {});
+        setLockedGroupes(data.publication_map_groupes || {});
         setGroupesParPerimetre(data.groupes_par_perimetre || {});
 
         // A restored session can outlive the control it targeted: the formateur
@@ -179,17 +250,26 @@ export default function Scanner() {
           .flatMap(s => s.controles || [])
           .map(c => c.id);
 
+        const groupsLocked = data.publication_map_groupes || {};
+        const bloque = (controleId, groupeId) => {
+          const locked = groupsLocked[controleId];
+          return Array.isArray(locked)
+            ? locked.includes(Number(groupeId))
+            : !!data.publication_map?.[controleId];
+        };
+
         setSel(prev => {
           if (!prev.controle_id) return prev;
           const existe = controleIds.some(id => String(id) === String(prev.controle_id));
-          if (existe && !data.publication_map?.[prev.controle_id]) return prev;
+          if (existe && !bloque(prev.controle_id, prev.groupe_id)) return prev;
           return { filiere_id: '', sequence_id: '', controle_id: '', groupe_id: '' };
         });
 
         if (selRef.current?.controle_id) {
-          const id = selRef.current.controle_id;
+          const cur = selRef.current;
+          const id = cur.controle_id;
           const existe = controleIds.some(cid => String(cid) === String(id));
-          if (!existe || data.publication_map?.[id]) {
+          if (!existe || bloque(id, cur.groupe_id)) {
             setResults([]);
             setAllConfirmed(false);
             setStep(1);
@@ -197,14 +277,21 @@ export default function Scanner() {
         }
       })
       .catch((err) => {
-        const info = handleApiError(err, toast, { showToast: false });
+        const info = handleApiError(err, toastRef.current, { showToast: false });
         setError(info.message);
       })
       .finally(() => setLoading(false));
+  }, []);
 
-    return () => {
-      pdfUrls.forEach(url => URL.revokeObjectURL(url));
-    };
+  // Preview URLs must be released on unmount. The load effect above closed over
+  // the first render's (empty) list, so leaving the page leaked every blob.
+  const pdfUrlsRef = useRef([]);
+  useEffect(() => {
+    pdfUrlsRef.current = pdfUrls;
+  }, [pdfUrls]);
+
+  useEffect(() => () => {
+    pdfUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
   }, []);
 
   const filteredSequences = sel.filiere_id
@@ -214,6 +301,10 @@ export default function Scanner() {
   const filteredControles = sel.sequence_id
     ? (sequences.find(s => s.id == sel.sequence_id)?.controles || [])
     : [];
+
+  // The scanned control's own scale. Hardcoding 20 let a 15/10 grade through the
+  // input and the backend then rejected the whole confirmation.
+  const noteMax = (filteredControles.find(c => String(c.id) === String(sel.controle_id))?.note_max) || 20;
 
   // Groups of the chosen control's filière/année. Matching is restricted to one
   // of these, so a sibling cohort's student can never absorb a scanned grade.
@@ -231,9 +322,13 @@ export default function Scanner() {
 
   const handleFiles = (e) => {
     const files = Array.from(e.target.files);
+    // Release the previews of the previous pick first: picking files again used
+    // to leak one blob URL per selection.
+    setPdfUrls(prev => {
+      prev.forEach(url => URL.revokeObjectURL(url));
+      return files.map(f => URL.createObjectURL(f));
+    });
     setPdfs(files);
-    const urls = files.map(f => URL.createObjectURL(f));
-    setPdfUrls(urls);
   };
 
   const handleScan = async () => {
@@ -250,9 +345,19 @@ export default function Scanner() {
       return;
     }
 
-    if (publicationMap[sel.controle_id]) {
+    if (selectionVerrouillee) {
       toast.warning('Les notes/bulletins ont déjà été publiés pour ce groupe. Scan impossible.');
       return;
+    }
+
+    // Rescanning used to drop the current table without warning, taking with it
+    // every grade typed by hand and every row linked manually.
+    if (results.length > 0) {
+      const confirmed = window.confirm(
+        `Un nouveau scan remplace les ${results.length} ligne(s) déjà affichées, ` +
+        `y compris les notes saisies à la main. Continuer ?`
+      );
+      if (!confirmed) return;
     }
 
     setScanning(true);
@@ -275,6 +380,7 @@ export default function Scanner() {
       }
 
       const scanned = (data.data?.resultats || []).map(r => ({
+        rowId: newRowId(),
         nom: r.nom_prenom || '',
         nom_ar: r.nom_ar || '',
         gemini_nom: r.gemini_nom || '',
@@ -332,12 +438,21 @@ export default function Scanner() {
     setPdfUrls(prev => prev.filter((_, idx) => idx !== i));
   };
 
-  const updateResult = (i, key, val) => {
-    setResults(prev => prev.map((r, idx) => idx === i ? { ...r, [key]: val } : r));
+  const updateResult = (rowId, key, val) => {
+    setResults(prev => prev.map((r) => r.rowId === rowId ? { ...r, [key]: val } : r));
   };
 
-  const removeResult = (i) => {
-    setResults(prev => prev.filter((_, idx) => idx !== i));
+  const removeResult = (rowId) => {
+    setResults(prev => prev.filter((r) => r.rowId !== rowId));
+    // Free the row's search state with the row, or it lands on whatever row
+    // slides into the freed position.
+    setSearchQueries(prev => { const n = { ...prev }; delete n[rowId]; return n; });
+    setSearchMatches(prev => { const n = { ...prev }; delete n[rowId]; return n; });
+    setSearchActiveRowId(cur => (cur === rowId ? null : cur));
+    if (searchTimers.current[rowId]) {
+      clearTimeout(searchTimers.current[rowId]);
+      delete searchTimers.current[rowId];
+    }
   };
 
   const handleNextFromResults = () => {
@@ -529,7 +644,7 @@ export default function Scanner() {
             </div>
           )}
 
-          {sel.controle_id && publicationMap[Number(sel.controle_id)] && (
+          {sel.controle_id && selectionVerrouillee && (
             <div className="alert alert-danger" style={{ marginTop: 16 }}>
               <strong>Période terminée.</strong> Les notes et/ou bulletins ont déjà été publiés pour ce groupe.
               Vous ne pouvez plus saisir ou modifier des notes. Contactez l'administrateur si nécessaire.
@@ -541,7 +656,7 @@ export default function Scanner() {
             style={{ marginTop: 16 }}
             disabled={processing || !sel.controle_id
               || (requiresGroupChoice && !sel.groupe_id)
-              || (sel.controle_id && publicationMap[Number(sel.controle_id)])}
+              || selectionVerrouillee}
             onClick={() => setStep(2)}
           >
             Suivant →
@@ -669,17 +784,17 @@ export default function Scanner() {
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '200px' }}>Nom</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '120px' }}>N Inscription</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Groupe</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Note /20</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '100px' }}>Note /{noteMax}</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '90px' }}>Absence</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '150px' }}>Statut</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, minWidth: '170px' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {results.map((r, i) => {
+                      {results.map((r) => {
                         const isUnmatched = !r.etudiant_id && !r.already_confirmed;
                         return (
-                        <tr key={i} style={{
+                        <tr key={r.rowId} style={{
                           borderBottom: '1px solid #e5e7eb',
                           background: isUnmatched ? '#fff7ed' : r.note_invalide && !r.est_absent ? '#fef2f2' : 'transparent'
                         }}>
@@ -688,14 +803,15 @@ export default function Scanner() {
                               <input
                                 className="form-input"
                                 style={{ width: '100%', padding: '6px 10px', fontSize: '14px' }}
-                                value={searchQueries[i] ?? r.nom}
-                                onChange={e => handleSearchChange(i, e.target.value)}
+                                value={searchQueries[r.rowId] ?? r.nom}
+                                onChange={e => handleSearchChange(r.rowId, e.target.value)}
                                 placeholder="Rechercher un étudiant..."
+                                disabled={processing}
                                 onClick={e => e.stopPropagation()}
                                 onFocus={e => {
                                   const rect = e.target.getBoundingClientRect();
                                   setSearchDropdownStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width });
-                                  setSearchActiveIndex(i);
+                                  setSearchActiveRowId(r.rowId);
                                 }}
                               />
                             ) : (
@@ -727,15 +843,16 @@ export default function Scanner() {
                                 type="number"
                                 className="form-input"
                                 style={{ width: 70, padding: '8px 12px', fontSize: '15px' }}
-                                value={r.note ?? ''}
+value={r.note ?? ''}
                                 min={0}
-                                max={20}
+                                max={noteMax}
                                 step="0.25"
-                                onChange={e => {
-                                  const v = e.target.value;
-                                  updateResult(i, 'note', v === '' ? null : Number(v));
-                                  if (v !== '') updateResult(i, 'note_invalide', false);
-                                }}
+                                disabled={processing}
+onChange={e => {
+                                   const v = e.target.value;
+                                   updateResult(r.rowId, 'note', toGrade(v));
+                                   if (v !== '') updateResult(r.rowId, 'note_invalide', false);
+                                 }}
                               />
                             )}
                             {r.note_invalide && !r.est_absent && r.etudiant_id && (
@@ -751,12 +868,17 @@ export default function Scanner() {
                                   type="checkbox"
                                   checked={!!r.est_absent}
                                   disabled={processing}
-                                  onChange={e => {
-                                    const on = e.target.checked;
-                                    setResults(prev => prev.map((row, idx) => idx === i
-                                      ? { ...row, est_absent: on, note: on ? 0 : (row.note ?? null), note_invalide: on ? false : row.note_invalide }
-                                      : row));
-                                  }}
+onChange={e => {
+                                     const on = e.target.checked;
+                                     setResults(prev => prev.map((row) => row.rowId === r.rowId
+                                       ? on
+                                         // Stash the scanned grade: overwriting `note`
+                                         // with 0 made unchecking restore a 0 instead
+                                         // of what was actually read on the sheet.
+                                         ? { ...row, est_absent: true, note_avant_absent: row.note ?? null, note: 0, note_invalide: false }
+                                         : { ...row, est_absent: false, note: row.note_avant_absent ?? null, note_avant_absent: null, note_invalide: (row.note_avant_absent ?? null) === null }
+                                       : row));
+                                   }}
                                 />
                                 Absent
                               </label>
@@ -786,7 +908,7 @@ export default function Scanner() {
                                 </button>
                               </div>
                             ) : (
-                              <button className="btn btn-sm btn-danger" onClick={() => removeResult(i)} disabled={processing}>Retirer</button>
+                              <button className="btn btn-sm btn-danger" onClick={() => removeResult(r.rowId)} disabled={processing}>Retirer</button>
                             )}
                           </td>
                         </tr>
@@ -803,7 +925,7 @@ export default function Scanner() {
             </div>
           )}
 
-          {searchActiveIndex !== null && searchMatches[searchActiveIndex]?.length > 0 && (
+          {searchActiveRowId !== null && searchMatches[searchActiveRowId]?.length > 0 && (
             <div
               style={{
                 position: 'fixed',
@@ -820,11 +942,11 @@ export default function Scanner() {
               }}
               onClick={e => e.stopPropagation()}
             >
-              {searchMatches[searchActiveIndex].map(s => (
+              {searchMatches[searchActiveRowId].map(s => (
                 <div
                   key={s.id}
                   style={{ padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6', fontSize: 13 }}
-                  onClick={() => selectStudent(searchActiveIndex, s)}
+                  onClick={() => selectStudent(searchActiveRowId, s)}
                   onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
