@@ -11,10 +11,10 @@ use App\Models\Niveau;
 use App\Models\Note;
 use App\Models\ScanLog;
 use App\Models\ScanNameCache;
-use App\Models\SemestrePublication;
 use App\Models\User;
 use App\Services\GeminiService;
 use App\Services\NoteParserService;
+use App\Services\PublicationLockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -27,11 +27,16 @@ class ScanController extends Controller
 
     protected $gemini;
     protected $parser;
+    protected $locks;
 
-    public function __construct(GeminiService $gemini, NoteParserService $parser)
-    {
+    public function __construct(
+        GeminiService $gemini,
+        NoteParserService $parser,
+        PublicationLockService $locks
+    ) {
         $this->gemini = $gemini;
         $this->parser = $parser;
+        $this->locks = $locks;
     }
 
     public function scan(Request $request)
@@ -50,7 +55,7 @@ class ScanController extends Controller
             ], 403);
         }
 
-        if ($this->isPublishedForControle($controle->id)) {
+        if ($this->locks->verrouillePour($controle, $request->groupe_id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Les notes/bulletins ont été publiés pour ce groupe. Scan impossible.',
@@ -131,7 +136,16 @@ class ScanController extends Controller
 
             if (empty($parsed)) {
                 $log->update(['statut' => 'echec']);
-                $errors[] = ['image' => $imagePath, 'message' => 'Impossible de lire'];
+                // A null read means the AI service itself failed (missing key,
+                // exhausted quota, network). That is not the same thing as an
+                // unreadable PDF, and reporting it as one sent the instructor
+                // off to re-scan a perfectly good sheet.
+                $errors[] = [
+                    'image'   => $imagePath,
+                    'message' => $rawText === null
+                        ? 'Le service de lecture est indisponible (clé API, quota ou réseau). Contactez l\'administrateur.'
+                        : 'Impossible de lire ce fichier. Vérifiez qu\'il est bien lisible.',
+                ];
                 continue;
             }
 
@@ -147,7 +161,8 @@ class ScanController extends Controller
                     $geminiNom,
                     $groupeIds,
                     $currentAnneeId,
-                    $item['numero_inscription'] ?? null
+                    $item['numero_inscription'] ?? null,
+                    $formateur->id
                 );
 
                 $alreadyConfirmed = $etudiant
@@ -192,6 +207,17 @@ class ScanController extends Controller
             $log->update(['statut' => 'succes']);
         }
 
+        // Every file failed. Saying "success" here made the frontend show
+        // "vérifiez que le PDF est lisible" even when the real cause was an
+        // expired key, so the failure is surfaced instead of flattened.
+        if (empty($results) && !empty($errors)) {
+            return response()->json([
+                'success' => false,
+                'message' => $errors[0]['message'],
+                'data'    => ['resultats' => [], 'erreurs' => $errors],
+            ], 502);
+        }
+
         return response()->json([
             'success' => true,
             'data'    => ['resultats' => $results, 'erreurs' => $errors],
@@ -201,14 +227,14 @@ class ScanController extends Controller
     public function confirm(Request $request)
     {
         $request->validate([
-            'notes'                  => 'required|array',
+            'notes'                  => 'required|array|max:200',
             'notes.*.etudiant_id'    => 'required|exists:etudiants,id',
             'notes.*.controle_id'    => 'required|exists:controles,id',
             'notes.*.valeur'         => 'nullable|numeric|min:0',
             'notes.*.est_absent'     => 'nullable|boolean',
             'notes.*.chemin_image'   => 'nullable|string',
-            'notes.*.gemini_nom'     => 'nullable|string',
-            'notes.*.gemini_nom_ar'  => 'nullable|string',
+            'notes.*.gemini_nom'     => 'nullable|string|max:255',
+            'notes.*.gemini_nom_ar'  => 'nullable|string|max:255',
             // The cohort the sheet was scanned for. When present, every saved
             // student must belong to it, not merely to the filière/année.
             'groupe_id'             => 'nullable|integer',
@@ -216,21 +242,35 @@ class ScanController extends Controller
 
         $formateur = $this->currentFormateur();
 
-        // Check publication for first controle (all notes should be for same controle)
-        $firstControleId = $request->notes[0]['controle_id'] ?? null;
-        if ($firstControleId && $this->isPublishedForControle($firstControleId)) {
-            return response()->json(['success' => false, 'message' => 'Les notes/bulletins ont été publiés pour ce groupe. Enregistrement impossible.'], 403);
+        // The UI sends one control per sheet, but nothing enforced that, so every
+        // distinct control is considered.
+        $controleIds = collect($request->notes)->pluck('controle_id')->unique()->filter()->values();
+
+        // One check for the whole payload. Rows are already forced into
+        // groupe_id below, so a per-student check would repeat the same lookup.
+        // Kept here as well as at scan time: a sheet can be scanned, left open,
+        // and confirmed after the group has been published in between.
+        foreach ($controleIds as $controleId) {
+            $controle = Controle::with('sequence.unite')->find($controleId);
+            if (!$controle) continue;
+
+            if ($this->locks->verrouillePour($controle, $request->groupe_id)) {
+                return response()->json(['success' => false, 'message' => 'Les notes/bulletins ont été publiés pour ce groupe. Enregistrement impossible.'], 403);
+            }
         }
 
-        // A groupe_id outside the control's filière/année would silently skip
-        // every row, so it is rejected outright instead.
-        if ($firstControleId && $request->filled('groupe_id')) {
-            [$perimetreIds] = $this->perimetrePourControle($firstControleId);
-            if (!$perimetreIds->contains((int) $request->groupe_id)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ce groupe n\'appartient pas à la filière/année de ce contrôle.',
-                ], 422);
+        // A groupe_id outside a control's filière/année would silently skip every
+        // row, so it is rejected outright instead -- per control, since the
+        // perimeter is derived from the control.
+        if ($request->filled('groupe_id')) {
+            foreach ($controleIds as $controleId) {
+                [$perimetreIds] = $this->perimetrePourControle($controleId);
+                if (!$perimetreIds->contains((int) $request->groupe_id)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Ce groupe n\'appartient pas à la filière/année de ce contrôle.',
+                    ], 422);
+                }
             }
         }
 
@@ -246,103 +286,154 @@ class ScanController extends Controller
                 $etudiant = \App\Models\Etudiant::find($item['etudiant_id']);
                 $alreadyConfirmed[] = [
                     'etudiant_id' => $item['etudiant_id'],
+                    'controle_id' => $item['controle_id'],
                     'nom_prenom'  => $etudiant?->nom_prenom ?? 'Inconnu',
                     'note_actuelle' => $existing->est_absent ? 'absent' : $existing->valeur,
                 ];
             }
         }
 
-        $alreadyIds = collect($alreadyConfirmed)->pluck('etudiant_id')->toArray();
+        // Keyed on the pair the check was built from. Keying on etudiant_id alone
+        // dropped that student's legitimate rows for every other control once a
+        // payload spans more than one.
+        $alreadyKeys = collect($alreadyConfirmed)
+            ->map(fn ($row) => $row['etudiant_id'] . ':' . $row['controle_id'])
+            ->toArray();
 
-        $saved = [];
+$saved = [];
         $skipped = [];
 
-        foreach ($request->notes as $item) {
-            if (in_array($item['etudiant_id'], $alreadyIds)) continue;
+        // All-or-nothing: a throw partway through used to leave rows 1..N-1
+        // committed, and the retry then hit "already confirmed" on every one of
+        // them, so the remainder could only be fixed by an admin.
+        DB::transaction(function () use ($request, $formateur, $alreadyKeys, $controleIds, &$saved, &$skipped) {
+            foreach ($request->notes as $item) {
+                if (in_array($item['etudiant_id'] . ':' . $item['controle_id'], $alreadyKeys)) continue;
 
-            $controle = Controle::find($item['controle_id']);
-            if (!$controle) continue;
+                $controle = Controle::find($item['controle_id']);
+                if (!$controle) {
+                    $skipped[] = [
+                        'etudiant_id' => $item['etudiant_id'],
+                        'raison'      => 'contrôle introuvable',
+                    ];
+                    continue;
+                }
 
-            $sequence = $controle->sequence;
-            $hasAccess = $formateur->sequences()->where('sequence_id', $sequence->id)->exists();
+                $sequence = $controle->sequence;
+                $hasAccess = $formateur->sequences()->where('sequence_id', $sequence->id)->exists();
 
-            if (!$hasAccess) continue;
+                // Refusing silently made "20 confirmed" read as "12 confirmed", so a
+                // dropped row has to be reported like any other.
+                if (!$hasAccess) {
+                    $skipped[] = [
+                        'etudiant_id' => $item['etudiant_id'],
+                        'raison'      => 'vous n\'êtes pas affecté à ce contrôle',
+                    ];
+                    continue;
+                }
 
-            // The scanned row may be linked by hand from the search box, so the
-            // saved student must be re-checked against the control's own
-            // filière/année here too. Without this, a hand-linked student from a
-            // sibling cohort would receive the grade.
-            $etudiant = Etudiant::find($item['etudiant_id']);
-            if (!$etudiant) continue;
+                // The scanned row may be linked by hand from the search box, so the
+                // saved student must be re-checked against the control's own
+                // filière/année here too. Without this, a hand-linked student from a
+                // sibling cohort would receive the grade.
+                $etudiant = Etudiant::find($item['etudiant_id']);
+                if (!$etudiant) {
+                    $skipped[] = [
+                        'etudiant_id' => $item['etudiant_id'],
+                        'raison'      => 'étudiant introuvable',
+                    ];
+                    continue;
+                }
 
-            [$perimetreIds, $currentAnneeId] = $this->perimetrePourControle($controle->id);
+                [$perimetreIds, $currentAnneeId] = $this->perimetrePourControle($controle->id);
 
-            $cibleIds = $perimetreIds;
-            $cibleAnnee = $currentAnneeId;
+                $cibleIds = $perimetreIds;
+                $cibleAnnee = $currentAnneeId;
 
-            // When the scan was narrowed to one group, confirm must enforce the
-            // same cohort: a hand-linked sibling would otherwise still receive
-            // the grade even though the scan refused to match it.
-            if ($request->filled('groupe_id')) {
-                $cibleIds = collect([(int) $request->groupe_id]);
-            }
+                // When the scan was narrowed to one group, confirm must enforce the
+                // same cohort: a hand-linked sibling would otherwise still receive
+                // the grade even though the scan refused to match it.
+                if ($request->filled('groupe_id')) {
+                    $cibleIds = collect([(int) $request->groupe_id]);
+                }
 
-            $inPerimetre = $cibleIds->contains($etudiant->groupe_id)
-                && (!$cibleAnnee || (int) $etudiant->annee_academique_id === (int) $cibleAnnee);
+                $inPerimetre = $cibleIds->contains($etudiant->groupe_id)
+                    && (!$cibleAnnee || (int) $etudiant->annee_academique_id === (int) $cibleAnnee);
 
-            if (!$inPerimetre) {
-                $skipped[] = [
-                    'etudiant_id' => $item['etudiant_id'],
-                    'raison'      => 'étudiant hors du groupe ciblé par ce scan',
-                ];
-                continue;
-            }
+                if (!$inPerimetre) {
+                    $skipped[] = [
+                        'etudiant_id' => $item['etudiant_id'],
+                        'raison'      => 'étudiant hors du groupe ciblé par ce scan',
+                    ];
+                    continue;
+                }
 
-            $estAbsent = (bool) ($item['est_absent'] ?? false);
+                $estAbsent = (bool) ($item['est_absent'] ?? false);
 
-            // Absent is stored as 0 so it counts in the averages, but flagged
-            // so it is never displayed or printed as a real zero.
-            $valeur = $estAbsent
-                ? 0.0
-                : $this->parser->parseValue($item['valeur'] ?? null, (float) $controle->note_max)['valeur'];
+                // Parsed without an upper bound on purpose, so an out-of-range
+                // grade can be refused instead of silently truncated. parseValue
+                // clamps, which used to turn a teacher's 15 on a /10 control into
+                // a stored 10 with no feedback anywhere.
+                $parsed = $this->parser->parseValue($item['valeur'] ?? null, PHP_FLOAT_MAX);
+                $valeur = $parsed['valeur'];
 
-            if (!$estAbsent && $valeur === null) {
-                // Nothing usable on the sheet. Report it instead of silently
-                // dropping the row, which would look like a successful save.
-                $skipped[] = [
-                    'etudiant_id' => $item['etudiant_id'],
-                    'raison'      => 'note illisible ou absente de la feuille',
-                ];
-                continue;
-            }
+                if (!$estAbsent && $valeur !== null && $valeur > (float) $controle->note_max) {
+                    $skipped[] = [
+                        'etudiant_id' => $item['etudiant_id'],
+                        'raison'      => 'note hors barème (maximum ' . $controle->note_max . ')',
+                    ];
+                    continue;
+                }
 
-            $note = Note::updateOrCreate(
-                ['etudiant_id' => $item['etudiant_id'], 'controle_id' => $item['controle_id']],
-                [
-                    'valeur'        => $valeur,
-                    'est_absent'    => $estAbsent,
-                    'chemin_image'  => $item['chemin_image'] ?? null,
-                    'is_confirmed'  => true,
-                    'confirmed_at'  => now(),
-                ]
-            );
-            $saved[] = $note;
+                if (!$estAbsent && $valeur === null) {
+                    // Nothing usable on the sheet. Report it instead of silently
+                    // dropping the row, which would look like a successful save.
+                    $skipped[] = [
+                        'etudiant_id' => $item['etudiant_id'],
+                        'raison'      => 'note illisible ou absente de la feuille',
+                    ];
+                    continue;
+                }
 
-            // Remember the scanned name so the next sheet matches instantly.
-            if (!empty($item['gemini_nom'])) {
-                ScanNameCache::updateOrCreate(
+                // Absent is stored as 0 so it counts in the averages, but flagged
+                // so it is never displayed or printed as a real zero.
+                if ($estAbsent) {
+                    $valeur = 0.0;
+                } elseif ($valeur !== null) {
+                    $valeur = min($valeur, (float) $controle->note_max);
+                }
+
+                $note = Note::updateOrCreate(
+                    ['etudiant_id' => $item['etudiant_id'], 'controle_id' => $item['controle_id']],
                     [
-                        'raw_nom'    => $item['gemini_nom'],
-                        'raw_nom_ar' => $item['gemini_nom_ar'] ?? '',
-                    ],
-                    [
-                        'raw_nom_normalized' => ScanNameCache::normalizeName($item['gemini_nom']),
-                        'etudiant_id'  => $item['etudiant_id'],
-                        'formateur_id' => $formateur->id,
+                        'valeur'        => $valeur,
+                        'est_absent'    => $estAbsent,
+                        'chemin_image'  => $item['chemin_image'] ?? null,
+                        'is_confirmed'  => true,
+                        'confirmed_at'  => now(),
                     ]
                 );
+                $saved[] = $note;
+
+                // Remember the scanned name so the next sheet matches instantly.
+                // Keyed per formateur: the name comes from the AI reading the sheet
+                // and is accepted verbatim from the client, so a shared entry would
+                // let one formateur redirect another instructor's scan.
+                if (!empty($item['gemini_nom'])) {
+                    ScanNameCache::updateOrCreate(
+                        [
+                            'formateur_id' => $formateur->id,
+                            'raw_nom'      => $item['gemini_nom'],
+                            'raw_nom_ar'   => $item['gemini_nom_ar'] ?? '',
+                        ],
+                        [
+                            'raw_nom_normalized' => ScanNameCache::normalizeName($item['gemini_nom']),
+                            'etudiant_id'         => $item['etudiant_id'],
+                        ]
+                    );
+                }
             }
-        }
+        }); // end DB::transaction
 
         if (count($alreadyConfirmed) > 0 && count($saved) === 0) {
             return response()->json([
@@ -420,7 +511,8 @@ class ScanController extends Controller
         string $geminiNom,
         $groupeIds,
         ?int $currentAnneeId,
-        ?string $numeroScanne = null
+        ?string $numeroScanne = null,
+        ?int $formateurId = null
     ): ?Etudiant {
         $searchName = trim($geminiNom);
         $numeroScanne = $numeroScanne !== null ? trim($numeroScanne) : '';
@@ -456,10 +548,19 @@ class ScanController extends Controller
             return null;
         }
 
-        // 1. remembered mapping from an earlier scan
+        // 1. remembered mapping from an earlier scan, for this instructor only.
+        // A null formateur (only reachable from tests) is treated as "no
+        // instructor owns this row" rather than as "every instructor", so the
+        // cache can never widen across formateurs.
         $normalized = ScanNameCache::normalizeName($geminiNom);
         if ($normalized !== '') {
-            $cache = ScanNameCache::where('raw_nom_normalized', $normalized)->first();
+            $cache = ScanNameCache::where('raw_nom_normalized', $normalized)
+                ->when(
+                    $formateurId,
+                    fn ($q) => $q->where('formateur_id', $formateurId),
+                    fn ($q) => $q->whereNull('formateur_id')
+                )
+                ->first();
             if ($cache) {
                 $cached = $inPerimetre(Etudiant::with('groupe'))->find($cache->etudiant_id);
                 if ($cached) {
@@ -509,37 +610,5 @@ class ScanController extends Controller
         }
 
         return null;
-    }
-
-    private function isPublishedForControle($controleId): bool
-    {
-        $controle = Controle::with('sequence.unite')->find($controleId);
-        if (!$controle || !$controle->sequence || !$controle->sequence->unite) return false;
-
-        $unite = $controle->sequence->unite;
-
-        $niveau = Niveau::where('filiere_id', $unite->filiere_id)
-            ->where('numero', $unite->numero_annee)
-            ->first();
-        if (!$niveau) return false;
-
-        $currentAnnee = AnneeAcademique::where('is_current', true)->first();
-        if (!$currentAnnee) return false;
-
-        $groupeIds = Groupe::where('niveau_id', $niveau->id)
-            ->where('annee_academique_id', $currentAnnee->id)
-            ->pluck('id');
-
-        if ($groupeIds->isEmpty()) return false;
-
-        $types = ['bulletin'];
-        if ($unite->semestre == 1) $types[] = 'notes_s1';
-        else $types[] = 'notes_s2';
-
-        return SemestrePublication::whereIn('groupe_id', $groupeIds)
-            ->where('annee_academique_id', $currentAnnee->id)
-            ->whereIn('type', $types)
-            ->where('is_published', true)
-            ->exists();
     }
 }

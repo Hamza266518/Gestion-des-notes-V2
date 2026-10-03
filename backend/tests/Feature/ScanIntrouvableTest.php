@@ -99,6 +99,7 @@ class ScanIntrouvableTest extends TestCase
         $controller = new \App\Http\Controllers\Formateur\ScanController(
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
+            app(\App\Services\PublicationLockService::class),
         );
         $ref = new \ReflectionMethod($controller, 'perimetrePourControle');
         $ref->setAccessible(true);
@@ -129,6 +130,7 @@ class ScanIntrouvableTest extends TestCase
         $controller = new \App\Http\Controllers\Formateur\ScanController(
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
+            app(\App\Services\PublicationLockService::class),
         );
         $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
         $m->setAccessible(true);
@@ -152,6 +154,7 @@ class ScanIntrouvableTest extends TestCase
         $controller = new \App\Http\Controllers\Formateur\ScanController(
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
+            app(\App\Services\PublicationLockService::class),
         );
         $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
         $m->setAccessible(true);
@@ -185,6 +188,7 @@ class ScanIntrouvableTest extends TestCase
         $controller = new \App\Http\Controllers\Formateur\ScanController(
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
+            app(\App\Services\PublicationLockService::class),
         );
         $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
         $m->setAccessible(true);
@@ -202,6 +206,7 @@ class ScanIntrouvableTest extends TestCase
         $controller = new \App\Http\Controllers\Formateur\ScanController(
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
+            app(\App\Services\PublicationLockService::class),
         );
         $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
         $m->setAccessible(true);
@@ -230,6 +235,7 @@ class ScanIntrouvableTest extends TestCase
         $controller = new \App\Http\Controllers\Formateur\ScanController(
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
+            app(\App\Services\PublicationLockService::class),
         );
         $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
         $m->setAccessible(true);
@@ -259,6 +265,7 @@ class ScanIntrouvableTest extends TestCase
         $controller = new \App\Http\Controllers\Formateur\ScanController(
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
+            app(\App\Services\PublicationLockService::class),
         );
         $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
         $m->setAccessible(true);
@@ -283,6 +290,7 @@ class ScanIntrouvableTest extends TestCase
         $controller = new \App\Http\Controllers\Formateur\ScanController(
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
+            app(\App\Services\PublicationLockService::class),
         );
         $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
         $m->setAccessible(true);

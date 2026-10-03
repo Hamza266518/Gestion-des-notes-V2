@@ -28,7 +28,7 @@ class ScanPerimetreGroupeTest extends TestCase
     private array $createdEtudiants = [];
     private array $createdUsers = [];
     private array $groupesCrees = [];
-    private array $touchedControles = [];
+    private array $createdNotes = [];
 
     protected function setUp(): void
     {
@@ -55,8 +55,12 @@ class ScanPerimetreGroupeTest extends TestCase
     {
         // Notes first: they reference the students, and a leaked confirmed note
         // would block the Stage migration rollback in another test.
+        //
+        // Scoped to the grades and students this class created. The control here
+        // is Controle::first(), i.e. a pre-existing one, so deleting by
+        // controle_id would wipe every real grade attached to it.
+        \App\Models\Note::whereIn('id', $this->createdNotes)->delete();
         \App\Models\Note::whereIn('etudiant_id', $this->createdEtudiants)->delete();
-        \App\Models\Note::whereIn('controle_id', $this->touchedControles)->delete();
 
         Etudiant::whereIn('id', $this->createdEtudiants)->forceDelete();
         User::whereIn('id', $this->createdUsers)->delete();
@@ -90,6 +94,7 @@ class ScanPerimetreGroupeTest extends TestCase
         return new \App\Http\Controllers\Formateur\ScanController(
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
+            app(\App\Services\PublicationLockService::class),
         );
     }
 
@@ -216,7 +221,6 @@ class ScanPerimetreGroupeTest extends TestCase
     public function test_confirm_skips_a_hand_linked_student_from_another_group(): void
     {
         [$controle, , $groupeA, $groupeB] = $this->deuxGroupesMemePerimetre();
-        $this->touchedControles[] = $controle->id;
 
         $this->assignerSequence($controle->sequence_id);
 

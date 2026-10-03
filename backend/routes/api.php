@@ -117,8 +117,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/controles/generate/{sequenceId}', [ControleController::class, 'generateForSequence']);
 
         // Notes admin
-        Route::get('/notes', [NoteAdminController::class, 'index']);
-        Route::put('/notes/{id}', [NoteAdminController::class, 'update']);
+Route::get('/notes', [NoteAdminController::class, 'index']);
+Route::post('/notes', [NoteAdminController::class, 'store']);
+Route::put('/notes/{id}', [NoteAdminController::class, 'update']);
         Route::get('/recap-notes', [NoteAdminController::class, 'recapNotes']);
         Route::get('/bulletins', [NoteAdminController::class, 'bulletin']);
         Route::get('/examens', [ExamController::class, 'index']);
@@ -165,7 +166,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ── FORMATEUR ──────────────────────────────────────────
-    Route::prefix('formateur')->middleware(\App\Http\Middleware\IsFormateur::class)->group(function () {
+    Route::prefix('formateur')->middleware([\App\Http\Middleware\IsFormateur::class, \App\Http\Middleware\RateLimitSensitiveEndpoints::class])->group(function () {
         Route::post('/scan', [ScanController::class, 'scan']);
         Route::post('/confirm', [ScanController::class, 'confirm']);
         Route::get('/notes', [NoteController::class, 'index']);
