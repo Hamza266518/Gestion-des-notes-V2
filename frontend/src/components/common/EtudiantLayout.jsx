@@ -5,8 +5,10 @@ import Navbar from './Navbar';
 import '../../css/layout.css';
 
 const pageTitles = {
-  '/etudiant/bulletin': 'Mes Notes',
-  '/etudiant/mon-bulletin': 'Mon Bulletin',
+  // Both student pages carry their own heading inside the card, so the bar above
+  // them stays empty rather than repeating the same words a second time.
+  '/etudiant/bulletin': '',
+  '/etudiant/mon-bulletin': '',
 };
 
 export default function EtudiantLayout() {

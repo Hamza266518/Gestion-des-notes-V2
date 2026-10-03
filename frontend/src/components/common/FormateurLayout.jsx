@@ -6,7 +6,7 @@ import '../../css/layout.css';
 
 const pageTitles = {
   '/formateur/scanner': 'Scanner de Notes',
-  '/formateur/notes': 'Mes Unites et Sequences',
+  '/formateur/notes': 'Mes Unités et Séquences',
   '/formateur/liste-notes': 'Liste des Notes',
 };
 

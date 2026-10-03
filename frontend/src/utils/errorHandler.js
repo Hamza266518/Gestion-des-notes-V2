@@ -7,7 +7,9 @@ export const handleApiError = (error, toast, options = {}) => {
 
   // Network error (no internet)
   if (!error.response) {
-    return 'Problème de connexion. Vérifiez votre internet.';
+    const message = "Problème de connexion. Vérifiez votre internet.";
+    if (showToast && toast?.error) toast.error(message);
+    return { type: 'network', status: 0, message, shouldRetry: true, data: null };
   }
 
   const status = error.response.status;
@@ -27,7 +29,10 @@ export const handleApiError = (error, toast, options = {}) => {
       break;
 
     case 403:
-      message = "Vous n'avez pas les droits pour effectuer cette action.";
+      // The backend sends precise reasons here ("bulletin déjà publié",
+      // "contrôle hors de votre périmètre"). Discarding them for generic text
+      // left instructors guessing what to fix.
+      message = data?.message || "Vous n'avez pas les droits pour effectuer cette action.";
       break;
 
     case 404:
@@ -47,14 +52,16 @@ export const handleApiError = (error, toast, options = {}) => {
       break;
 
     case 429:
-      message = "Trop de requêtes. Veuillez patienter quelques instants.";
+      message = data?.message || "Trop de requêtes. Veuillez patienter quelques instants.";
       shouldRetry = true;
       break;
 
     case 500:
     case 502:
     case 503:
-      message = "Erreur serveur. L'équipe technique a été notifiée.";
+      // 502 is what a failed AI read returns, and it carries the actual cause
+      // (expired key, quota, network) rather than a generic server fault.
+      message = data?.message || "Erreur serveur. L'équipe technique a été notifiée.";
       shouldRetry = true;
       break;
 

@@ -115,6 +115,22 @@ export function controlCellKey(controle) {
 }
 
 /**
+ * Column heading for a grade cell. The numero restarts for every type, so
+ * "numero" alone is not a unique identifier: a sequence can hold cc:1,
+ * theorique:1 and pratique:1 all at once. Columns are therefore labelled
+ * CC1 / Pratique1 / Theorie1 and always ordered CC, Pratique, Theorie.
+ */
+export const CONTROL_COLUMN_ORDER = ['cc', 'pratique', 'theorique'];
+
+export function controlColumnLabel(type, numero) {
+  return `${controlTypeLabel(type)}${numero}`;
+}
+
+export function controlColumnKey(type, numero) {
+  return `${numero}-${type || 'cc'}`;
+}
+
+/**
  * An absent student is stored with valeur 0 so the average stays correct, but
  * it must never be shown or printed as a real zero. Every place that renders a
  * grade has to go through this so "Absent" is used instead of 0.
@@ -129,6 +145,21 @@ export function noteDisplayStyle(compact = false) {
   return compact
     ? { color: '#b91c1c', fontWeight: 600, fontSize: 12 }
     : { color: '#b91c1c', fontWeight: 600, fontSize: 13 };
+}
+
+/**
+ * Colour tone for a grade chip, as a share of the control's own scale so a
+ * control marked out of /10 is judged on the same footing as one out of /20.
+ */
+export function gradeValueClass(valeur, noteMax = 20) {
+  const max = Number(noteMax) || 20;
+  const ratio = Number(valeur) / max;
+  if (!Number.isFinite(ratio)) return '';
+  if (ratio >= 0.8) return 'grade-excellent';
+  if (ratio >= 0.7) return 'grade-good';
+  if (ratio >= 0.6) return 'grade-average';
+  if (ratio >= 0.5) return 'grade-pass';
+  return 'grade-fail';
 }
 
 export function calculateStats(notes) {
