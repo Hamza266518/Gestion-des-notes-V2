@@ -29,6 +29,7 @@ class ExamController extends Controller
             'examens' => 'required|array',
             'examens.*.etudiant_id' => 'required|exists:etudiants,id',
             'examens.*.valeur' => 'nullable|numeric|min:0|max:20',
+            'examens.*.est_absent' => 'nullable|boolean',
             'unite_id' => 'required|exists:unites,id',
             'bloc' => 'required|integer|in:1,2',
             'type' => 'required|in:theorique,pratique',
@@ -40,6 +41,8 @@ class ExamController extends Controller
         $saved = 0;
 
         foreach ($request->examens as $data) {
+            $estAbsent = (bool) ($data['est_absent'] ?? false);
+
             Examen::updateOrCreate(
                 [
                     'etudiant_id' => $data['etudiant_id'],
@@ -49,7 +52,10 @@ class ExamController extends Controller
                     'semestre' => $request->semestre,
                     'annee_academique_id' => $request->annee_academique_id,
                 ],
-                ['valeur' => $data['valeur']]
+                [
+                    'valeur' => $estAbsent ? 0 : $data['valeur'],
+                    'est_absent' => $estAbsent,
+                ]
             );
             $saved++;
         }

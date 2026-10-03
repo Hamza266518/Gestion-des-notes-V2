@@ -6,9 +6,11 @@ import { handleApiError } from '../../utils/errorHandler';
 import { formatNiveau } from '../../utils/helpers';
 import Badge from '../../components/common/Badge';
 import Spinner from '../../components/common/Spinner';
+import logoMenu from '../../image/logo-menu.png';
 import '../../css/components.css';
 import '../../css/layout.css';
 import '../../css/pages.css';
+import '../../css/bulletin-view.css';
 
 export default function MonBulletinView() {
   const [bulletin, setBulletin] = useState(null);
@@ -51,8 +53,6 @@ export default function MonBulletinView() {
   if (!bulletin || !bulletin.publications?.bulletin || !bulletin.bulletin) {
     return (
       <div className="page-container">
-        <div className="page-header">
-        </div>
         <div className="empty-state">
           <p>Bulletin non publie pour le moment.</p>
         </div>
@@ -62,54 +62,63 @@ export default function MonBulletinView() {
 
   const { etudiant, bulletin: bulletinData } = bulletin;
 
+  const groupe = etudiant.groupe || {};
+  const niveau = groupe.niveau || {};
+  const filiere = niveau.filiere || {};
+
+  // These three describe where the student sits in the school, so they read as
+  // one line under the name instead of three separate labelled boxes.
+  const meta = [
+    filiere.nom,
+    niveau.numero ? formatNiveau(niveau.numero) : null,
+    groupe.nom,
+  ].filter(Boolean);
+
+  // Only the two document numbers are worth labelling: they are what a student
+  // has to quote at a counter or on an exam paper.
+  const ids = [
+    { label: 'CIN', value: etudiant.cin },
+    { label: 'N° inscription', value: etudiant.numero_inscription },
+  ].filter(item => item.value);
+
   const allUnites = [];
   if (bulletinData.semestres?.[1]) allUnites.push(...bulletinData.semestres[1]);
   if (bulletinData.semestres?.[2]) allUnites.push(...bulletinData.semestres[2]);
 
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1>Mon Bulletin</h1>
-      </div>
-
-      <div className="bulletin-card">
-        <div className="bulletin-header">
-          <div className="bulletin-brand">
-            <h2>IFP</h2>
-            <p>Institut de Formation Paramedicale</p>
+    <div className="bv-page">
+      <div className="bv-card">
+        <div className="bv-head">
+          <div className="bv-brand">
+            <img src={logoMenu} alt="IFP Institut de Formation Paramedicale" className="bv-logo" />
           </div>
-          <div className="bulletin-title-area">
-            <h3>Bulletin de Notes</h3>
+          <div className="bv-title">
+            <h2>Bulletin de Notes</h2>
             <p>Année Académique {currentAnnee?.label || ''}</p>
           </div>
         </div>
 
-        <div className="bulletin-info">
-          <div className="bulletin-info-item">
-            <span className="bulletin-info-label">Étudiant</span>
-            <span className="bulletin-info-value">{etudiant.nom_prenom}</span>
+        <header className="bv-id">
+          <span className="bv-id-bar" aria-hidden="true" />
+          <div className="bv-id-main">
+            <h1 className="bv-name">{etudiant.nom_prenom}</h1>
+            {meta.length > 0 && <p className="bv-meta">{meta.join(' · ')}</p>}
           </div>
-          <div className="bulletin-info-item">
-            <span className="bulletin-info-label">CIN</span>
-            <span className="bulletin-info-value">{etudiant.cin || '—'}</span>
-          </div>
-          <div className="bulletin-info-item">
-            <span className="bulletin-info-label">N° Inscription</span>
-            <span className="bulletin-info-value">{etudiant.numero_inscription || '—'}</span>
-          </div>
-          <div className="bulletin-info-item">
-            <span className="bulletin-info-label">Filière</span>
-            <span className="bulletin-info-value">{etudiant.groupe?.niveau?.filiere?.nom || '—'}</span>
-          </div>
-          <div className="bulletin-info-item">
-            <span className="bulletin-info-label">Niveau</span>
-            <span className="bulletin-info-value">{formatNiveau(etudiant.groupe?.niveau?.numero)}</span>
-          </div>
-          <div className="bulletin-info-item">
-            <span className="bulletin-info-label">Groupe</span>
-            <span className="bulletin-info-value">{etudiant.groupe?.nom || '—'}</span>
-          </div>
-        </div>
+          {groupe.promotion && (
+            <span className="bv-promotion">Promotion {groupe.promotion}</span>
+          )}
+        </header>
+
+        {ids.length > 0 && (
+          <dl className="bv-ids">
+            {ids.map(item => (
+              <div className="bv-id-item" key={item.label}>
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
 
         {allUnites.length > 0 && (
           <div className="bulletin-table-wrap">
@@ -146,7 +155,7 @@ export default function MonBulletinView() {
           </div>
         )}
 
-        <div className="bulletin-summary">
+        <div className="bv-summary">
           <SummaryCalculations bulletinData={bulletinData} />
         </div>
       </div>

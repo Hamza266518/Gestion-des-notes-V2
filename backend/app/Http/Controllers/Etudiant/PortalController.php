@@ -89,19 +89,37 @@ class PortalController extends Controller
             ->orderBy('ordre')
             ->get();
 
+        // One query for all the student's notes instead of one per control.
+        $controleIds = $unites->pluck('sequences.*.controles.*.id')->flatten()->all();
+
+        $notesByControle = [];
+        if ($controleIds !== []) {
+            Note::where('etudiant_id', $etudiantId)
+                ->whereIn('controle_id', $controleIds)
+                ->get(['controle_id', 'valeur', 'est_absent'])
+                ->each(function ($note) use (&$notesByControle) {
+                    $notesByControle[$note->controle_id] = $note;
+                });
+        }
+
         $notes = [];
 
         foreach ($unites as $unite) {
             foreach ($unite->sequences as $sequence) {
                 foreach ($sequence->controles as $controle) {
-                    $note = Note::where('etudiant_id', $etudiantId)
-                        ->where('controle_id', $controle->id)
-                        ->first();
+                    $note = $notesByControle[$controle->id] ?? null;
                     $notes[] = [
+                        'unite_id' => $unite->id,
                         'unite_nom' => $unite->nom,
+                        'unite_coefficient' => $unite->coefficient,
                         'sequence_nom' => $sequence->nom,
+                        'sequence_coefficient' => $sequence->coefficient,
+                        'controle_id' => $controle->id,
                         'controle_numero' => $controle->numero,
+                        'type' => $controle->type,
+                        'note_max' => $controle->note_max,
                         'valeur' => $note?->valeur,
+                        'est_absent' => (bool) ($note?->est_absent ?? false),
                     ];
                 }
             }

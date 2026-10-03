@@ -1,0 +1,233 @@
+/* Mon Bulletin — student page.
+   Everything here is prefixed bv- on purpose: the admin PDF builder
+   (pages/admin/Bulletins.jsx) reuses .bulletin-info and .bulletin-table, so
+   those rules in pages.css must stay exactly as they are. */
+
+.bv-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.7rem 1rem 2.5rem;
+}
+
+.bv-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+}
+
+/* Document header --------------------------------------------------- */
+
+.bv-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.35rem;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.bv-brand {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The long banner logo keeps its own proportions; height is capped so it
+   cannot push the header taller than the title block beside it. */
+.bv-logo {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 44px;
+  object-fit: contain;
+}
+
+.bv-title {
+  text-align: right;
+}
+
+.bv-title h2 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.bv-title p {
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--gray-500);
+}
+
+/* Student identity -------------------------------------------------- */
+
+.bv-id {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem 1.35rem 0.95rem;
+}
+
+/* A single accent rule: enough to anchor the name, not a boxed badge. */
+.bv-id-bar {
+  flex-shrink: 0;
+  width: 3px;
+  align-self: stretch;
+  min-height: 36px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+
+.bv-id-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.bv-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.bv-meta {
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  color: var(--gray-500);
+}
+
+.bv-promotion {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+
+/* Kept flush with the name rather than the card edge. */
+.bv-ids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2.25rem;
+  margin: 0;
+  padding: 0.85rem 1.35rem 1rem calc(1.35rem + 3px + 0.9rem);
+  border-top: 1px solid var(--gray-100);
+}
+
+.bv-id-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.bv-ids dt {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gray-400);
+}
+
+.bv-ids dd {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* Grade table ------------------------------------------------------- */
+/* Left alone on purpose: .bulletin-table and its cell classes are shared with
+   the admin PDF builder, so the table here uses pages.css untouched. */
+
+/* Summary ----------------------------------------------------------- */
+
+.bv-summary {
+  padding: 1.05rem 1.35rem 1.25rem;
+  border-top: 1px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+.bv-summary .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 0.85rem 1.25rem;
+}
+
+.bv-summary .summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
+
+.bv-summary .summary-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gray-400);
+}
+
+.bv-summary .summary-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  font-variant-numeric: tabular-nums;
+}
+
+.bv-summary .summary-value-main {
+  font-size: 1.15rem;
+  color: var(--primary);
+}
+
+/* Phones ------------------------------------------------------------ */
+
+@media (max-width: 720px) {
+  .bv-page {
+    padding: 0.6rem 0.6rem 2rem;
+  }
+
+  .bv-head {
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 0.9rem 1rem;
+  }
+
+  .bv-title {
+    text-align: left;
+  }
+
+  .bv-id {
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    padding: 0.9rem 1rem 0.85rem;
+  }
+
+  .bv-name {
+    font-size: 1.12rem;
+  }
+
+  /* Drops to its own line rather than squeezing the name into a narrow column. */
+  .bv-promotion {
+    flex: 1 0 100%;
+    margin-left: calc(3px + 0.7rem);
+    font-size: 0.76rem;
+  }
+
+  .bv-ids {
+    gap: 0.45rem 1.5rem;
+    padding: 0.8rem 1rem 0.9rem calc(1rem + 3px + 0.7rem);
+  }
+
+  .bv-logo {
+    max-height: 32px;
+  }
+
+  .bv-summary {
+    padding: 0.9rem 1rem 1.1rem;
+  }
+
+  .bv-summary .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

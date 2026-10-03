@@ -1,187 +1,242 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { FiAlertTriangle, FiRefreshCw, FiInbox } from 'react-icons/fi';
 import portalApi from '../../api/portal';
 import { passwordApi } from '../../api/password';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { handleApiError } from '../../utils/errorHandler';
-import { formatNiveau } from '../../utils/helpers';
+import {
+  formatNiveau, controlColumnLabel, controlColumnKey,
+  gradeValueClass, CONTROL_COLUMN_ORDER,
+} from '../../utils/helpers';
 import { PasswordChangeModal } from '../../components/etudiant/PasswordChangeModal';
-import Badge from '../../components/common/Badge';
-import Spinner from '../../components/common/Spinner';
 import '../../css/components.css';
 import '../../css/layout.css';
+import '../../css/mes-notes.css';
 
-function UniteAccordion({ uniteNom, sequences, allControlNums }) {
-  const [open, setOpen] = useState(false);
+function sortColumns(cols) {
+  return [...cols].sort((a, b) => {
+    const byType = CONTROL_COLUMN_ORDER.indexOf(a.type) - CONTROL_COLUMN_ORDER.indexOf(b.type);
+    return byType !== 0 ? byType : (a.numero ?? 0) - (b.numero ?? 0);
+  });
+}
+
+/**
+ * A sequence only gets a cell for the controls it actually has. One unit can mix
+ * a sequence with a single CC and another with three, so a column that does not
+ * apply is left empty rather than filled with a dash: a dash would look like a
+ * control that exists but has not been graded yet.
+ */
+function GradeCell({ ctrl }) {
+  if (!ctrl) return <td className="grade-cell" />;
+
+  if (ctrl.est_absent) {
+    return (
+      <td className="grade-cell">
+        <span className="grade-chip grade-fail">Absent</span>
+      </td>
+    );
+  }
+
+  const max = ctrl.note_max ?? 20;
+
+  if (ctrl.valeur === null || ctrl.valeur === undefined) {
+    return (
+      <td className="grade-cell">
+        <span className="grade-chip grade-none">Non noté</span>
+      </td>
+    );
+  }
 
   return (
-    <div className="card mb-2">
-      <div
-        className="card-header"
-        style={{ cursor: 'pointer' }}
-        onClick={() => setOpen(prev => !prev)}
-      >
-        <h4 className="mb-0 d-flex justify-content-between align-items-center">
-          <span>{uniteNom}</span>
-          <span className="chevron">{open ? '▲' : '▼'}</span>
-        </h4>
-      </div>
-      {open && (
-        <div className="card-body p-0">
-          <div className="table-wrap">
-            <table className="table mb-0">
-              <thead>
-                <tr>
-                  <th>Sequence</th>
-                  {allControlNums.map((num) => (
-                    <th key={num}>C{num}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sequences.map((seq, idx) => (
-                  <tr key={idx}>
-                    <td>{seq.sequence_nom}</td>
-                    {allControlNums.map((num) => {
-                      const ctrl = seq.controles.find(c => c.controle_numero === num);
-                      return (
-                        <td key={num}><strong>{ctrl?.valeur ?? '—'}</strong>/20</td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+    <td className="grade-cell">
+      <span className={`grade-chip ${gradeValueClass(ctrl.valeur, max)}`}>
+        {ctrl.valeur}
+        <small>/{max}</small>
+      </span>
+    </td>
+  );
+}
+
+function UnitSection({ unite, sequences, columns }) {
+  return (
+    <section className="unit-block">
+      <div className="unit-head">
+        <div>
+          <h2 className="unit-title">{unite.nom}</h2>
+          <p className="unit-sub">
+            {sequences.length} séquence{sequences.length > 1 ? 's' : ''}
+          </p>
         </div>
-      )}
-    </div>
-  );
-}
-
-function NotesTable({ notes }) {
-  if (!notes || notes.length === 0) return (
-    <div className="empty-state"><p>Aucune note disponible</p></div>
-  );
-
-  const grouped = notes.reduce((acc, note) => {
-    if (!acc[note.unite_nom]) {
-      acc[note.unite_nom] = [];
-    }
-    const existing = acc[note.unite_nom].find(s => s.sequence_nom === note.sequence_nom);
-    if (!existing) {
-      acc[note.unite_nom].push({ sequence_nom: note.sequence_nom, controles: [note] });
-    } else {
-      existing.controles.push(note);
-    }
-    return acc;
-  }, {});
-
-  const allControlNums = [...new Set(notes.map(n => n.controle_numero))].sort((a, b) => a - b);
-
-  return (
-    <div className="card mb-3">
-      <div className="card-body">
-        {Object.entries(grouped).map(([uniteNom, sequences]) => (
-          <UniteAccordion
-            key={uniteNom}
-            uniteNom={uniteNom}
-            sequences={sequences}
-            allControlNums={allControlNums}
-          />
-        ))}
+        {unite.coefficient != null && (
+          <span className="coef-label">Coef {unite.coefficient}</span>
+        )}
       </div>
-    </div>
-  );
-}
 
-function BulletinUniteAccordion({ unite }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="card mb-2">
-      <div
-        className="card-header"
-        style={{ cursor: 'pointer' }}
-        onClick={() => setOpen(prev => !prev)}
-      >
-        <h4 className="mb-0 d-flex justify-content-between align-items-center">
-          <span>
-            {unite.nom}
-            <Badge label={`Coef: ${unite.coefficient}`} color="primary" className="ml-2" />
-          </span>
-          <span className="chevron">{open ? '▲' : '▼'}</span>
-        </h4>
-      </div>
-      {open && (
-        <div className="card-body p-0">
-          <div className="table-wrap">
-            <table className="table mb-0">
-              <thead>
-                <tr>
-                  <th>Sequence</th>
-                  <th>Coef</th>
-                  {unite.sequences[0]?.controles?.map((ctrl, cIdx) => (
-                    <th key={cIdx}>C{ctrl.numero}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {unite.sequences?.map((seq, sIdx) => (
-                  <tr key={sIdx}>
-                    <td>{seq.nom}</td>
-                    <td><Badge label={`${(seq.controles || []).length} ctrl`} color="info" /></td>
-                    {seq.controles?.map((ctrl, cIdx) => (
-                      <td key={cIdx}>
-                        <strong style={ctrl.est_absent ? { color: '#b91c1c' } : undefined}>
-                          {ctrl.est_absent ? 'Absent' : (ctrl.valeur ?? '—')}
-                        </strong>
-                      </td>
-                    ))}
-                  </tr>
+      <div className="table-wrapper">
+        <table className="notes-table">
+          <thead>
+            <tr>
+              <th>Séquence</th>
+              {columns.map(col => <th key={col.key}>{col.label}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {sequences.map((seq, idx) => (
+              <tr key={idx}>
+                <td className="seq-cell">
+                  <span className="seq-name">{seq.nom}</span>
+                  {seq.coefficient != null && (
+                    <span className="seq-coef">Coef {seq.coefficient}</span>
+                  )}
+                </td>
+                {columns.map(col => (
+                  <GradeCell
+                    key={col.key}
+                    ctrl={(seq.controles || []).find(
+                      c => controlColumnKey(c.type, c.controle_numero) === col.key
+                    )}
+                  />
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BulletinSemestre({ unites }) {
-  if (!unites || unites.length === 0) return (
-    <div className="empty-state"><p>Aucune donnee disponible</p></div>
-  );
-
-  return (
-    <div className="card mb-3">
-      <div className="card-body">
-        {unites.map((unite, idx) => (
-          <BulletinUniteAccordion key={idx} unite={unite} />
-        ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-    </div>
+    </section>
   );
 }
 
-function SemesterToggle({ active, onChange }) {
+function NotesGrid({ notes }) {
+  const units = useMemo(() => {
+    const map = new Map();
+
+    for (const note of notes) {
+      const key = note.unite_id ?? note.unite_nom;
+      if (!map.has(key)) {
+        map.set(key, {
+          id: key,
+          nom: note.unite_nom,
+          coefficient: note.unite_coefficient,
+          sequenceMap: new Map(),
+        });
+      }
+      const unit = map.get(key);
+
+      if (!unit.sequenceMap.has(note.sequence_nom)) {
+        unit.sequenceMap.set(note.sequence_nom, {
+          nom: note.sequence_nom,
+          coefficient: note.sequence_coefficient,
+          controles: [],
+        });
+      }
+      unit.sequenceMap.get(note.sequence_nom).controles.push(note);
+    }
+
+    return [...map.values()].map(u => ({ ...u, sequences: [...u.sequenceMap.values()] }));
+  }, [notes]);
+
+  const columns = useMemo(() => {
+    const seen = new Map();
+    for (const note of notes) {
+      const key = controlColumnKey(note.type, note.controle_numero);
+      if (!seen.has(key)) {
+        seen.set(key, { key, type: note.type, numero: note.controle_numero });
+      }
+    }
+    return sortColumns([...seen.values()]).map(c => ({
+      ...c,
+      label: controlColumnLabel(c.type, c.numero),
+    }));
+  }, [notes]);
+
   return (
-    <div className="d-flex gap-2 mb-3">
-      <button
-        className={`btn ${active === 1 ? 'btn-primary' : 'btn-outline'}`}
-        onClick={() => onChange(1)}
-      >
-        Semestre 1
-      </button>
-      <button
-        className={`btn ${active === 2 ? 'btn-primary' : 'btn-outline'}`}
-        onClick={() => onChange(2)}
-      >
-        Semestre 2
-      </button>
-    </div>
+    <>
+      {units.map(unit => (
+        <UnitSection
+          key={unit.id}
+          unite={{ nom: unit.nom, coefficient: unit.coefficient }}
+          sequences={unit.sequences}
+          columns={columns}
+        />
+      ))}
+    </>
+  );
+}
+
+function BulletinUnit({ unite }) {
+  const columns = useMemo(() => {
+    const seen = new Map();
+    for (const seq of unite.sequences || []) {
+      for (const ctrl of seq.controles || []) {
+        const key = controlColumnKey(ctrl.type, ctrl.numero);
+        if (!seen.has(key)) {
+          seen.set(key, { key, type: ctrl.type, numero: ctrl.numero });
+        }
+      }
+    }
+    return sortColumns([...seen.values()]).map(c => ({
+      ...c,
+      label: controlColumnLabel(c.type, c.numero),
+    }));
+  }, [unite.sequences]);
+
+  const sequences = (unite.sequences || []).map(seq => ({
+    nom: seq.nom,
+    coefficient: seq.coefficient,
+    controles: (seq.controles || []).map(c => ({
+      type: c.type,
+      controle_numero: c.numero,
+      valeur: c.valeur,
+      note_max: c.note_max,
+      est_absent: c.est_absent,
+    })),
+  }));
+
+  return <UnitSection unite={unite} sequences={sequences} columns={columns} />;
+}
+
+function initialsOf(name) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  const last = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+  return (parts[0][0] + last[0]).toUpperCase();
+}
+
+function StudentHeader({ etudiant }) {
+  const groupe = etudiant.groupe || {};
+  const niveau = groupe.niveau || {};
+  const filiere = niveau.filiere || {};
+
+  const facts = [
+    { label: 'CIN', value: etudiant.cin },
+    { label: 'N° inscription', value: etudiant.numero_inscription },
+    { label: 'Groupe', value: groupe.nom },
+    { label: 'Filière', value: filiere.nom },
+    { label: 'Niveau', value: niveau.numero ? formatNiveau(niveau.numero) : null },
+    { label: 'Promotion', value: groupe.promotion },
+  ].filter(f => f.value);
+
+  return (
+    <header className="student-card">
+      <div className="student-id">
+        <span className="student-avatar" aria-hidden="true">
+          {initialsOf(etudiant.nom_prenom)}
+        </span>
+        <h1 className="student-name">{etudiant.nom_prenom}</h1>
+      </div>
+
+      {facts.length > 0 && (
+        <dl className="student-facts">
+          {facts.map(fact => (
+            <div className="student-fact" key={fact.label}>
+              <dt>{fact.label}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </header>
   );
 }
 
@@ -193,13 +248,12 @@ export default function MonBulletin() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [checkingPassword, setCheckingPassword] = useState(true);
   const toast = useToast();
-  const navigate = useNavigate();
   const { currentAnnee } = useAnneeAcademique();
 
   const loadBulletin = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const res = await portalApi.getBulletin(currentAnnee?.id);
       setBulletin(res.data.data);
@@ -211,7 +265,6 @@ export default function MonBulletin() {
     }
   }, [currentAnnee, toast]);
 
-  // Check if student needs to change password on first login
   useEffect(() => {
     const checkPasswordStatus = async () => {
       try {
@@ -235,14 +288,31 @@ export default function MonBulletin() {
     }
   }, [loadBulletin, checkingPassword]);
 
-  if (loading) return <Spinner />;
+  if (loading) {
+    return (
+      <div className="mes-notes-page">
+        <div className="mes-notes-container">
+          <div className="notes-loading">
+            <div className="loading-spinner" />
+            <p>Chargement de vos notes</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
-      <div className="page">
-        <div className="alert alert-danger">
-          <p>{error}</p>
-          <button className="btn btn-outline mt-2" onClick={loadBulletin}>Reessayer</button>
+      <div className="mes-notes-page">
+        <div className="mes-notes-container">
+          <div className="notes-error">
+            <FiAlertTriangle className="error-icon" />
+            <h3>Impossible de charger vos notes</h3>
+            <p>{error}</p>
+            <button className="btn-retry" onClick={loadBulletin}>
+              <FiRefreshCw /> Réessayer
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -250,9 +320,13 @@ export default function MonBulletin() {
 
   if (!bulletin) {
     return (
-      <div className="page">
-        <div className="empty-state">
-          <p>Aucune donnee disponible</p>
+      <div className="mes-notes-page">
+        <div className="mes-notes-container">
+          <div className="notes-error">
+            <FiInbox className="error-icon" />
+            <h3>Aucune note disponible</h3>
+            <p>Vos notes n'ont pas encore été publiées.</p>
+          </div>
         </div>
       </div>
     );
@@ -260,53 +334,56 @@ export default function MonBulletin() {
 
   const { etudiant, publications, notes_s1, notes_s2, bulletin: bulletinData } = bulletin;
 
+  const activeNotes = activeSemestre === 1 ? notes_s1 : notes_s2;
+  const notesPublished = activeSemestre === 1 ? publications?.notes_s1 : publications?.notes_s2;
+  const bulletinPublished = publications?.bulletin && bulletinData;
+  const semesterUnites = bulletinPublished
+    ? bulletinData.semestres?.[activeSemestre] || []
+    : [];
+
   return (
-    <div className="page">
-      <div className="page-header">
-        <button className="btn btn-primary" onClick={() => navigate('/etudiant/mon-bulletin')}>
-          Mon Bulletin
-        </button>
-      </div>
+    <div className="mes-notes-page">
+      <div className="mes-notes-container">
+        <StudentHeader etudiant={etudiant} />
 
-      <div className="card mb-4">
-        <div className="card-body">
-          <h4 className="mb-3">Informations de l'etudiant</h4>
-          <div className="row">
-            <div className="col-md-6">
-              <p><strong>Nom:</strong> {etudiant.nom_prenom}</p>
-              <p><strong>CIN:</strong> {etudiant.cin}</p>
-            </div>
-            <div className="col-md-6">
-              <p><strong>Groupe:</strong> {etudiant.groupe?.nom}</p>
-              <p><strong>Niveau:</strong> {formatNiveau(etudiant.groupe?.niveau?.numero)}</p>
-            </div>
+        <nav className="semester-section">
+          <button
+            className={`semestre-btn ${activeSemestre === 1 ? 'active' : ''}`}
+            onClick={() => setActiveSemestre(1)}
+          >
+            Semestre 1
+          </button>
+          <button
+            className={`semestre-btn ${activeSemestre === 2 ? 'active' : ''}`}
+            onClick={() => setActiveSemestre(2)}
+          >
+            Semestre 2
+          </button>
+        </nav>
+
+        {!notesPublished && !bulletinPublished && (
+          <div className="publication-notice">
+            <FiAlertTriangle className="notice-icon" />
+            <p>Les notes de ce semestre ne sont pas encore publiées.</p>
           </div>
-        </div>
+        )}
+
+        {bulletinPublished
+          ? (semesterUnites.length > 0
+            ? semesterUnites.map((unite, idx) => (
+              <BulletinUnit key={unite.id ?? idx} unite={unite} />
+            ))
+            : (
+              <div className="unit-block">
+                <p className="table-empty">Aucune note pour ce semestre</p>
+              </div>
+            ))
+          : (notesPublished && <NotesGrid notes={activeNotes || []} />)}
       </div>
-
-
-      {publications?.bulletin && bulletinData ? (
-        <div>
-          <SemesterToggle active={activeSemestre} onChange={setActiveSemestre} />
-          <BulletinSemestre unites={bulletinData.semestres?.[activeSemestre]} />
-        </div>
-      ) : (
-        <div>
-          <SemesterToggle active={activeSemestre} onChange={setActiveSemestre} />
-          {activeSemestre === 1 && publications?.notes_s1 && <NotesTable notes={notes_s1} />}
-          {activeSemestre === 2 && publications?.notes_s2 && <NotesTable notes={notes_s2} />}
-          {((activeSemestre === 1 && !publications?.notes_s1) || (activeSemestre === 2 && !publications?.notes_s2)) && (
-            <div className="empty-state"><p>Aucune note publiee pour ce semestre</p></div>
-          )}
-        </div>
-      )}
 
       {showPasswordModal && (
-        <PasswordChangeModal 
-          onSuccess={() => setShowPasswordModal(false)} 
-        />
+        <PasswordChangeModal onSuccess={() => setShowPasswordModal(false)} />
       )}
     </div>
   );
 }
-

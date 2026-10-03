@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { FiSearch, FiX } from 'react-icons/fi';
 import { notesApi } from '../../api/notes';
+import { etudiantsApi } from '../../api/etudiants';
 import { unitesApi } from '../../api/unites';
 import { sequencesApi } from '../../api/sequences';
 import { useToast } from '../../context/ToastContext';
@@ -25,13 +26,16 @@ export default function GestionNotes() {
   const [sequences, setSequences] = useState([]);
   const [selectedSequenceId, setSelectedSequenceId] = useState('');
   const [notesByControl, setNotesByControl] = useState({});
+  const [roster, setRoster] = useState([]);
   const [examens, setExamens] = useState({}); // { theorique: { studentId: valeur }, pratique: { studentId: valeur } }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
   const [editValue, setEditValue] = useState('');
+  const [newNote, setNewNote] = useState(null);
   const [editingExam, setEditingExam] = useState(null);
   const [editExamValue, setEditExamValue] = useState('');
+  const [editExamAbsent, setEditExamAbsent] = useState(false);
   const [saving, setSaving] = useState(false);
   const [filtersApplied, setFiltersApplied] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,6 +58,7 @@ export default function GestionNotes() {
       setSequences([]);
       setNotesByControl({});
       setExamens({});
+      setRoster([]);
     } else {
       setUnites([]);
       setSelectedUniteId('');
@@ -61,6 +66,7 @@ export default function GestionNotes() {
       setSequences([]);
       setNotesByControl({});
       setExamens({});
+      setRoster([]);
     }
   }, [selected.filiere_id]);
 
@@ -113,6 +119,20 @@ export default function GestionNotes() {
     }
   }, [selectedSequenceId, selected.groupe_id, sequences]);
 
+  const loadRoster = useCallback(async () => {
+    setError(null);
+    try {
+      const res = await etudiantsApi.getEtudiants({
+        groupe_id: selected.groupe_id,
+        annee_academique_id: selected.annee_academique_id || currentAnnee?.id,
+      });
+      setRoster(res.data?.data || []);
+    } catch (err) {
+      const info = handleApiError(err, toast, { showToast: false });
+      setError(info.message);
+    }
+  }, [selected.groupe_id, selected.annee_academique_id]);
+
   const loadExamens = useCallback(async () => {
     setError(null);
     try {
@@ -142,12 +162,13 @@ export default function GestionNotes() {
     const promises = [];
     if (selectedSequenceId) promises.push(loadNotesForSequence());
     if (selectedUniteId) promises.push(loadExamens());
+    promises.push(loadRoster());
     try {
       await Promise.all(promises);
     } finally {
       setLoading(false);
     }
-  }, [selectedSequenceId, selectedUniteId, selected.groupe_id, loadNotesForSequence, loadExamens]);
+  }, [selectedSequenceId, selectedUniteId, selected.groupe_id, loadNotesForSequence, loadExamens, loadRoster]);
 
   const prevSelections = useRef({ groupe_id: '', unite_id: '', sequence_id: '' });
 
@@ -190,23 +211,59 @@ export default function GestionNotes() {
     }
   };
 
+  const handleSaveNewNote = async () => {
+    if (!newNote) return;
+    // An empty value on blur means "never mind" rather than a zero.
+    if (editValue === '' || editValue === null) {
+      setNewNote(null);
+      setEditValue('');
+      return;
+    }
+    setSaving(true);
+    try {
+      await notesApi.createNote({
+        etudiant_id: newNote.etudiant_id,
+        controle_id: newNote.controle_id,
+        valeur: parseFloat(editValue),
+      });
+      showSuccess(toast, 'Note enregistrée');
+      setNewNote(null);
+      setEditValue('');
+      if (selectedSequenceId && selected.groupe_id) {
+        await loadNotesForSequence();
+      }
+    } catch (err) {
+      handleApiError(err, toast);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSaveExam = async (type) => {
-    if (!editingExam || editExamValue === '' || editExamValue === null) return;
+    if (!editingExam) return;
+    if (!editExamAbsent && (editExamValue === '' || editExamValue === null)) return;
     const unite = unites.find(u => u.id == selectedUniteId);
     if (!unite) return;
     setSaving(true);
     try {
       await notesApi.saveBulkExamens({
-        examens: [{ etudiant_id: editingExam.etudiant_id, valeur: parseFloat(editExamValue) }],
+        examens: [{
+          etudiant_id: editingExam.etudiant_id,
+          valeur: editExamAbsent ? 0 : parseFloat(editExamValue),
+          est_absent: editExamAbsent,
+        }],
         unite_id: selectedUniteId,
         bloc: 1,
         type: type,
         semestre: unite.semestre || 1,
         annee_academique_id: selected.annee_academique_id || currentAnnee?.id || 1,
       });
-      showSuccess(toast, `Note d'examen ${type} enregistrée`);
+      showSuccess(toast, editExamAbsent
+        ? `Absence d'examen ${type} enregistrée`
+        : `Note d'examen ${type} enregistrée`);
       setEditingExam(null);
       setEditExamValue('');
+      setEditExamAbsent(false);
       await loadExamens();
     } catch (err) {
       handleApiError(err, toast);
@@ -215,9 +272,16 @@ export default function GestionNotes() {
     }
   };
 
-  const etudiants = [...new Map(
-    Object.values(notesByControl).flat().map(n => [n.etudiant_id, n.etudiant])
-  ).values()];
+  const etudiants = useMemo(() => {
+    // The roster drives the rows. Notes alone cannot: a sequence that has never
+    // been graded has no Note rows, which used to collapse the whole table to
+    // an empty state and make the first grade impossible to enter.
+    if (roster.length > 0) return roster;
+
+    return [...new Map(
+      Object.values(notesByControl).flat().map(n => [n.etudiant_id, n.etudiant])
+    ).values()];
+  }, [roster, notesByControl]);
 
   const filteredEtudiants = useMemo(() => {
     if (!searchTerm.trim()) return etudiants;
@@ -250,6 +314,7 @@ export default function GestionNotes() {
               setSequences([]);
               setNotesByControl({});
               setExamens({});
+              setRoster([]);
               setFiltersApplied(false);
             }}
           >
@@ -359,7 +424,22 @@ export default function GestionNotes() {
                         <td><strong>{etudiant.nom_prenom}</strong></td>
                         {ctrlCells.map(({ ctrl, note }) => (
                           <td key={ctrl?.id}>
-                            {note ? (
+                            {newNote?.controle_id === ctrl?.id && newNote?.etudiant_id === etudiant.id ? (
+                              <input
+                                type="number"
+                                className="form-input form-input-sm"
+                                value={editValue}
+                                min="0"
+                                max={ctrl?.note_max || 20}
+                                step="0.25"
+                                style={{ width: '60px' }}
+                                onChange={e => setEditValue(e.target.value)}
+                                onBlur={handleSaveNewNote}
+                                onKeyDown={e => { if (e.key === 'Enter') handleSaveNewNote(); }}
+                                disabled={saving}
+                                autoFocus
+                              />
+                            ) : note ? (
                               editingNote === note.id ? (
                                 <input
                                   type="number"
@@ -399,18 +479,27 @@ export default function GestionNotes() {
                                 </span>
                               )
                             ) : (
-                              <span style={{ color: '#ccc' }}>—</span>
+                              <span
+                                style={{ color: '#ccc', cursor: 'pointer' }}
+                                onClick={() => {
+                                  setNewNote({ etudiant_id: etudiant.id, controle_id: ctrl?.id });
+                                  setEditValue('');
+                                }}
+                                title="Aucune note — cliquer pour saisir"
+                              >
+                                —
+                              </span>
                             )}
                           </td>
                         ))}
                         {showExamCols && (
                           <td>
-                            {theoEx ? (
-                              editingExam?.etudiant_id === etudiant.id && editingExam?.type === 'theorique' ? (
+                            {editingExam?.etudiant_id === etudiant.id && editingExam?.type === 'theorique' ? (
+                              <>
                                 <input
                                   type="number"
                                   className="form-input form-input-sm"
-                                  value={editExamValue}
+                                  value={editExamAbsent ? '' : editExamValue}
                                   min="0"
                                   max="20"
                                   step="0.25"
@@ -418,15 +507,35 @@ export default function GestionNotes() {
                                   onChange={e => setEditExamValue(e.target.value)}
                                   onBlur={() => handleSaveExam('theorique')}
                                   onKeyDown={e => { if (e.key === 'Enter') handleSaveExam('theorique'); }}
-                                  disabled={saving}
+                                  disabled={saving || editExamAbsent}
                                   autoFocus
                                 />
-                              ) : theoEx.est_absent ? (
+                                <label
+                                  title="Marquer comme absent"
+                                  onMouseDown={e => e.preventDefault()}
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 4, fontSize: 11, color: '#666', cursor: 'pointer' }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={editExamAbsent}
+                                    disabled={saving}
+                                    onChange={e => {
+                                      const next = e.target.checked;
+                                      setEditExamAbsent(next);
+                                      setEditExamValue(next ? '' : (theoEx?.valeur ?? ''));
+                                    }}
+                                  />
+                                  Abs.
+                                </label>
+                              </>
+                            ) : theoEx ? (
+                              theoEx.est_absent ? (
                                 <span
                                   style={{ ...noteDisplayStyle(), cursor: 'pointer' }}
                                   onClick={() => {
                                     setEditingExam({ etudiant_id: etudiant.id, type: 'theorique' });
                                     setEditExamValue('');
+                                    setEditExamAbsent(true);
                                   }}
                                   title="Absent — cliquer pour corriger"
                                 >
@@ -438,24 +547,35 @@ export default function GestionNotes() {
                                   onClick={() => {
                                     setEditingExam({ etudiant_id: etudiant.id, type: 'theorique' });
                                     setEditExamValue(theoEx.valeur ?? '');
+                                    setEditExamAbsent(false);
                                   }}
                                 >
                                   {theoEx.valeur ?? '—'}
                                 </span>
                               )
                             ) : (
-                              <span style={{ color: '#ccc' }}>—</span>
+                              <span
+                                style={{ color: '#ccc', cursor: 'pointer' }}
+                                onClick={() => {
+                                  setEditingExam({ etudiant_id: etudiant.id, type: 'theorique' });
+                                  setEditExamValue('');
+                                  setEditExamAbsent(false);
+                                }}
+                                title="Aucun examen — cliquer pour saisir"
+                              >
+                                —
+                              </span>
                             )}
                           </td>
                         )}
                         {showExamCols && (
                           <td>
-                            {praEx ? (
-                              editingExam?.etudiant_id === etudiant.id && editingExam?.type === 'pratique' ? (
+                            {editingExam?.etudiant_id === etudiant.id && editingExam?.type === 'pratique' ? (
+                              <>
                                 <input
                                   type="number"
                                   className="form-input form-input-sm"
-                                  value={editExamValue}
+                                  value={editExamAbsent ? '' : editExamValue}
                                   min="0"
                                   max="20"
                                   step="0.25"
@@ -463,15 +583,35 @@ export default function GestionNotes() {
                                   onChange={e => setEditExamValue(e.target.value)}
                                   onBlur={() => handleSaveExam('pratique')}
                                   onKeyDown={e => { if (e.key === 'Enter') handleSaveExam('pratique'); }}
-                                  disabled={saving}
+                                  disabled={saving || editExamAbsent}
                                   autoFocus
                                 />
-                              ) : praEx.est_absent ? (
+                                <label
+                                  title="Marquer comme absent"
+                                  onMouseDown={e => e.preventDefault()}
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 4, fontSize: 11, color: '#666', cursor: 'pointer' }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={editExamAbsent}
+                                    disabled={saving}
+                                    onChange={e => {
+                                      const next = e.target.checked;
+                                      setEditExamAbsent(next);
+                                      setEditExamValue(next ? '' : (praEx?.valeur ?? ''));
+                                    }}
+                                  />
+                                  Abs.
+                                </label>
+                              </>
+                            ) : praEx ? (
+                              praEx.est_absent ? (
                                 <span
                                   style={{ ...noteDisplayStyle(), cursor: 'pointer' }}
                                   onClick={() => {
                                     setEditingExam({ etudiant_id: etudiant.id, type: 'pratique' });
                                     setEditExamValue('');
+                                    setEditExamAbsent(true);
                                   }}
                                   title="Absent — cliquer pour corriger"
                                 >
@@ -483,13 +623,24 @@ export default function GestionNotes() {
                                   onClick={() => {
                                     setEditingExam({ etudiant_id: etudiant.id, type: 'pratique' });
                                     setEditExamValue(praEx.valeur ?? '');
+                                    setEditExamAbsent(false);
                                   }}
                                 >
                                   {praEx.valeur ?? '—'}
                                 </span>
                               )
                             ) : (
-                              <span style={{ color: '#ccc' }}>—</span>
+                              <span
+                                style={{ color: '#ccc', cursor: 'pointer' }}
+                                onClick={() => {
+                                  setEditingExam({ etudiant_id: etudiant.id, type: 'pratique' });
+                                  setEditExamValue('');
+                                  setEditExamAbsent(false);
+                                }}
+                                title="Aucun examen — cliquer pour saisir"
+                              >
+                                —
+                              </span>
                             )}
                           </td>
                         )}

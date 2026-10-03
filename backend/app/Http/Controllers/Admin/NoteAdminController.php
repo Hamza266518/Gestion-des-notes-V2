@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Controle;
 use App\Models\Etudiant;
 use App\Models\Examen;
 use App\Models\Note;
@@ -11,6 +12,7 @@ use App\Models\Unite;
 use App\Services\BulletinService;
 use App\Services\MoyenneService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class NoteAdminController extends Controller
 {
@@ -37,6 +39,72 @@ class NoteAdminController extends Controller
             return response()->json(['success' => true, 'data' => $notes]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors du chargement des notes'], 500);
+        }
+    }
+
+    /**
+     * Create the first grade of a control.
+     *
+     * NoteAdminController::index only ever returns existing rows, so a sequence
+     * that has never been graded produced no rows at all and the admin could not
+     * enter anything. This endpoint lets the saisie grid open a cell that has no
+     * Note yet. It mirrors update(): same publication guard, same per-control
+     * note_max scale, same "absence is a zero" rule.
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'etudiant_id' => 'required|exists:etudiants,id',
+            'controle_id' => 'required|exists:controles,id',
+            'valeur'     => 'nullable|numeric',
+            'est_absent' => 'nullable|boolean',
+        ]);
+
+        try {
+            $etudiant = Etudiant::findOrFail($request->etudiant_id);
+            $controle = Controle::with('sequence.unite')->findOrFail($request->controle_id);
+
+            $semestre = $controle->sequence?->unite?->semestre;
+            $types = $semestre === 1 ? ['notes_s1', 'bulletin'] : ['notes_s2', 'bulletin'];
+            $published = SemestrePublication::where('groupe_id', $etudiant->groupe_id)
+                ->where('annee_academique_id', $etudiant->annee_academique_id)
+                ->whereIn('type', $types)
+                ->where('is_published', true)
+                ->exists();
+
+            if ($published) {
+                return response()->json(['success' => false, 'message' => 'Impossible de modifier une note publiée'], 403);
+            }
+
+            $noteMax = $controle->note_max ?: 20;
+            $estAbsent = $request->boolean('est_absent');
+            $validator = Validator::make($request->all(), [
+                'valeur' => [$estAbsent ? 'nullable' : 'required', 'numeric', 'min:0', "max:{$noteMax}"],
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()->first(),
+                    'errors'  => $validator->errors(),
+                ], 422);
+            }
+
+            $note = Note::updateOrCreate(
+                ['etudiant_id' => $etudiant->id, 'controle_id' => $controle->id],
+                [
+                    'valeur'     => $estAbsent ? 0 : $request->valeur,
+                    'est_absent' => $estAbsent,
+                ]
+            );
+
+            return response()->json([
+                'success' => true,
+                'data'    => $note,
+                'message' => $estAbsent ? 'Marqué absent' : 'Note enregistrée',
+            ], 201);
+        } catch (\Exception $e) {
+            \Log::error('NoteAdminController::store error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la création de la note'], 500);
         }
     }
 
