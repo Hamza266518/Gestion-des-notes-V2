@@ -3,13 +3,22 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Etudiant;
 use App\Models\Examen;
 use App\Models\ActivityLog;
+use App\Services\PublicationLockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class ExamController extends Controller
 {
+    protected $locks;
+
+    public function __construct(PublicationLockService $locks)
+    {
+        $this->locks = $locks;
+    }
+
     public function index(Request $request)
     {
         $examens = Examen::with(['etudiant', 'unite'])
@@ -36,6 +45,25 @@ class ExamController extends Controller
             'semestre' => 'required|integer|in:1,2',
             'annee_academique_id' => 'required|exists:annees_academiques,id',
         ]);
+
+        // Exam grades carry no control, so the lock is resolved from the group
+        // each student actually belongs to. Resolved before any write: a batch
+        // that touches one published group is refused whole, so an admin is
+        // never told a grade saved when it did not.
+        $etudiantIds = collect($request->examens)->pluck('etudiant_id')->map(fn ($id) => (int) $id);
+        $groupeIds = Etudiant::whereIn('id', $etudiantIds)->pluck('groupe_id')
+            ->map(fn ($id) => (int) $id)->all();
+
+        if ($this->locks->unGroupeVerrouille(
+            $groupeIds,
+            (int) $request->annee_academique_id,
+            (int) $request->semestre
+        )) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de modifier des notes d\'examen : les résultats de ce groupe sont publiés.',
+            ], 403);
+        }
 
         $admin = Auth::user();
         $saved = 0;

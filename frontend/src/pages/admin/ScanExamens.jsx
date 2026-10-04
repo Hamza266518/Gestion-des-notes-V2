@@ -6,6 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Spinner from '../../components/common/Spinner';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
+import { MESSAGE_SEMESTRE_PUBLIE } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -109,6 +110,8 @@ export default function ScanExamens() {
         etudiant_id: r.etudiant_id || null,
         numero_inscription: r.numero_inscription || '',
         groupe: r.groupe || '',
+        groupe_id: r.groupe_id || null,
+        verrouille: r.verrouille || false,
         found: r.found || false,
       }));
 
@@ -118,6 +121,8 @@ export default function ScanExamens() {
         const unrec = scanned.filter(r => !r.found).length;
         let msg = `${scanned.length} note(s) détectée(s)`;
         if (unrec > 0) msg += `, ${unrec} non reconnue(s)`;
+        const locked = scanned.filter(r => r.verrouille).length;
+        if (locked > 0) msg += `, ${locked} groupe(s) publié(s)`;
         showSuccess(toast, msg);
         setResults(scanned);
         setStep(3);
@@ -150,6 +155,7 @@ export default function ScanExamens() {
           annee_academique_id: currentAnnee.id,
           filiere_id: selFiliere,
           niveau_numero: selectedUnite?.numero_annee,
+          semestre: semestre || undefined,
         });
         const data = res.data.data || [];
         setSearchMatches(prev => { const n = [...prev]; n[i] = data; return n; });
@@ -162,6 +168,8 @@ export default function ScanExamens() {
     setResults(prev => prev.map((r, idx) => idx === i ? {
       ...r,
       etudiant_id: student.id,
+      groupe_id: student.groupe_id ?? r.groupe_id,
+      verrouille: student.verrouille ?? r.verrouille,
       nom_prenom: student.nom_prenom,
       cin: student.cin || r.cin,
       numero_inscription: student.numero_inscription || '',
@@ -173,10 +181,18 @@ export default function ScanExamens() {
     setDropdownIndex(null);
   };
 
+  const resultatsVerrouilles = results.filter(r => r.etudiant_id && r.verrouille);
+
   const handleConfirm = async () => {
     const missing = results.filter(r => !r.etudiant_id);
     if (missing.length > 0) {
       toast.warning(`${missing.length} étudiant(s) non reconnu(s). Retirez-les ou recherchez-les manuellement.`);
+      return;
+    }
+    // Checked here as well as on the server: the button being clickable and
+    // then refused is worse than saying so before the request is sent.
+    if (resultatsVerrouilles.length > 0) {
+      toast.warning(MESSAGE_SEMESTRE_PUBLIE);
       return;
     }
     setSaving(true);
@@ -377,7 +393,11 @@ export default function ScanExamens() {
                         <td style={{ padding: '12px 16px' }}>{r.cin}</td>
                         <td style={{ padding: '12px 16px' }}>{r.numero_inscription}</td>
                         <td style={{ padding: '12px 16px' }}>
-                          {r.found ? (
+                          {r.verrouille ? (
+                            <span style={{ color: '#b91c1c', fontWeight: 600 }} title={MESSAGE_SEMESTRE_PUBLIE}>
+                              {r.note ?? '—'}
+                            </span>
+                          ) : r.found ? (
                             <input type="number" className="form-input" style={{ width: 70, padding: '8px 12px', fontSize: '15px' }}
                               value={r.note} min={0} max={20} step={0.5}
                               onChange={e => updateResult(i, 'note', e.target.value)} />
@@ -386,7 +406,11 @@ export default function ScanExamens() {
                           )}
                         </td>
                         <td style={{ padding: '12px 16px' }}>
-                          {r.found ? (
+                          {r.verrouille ? (
+                            <span style={{ color: '#b45309', fontWeight: 600, fontSize: 13 }} title={MESSAGE_SEMESTRE_PUBLIE}>
+                              Publié
+                            </span>
+                          ) : r.found ? (
                             <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: 13 }}>✓ Reconnu</span>
                           ) : (
                             <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 13 }}>✗ Introuvable</span>
@@ -421,9 +445,25 @@ export default function ScanExamens() {
           <div className="alert alert-warning" style={{ marginBottom: 16 }}>
             <strong>Confirmez pour enregistrer les notes</strong> — cela enregistrera {results.length} note(s) d'examen pour l'unité sélectionnée.
           </div>
+          {resultatsVerrouilles.length > 0 && (
+            <div className="alert alert-danger" style={{ marginBottom: 16 }}>
+              {MESSAGE_SEMESTRE_PUBLIE}
+              <ul style={{ margin: '8px 0 0 18px', padding: 0 }}>
+                {resultatsVerrouilles.map(r => (
+                  <li key={r.etudiant_id}>{r.nom_prenom} — {r.groupe}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-outline" onClick={() => setStep(3)} disabled={loading}>← Retour</button>
-            <button className="btn btn-primary" style={{ minWidth: 220, justifyContent: 'center' }} disabled={loading} onClick={handleConfirm}>
+            <button
+              className="btn btn-primary"
+              style={{ minWidth: 220, justifyContent: 'center' }}
+              disabled={loading || resultatsVerrouilles.length > 0}
+              title={resultatsVerrouilles.length > 0 ? MESSAGE_SEMESTRE_PUBLIE : undefined}
+              onClick={handleConfirm}
+            >
               {saving ? <><Spinner /> Enregistrement...</> : `Confirmer ${results.length} note(s)`}
             </button>
           </div>

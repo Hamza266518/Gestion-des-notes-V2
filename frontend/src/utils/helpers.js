@@ -162,6 +162,38 @@ export function gradeValueClass(valeur, noteMax = 20) {
   return 'grade-fail';
 }
 
+/**
+ * Publication types that close a semester, mirroring
+ * PublicationLockService::typesPour() on the backend. The two must agree:
+ * if the UI thinks a group is open while the server thinks it is published,
+ * the admin sees an editable cell that only fails after they submit.
+ */
+export function publicationTypesForSemestre(semestre) {
+  return Number(semestre) === 1 ? ['notes_s1', 'bulletin'] : ['notes_s2', 'bulletin'];
+}
+
+/**
+ * Has this group already published the given semester?
+ *
+ * Reading only, so this decides what the UI disables. The server re-checks
+ * every write: this is a courtesy to the admin, not the guarantee.
+ */
+export function estSemestrePublique(publications, { groupeId, anneeId, semestre }) {
+  if (!Array.isArray(publications) || !groupeId || !anneeId) return false;
+
+  const types = publicationTypesForSemestre(semestre);
+
+  return publications.some(p =>
+    Number(p.is_published) === 1 &&
+    String(p.groupe_id) === String(groupeId) &&
+    String(p.annee_academique_id) === String(anneeId) &&
+    types.includes(p.type)
+  );
+}
+
+export const MESSAGE_SEMESTRE_PUBLIE =
+  'Résultats publiés : la modification est désactivée. Dépubliez pour modifier.';
+
 export function calculateStats(notes) {
   const valid = notes.filter(n => n.valeur !== null && n.valeur !== undefined);
   if (valid.length === 0) {

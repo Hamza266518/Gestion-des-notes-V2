@@ -7,10 +7,10 @@ use App\Models\Controle;
 use App\Models\Etudiant;
 use App\Models\Examen;
 use App\Models\Note;
-use App\Models\SemestrePublication;
 use App\Models\Unite;
 use App\Services\BulletinService;
 use App\Services\MoyenneService;
+use App\Services\PublicationLockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -18,11 +18,16 @@ class NoteAdminController extends Controller
 {
     protected $moyenneService;
     protected $bulletinService;
+    protected $locks;
 
-    public function __construct(MoyenneService $moyenneService, BulletinService $bulletinService)
-    {
+    public function __construct(
+        MoyenneService $moyenneService,
+        BulletinService $bulletinService,
+        PublicationLockService $locks
+    ) {
         $this->moyenneService = $moyenneService;
         $this->bulletinService = $bulletinService;
+        $this->locks = $locks;
     }
 
     public function index(Request $request)
@@ -65,14 +70,12 @@ class NoteAdminController extends Controller
             $controle = Controle::with('sequence.unite')->findOrFail($request->controle_id);
 
             $semestre = $controle->sequence?->unite?->semestre;
-            $types = $semestre === 1 ? ['notes_s1', 'bulletin'] : ['notes_s2', 'bulletin'];
-            $published = SemestrePublication::where('groupe_id', $etudiant->groupe_id)
-                ->where('annee_academique_id', $etudiant->annee_academique_id)
-                ->whereIn('type', $types)
-                ->where('is_published', true)
-                ->exists();
 
-            if ($published) {
+            if ($this->locks->semestreVerrouille(
+                (int) $etudiant->groupe_id,
+                (int) $etudiant->annee_academique_id,
+                (int) $semestre
+            )) {
                 return response()->json(['success' => false, 'message' => 'Impossible de modifier une note publiée'], 403);
             }
 
@@ -116,14 +119,7 @@ class NoteAdminController extends Controller
         $semestre = $note->controle?->sequence?->unite?->semestre;
         $anneeAcademiqueId = $note->etudiant?->annee_academique_id;
 
-        $types = $semestre === 1 ? ['notes_s1', 'bulletin'] : ['notes_s2', 'bulletin'];
-        $published = SemestrePublication::where('groupe_id', $groupeId)
-            ->where('annee_academique_id', $anneeAcademiqueId)
-            ->whereIn('type', $types)
-            ->where('is_published', true)
-            ->exists();
-
-        if ($published) {
+        if ($this->locks->semestreVerrouille((int) $groupeId, (int) $anneeAcademiqueId, (int) $semestre)) {
             return response()->json(['success' => false, 'message' => 'Impossible de modifier une note publiée'], 403);
         }
 

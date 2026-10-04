@@ -10,6 +10,7 @@ use App\Models\Unite;
 use App\Models\ActivityLog;
 use App\Services\GeminiService;
 use App\Services\NoteParserService;
+use App\Services\PublicationLockService;
 use App\Traits\ValidatesScanUploads;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,11 +22,13 @@ class ScanExamenController extends Controller
 
     protected $gemini;
     protected $parser;
+    protected $locks;
 
-    public function __construct(GeminiService $gemini, NoteParserService $parser)
+    public function __construct(GeminiService $gemini, NoteParserService $parser, PublicationLockService $locks)
     {
         $this->gemini = $gemini;
         $this->parser = $parser;
+        $this->locks = $locks;
     }
 
     public function scan(Request $request)
@@ -132,6 +135,16 @@ class ScanExamenController extends Controller
                     'etudiant_id'        => $etudiant?->id,
                     'numero_inscription' => $etudiant?->numero_inscription ?? '',
                     'groupe'             => $etudiant?->groupe?->nom ?? '',
+                    // The id is what the frontend needs to tell whether this
+                    // student's group has already published the semester; the
+                    // name alone cannot be matched against a publication row.
+                    'groupe_id'          => $etudiant?->groupe_id,
+                    'verrouille'         => $etudiant !== null
+                        && $this->locks->semestreVerrouille(
+                            (int) $etudiant->groupe_id,
+                            (int) $request->annee_academique_id,
+                            (int) $request->semestre
+                        ),
                     'found'              => $etudiant !== null,
                 ];
             }
@@ -153,6 +166,7 @@ class ScanExamenController extends Controller
             'annee_academique_id'  => 'required|exists:annees_academiques,id',
             'filiere_id'           => 'required|exists:filieres,id',
             'niveau_numero'        => 'nullable|integer',
+            'semestre'             => 'nullable|integer|in:1,2',
         ]);
 
         $query = Etudiant::where('annee_academique_id', $request->annee_academique_id)
@@ -184,6 +198,15 @@ class ScanExamenController extends Controller
                     'cin'                => $e->cin,
                     'numero_inscription' => $e->numero_inscription,
                     'groupe'             => $e->groupe?->nom ?? '',
+                    'groupe_id'          => $e->groupe_id,
+                    // Lets the manual student picker show the same lock as a
+                    // scanned row, so a published group is refused whichever
+                    // way the student was matched.
+                    'verrouille'         => $this->locks->semestreVerrouille(
+                        (int) $e->groupe_id,
+                        (int) $request->annee_academique_id,
+                        (int) ($request->semestre ?? 1)
+                    ),
                 ];
             }),
         ]);
@@ -203,6 +226,24 @@ class ScanExamenController extends Controller
                 'semestre'             => 'required|integer|in:1,2',
                 'annee_academique_id'  => 'required|exists:annees_academiques,id',
             ]);
+
+            // Without this the scan is a way around the publication lock: it
+            // writes the same Examen rows as the manual grid, admin-only but
+            // still unconstrained. Checked before any write.
+            $etudiantIds = collect($request->resultats)->pluck('etudiant_id')->map(fn ($id) => (int) $id);
+            $groupeIds = Etudiant::whereIn('id', $etudiantIds)->pluck('groupe_id')
+                ->map(fn ($id) => (int) $id)->all();
+
+            if ($this->locks->unGroupeVerrouille(
+                $groupeIds,
+                (int) $request->annee_academique_id,
+                (int) $request->semestre
+            )) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Enregistrement impossible : les résultats de ce groupe sont publiés.',
+                ], 403);
+            }
 
             $admin = Auth::user();
             $saved = 0;

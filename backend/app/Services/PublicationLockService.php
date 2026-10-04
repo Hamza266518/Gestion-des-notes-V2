@@ -121,6 +121,40 @@ class PublicationLockService
     }
 
     /**
+     * Is this group closed for the whole semester?
+     *
+     * Exam grades have no control to hang off, so the control-keyed methods
+     * above cannot answer for them. They are keyed by group + semester
+     * directly, which is what an exam row already carries through its student.
+     */
+    public function semestreVerrouille(int $groupeId, int $anneeAcademiqueId, int $semestre): bool
+    {
+        if ($groupeId <= 0 || $anneeAcademiqueId <= 0) return false;
+
+        return SemestrePublication::where('groupe_id', $groupeId)
+            ->where('annee_academique_id', $anneeAcademiqueId)
+            ->whereIn('type', $this->typesPour($semestre))
+            ->where('is_published', true)
+            ->exists();
+    }
+
+    /**
+     * Closed for any of these groups, so a batch can be refused in one lookup.
+     *
+     * @param  array<int>  $groupeIds
+     */
+    public function unGroupeVerrouille(array $groupeIds, int $anneeAcademiqueId, int $semestre): bool
+    {
+        foreach (array_unique($groupeIds) as $groupeId) {
+            if ($this->semestreVerrouille((int) $groupeId, $anneeAcademiqueId, $semestre)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Is this one group closed for this control?
      */
     public function verrouilleGroupe(Controle $controle, $groupeId): bool

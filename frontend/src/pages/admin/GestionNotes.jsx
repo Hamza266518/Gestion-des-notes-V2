@@ -4,13 +4,19 @@ import { notesApi } from '../../api/notes';
 import { etudiantsApi } from '../../api/etudiants';
 import { unitesApi } from '../../api/unites';
 import { sequencesApi } from '../../api/sequences';
+import { publicationsApi } from '../../api/publications';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import FiliereCascade from '../../components/common/FiliereCascade';
 import Spinner from '../../components/common/Spinner';
 import EmptyState from '../../components/common/EmptyState';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
-import { controlLabel, noteDisplayStyle } from '../../utils/helpers';
+import {
+  controlLabel,
+  noteDisplayStyle,
+  estSemestrePublique,
+  MESSAGE_SEMESTRE_PUBLIE,
+} from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -28,6 +34,7 @@ export default function GestionNotes() {
   const [notesByControl, setNotesByControl] = useState({});
   const [roster, setRoster] = useState([]);
   const [examens, setExamens] = useState({}); // { theorique: { studentId: valeur }, pratique: { studentId: valeur } }
+  const [publications, setPublications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [editingNote, setEditingNote] = useState(null);
@@ -151,6 +158,22 @@ export default function GestionNotes() {
     }
   }, [selectedUniteId, selected.groupe_id]);
 
+  const anneeCourante = currentAnnee?.id;
+
+  const loadPublications = useCallback(async () => {
+    try {
+      const res = await publicationsApi.getPublications({
+        groupe_id: selected.groupe_id,
+        annee_academique_id: selected.annee_academique_id || anneeCourante,
+      });
+      setPublications(res.data?.data || []);
+    } catch {
+      // A failed lookup must not silently look like "published": clearing the
+      // list leaves the UI open, and the server's 403 stays the backstop.
+      setPublications([]);
+    }
+  }, [selected.groupe_id, selected.annee_academique_id, anneeCourante]);
+
   const handleLoad = useCallback(async () => {
     if (!selected.groupe_id) {
       toast.warning('Veuillez sélectionner un groupe');
@@ -163,12 +186,13 @@ export default function GestionNotes() {
     if (selectedSequenceId) promises.push(loadNotesForSequence());
     if (selectedUniteId) promises.push(loadExamens());
     promises.push(loadRoster());
+    promises.push(loadPublications());
     try {
       await Promise.all(promises);
     } finally {
       setLoading(false);
     }
-  }, [selectedSequenceId, selectedUniteId, selected.groupe_id, loadNotesForSequence, loadExamens, loadRoster]);
+  }, [selectedSequenceId, selectedUniteId, selected.groupe_id, loadNotesForSequence, loadExamens, loadRoster, loadPublications]);
 
   const prevSelections = useRef({ groupe_id: '', unite_id: '', sequence_id: '' });
 
@@ -195,6 +219,12 @@ export default function GestionNotes() {
 
   const handleSaveNote = async (noteId) => {
     if (editValue === '' || editValue === null) return;
+    if (estVerrouille) {
+      toast.warning(MESSAGE_SEMESTRE_PUBLIE);
+      setEditingNote(null);
+      setEditValue('');
+      return;
+    }
     setSaving(true);
     try {
       await notesApi.updateNote(noteId, parseFloat(editValue));
@@ -215,6 +245,12 @@ export default function GestionNotes() {
     if (!newNote) return;
     // An empty value on blur means "never mind" rather than a zero.
     if (editValue === '' || editValue === null) {
+      setNewNote(null);
+      setEditValue('');
+      return;
+    }
+    if (estVerrouille) {
+      toast.warning(MESSAGE_SEMESTRE_PUBLIE);
       setNewNote(null);
       setEditValue('');
       return;
@@ -244,6 +280,13 @@ export default function GestionNotes() {
     if (!editExamAbsent && (editExamValue === '' || editExamValue === null)) return;
     const unite = unites.find(u => u.id == selectedUniteId);
     if (!unite) return;
+    if (estVerrouille) {
+      toast.warning(MESSAGE_SEMESTRE_PUBLIE);
+      setEditingExam(null);
+      setEditExamValue('');
+      setEditExamAbsent(false);
+      return;
+    }
     setSaving(true);
     try {
       await notesApi.saveBulkExamens({
@@ -294,6 +337,18 @@ export default function GestionNotes() {
   }, [etudiants, searchTerm]);
 
   const showExamCols = selectedUniteId && selected.groupe_id;
+
+  // The unit decides the semester, so one flag covers both the note cells and
+  // the exam columns of this view. anneeId repeats the fallback chain the exam
+  // save itself uses, otherwise the grid could show an open cell for a year the
+  // server then treats as published.
+  const anneeId = selected.annee_academique_id || anneeCourante;
+  const semestreUnite = unites.find(u => u.id == selectedUniteId)?.semestre ?? 1;
+  const estVerrouille = estSemestrePublique(publications, {
+    groupeId: selected.groupe_id,
+    anneeId,
+    semestre: semestreUnite,
+  });
 
   return (
     <div className="page">
@@ -375,6 +430,11 @@ export default function GestionNotes() {
             </h5>
           </div>
           <div className="card-body">
+            {estVerrouille && (
+              <div className="alert alert-warning" style={{ marginBottom: 12 }}>
+                {MESSAGE_SEMESTRE_PUBLIE}
+              </div>
+            )}
             <div className="search-input-wrapper" style={{ position: 'relative', marginBottom: 12, maxWidth: 400 }}>
               <FiSearch style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#999' }} />
               <input
@@ -424,7 +484,14 @@ export default function GestionNotes() {
                         <td><strong>{etudiant.nom_prenom}</strong></td>
                         {ctrlCells.map(({ ctrl, note }) => (
                           <td key={ctrl?.id}>
-                            {newNote?.controle_id === ctrl?.id && newNote?.etudiant_id === etudiant.id ? (
+                            {estVerrouille ? (
+                              <span
+                                style={noteDisplayStyle(note?.est_absent)}
+                                title={MESSAGE_SEMESTRE_PUBLIE}
+                              >
+                                {note ? (note.est_absent ? 'Absent' : (note.valeur ?? '—')) : '—'}
+                              </span>
+                            ) : newNote?.controle_id === ctrl?.id && newNote?.etudiant_id === etudiant.id ? (
                               <input
                                 type="number"
                                 className="form-input form-input-sm"
@@ -494,7 +561,14 @@ export default function GestionNotes() {
                         ))}
                         {showExamCols && (
                           <td>
-                            {editingExam?.etudiant_id === etudiant.id && editingExam?.type === 'theorique' ? (
+                            {estVerrouille ? (
+                              <span
+                                style={noteDisplayStyle(theoEx?.est_absent)}
+                                title={MESSAGE_SEMESTRE_PUBLIE}
+                              >
+                                {theoEx ? (theoEx.est_absent ? 'Absent' : (theoEx.valeur ?? '—')) : '—'}
+                              </span>
+                            ) : editingExam?.etudiant_id === etudiant.id && editingExam?.type === 'theorique' ? (
                               <>
                                 <input
                                   type="number"
@@ -570,7 +644,14 @@ export default function GestionNotes() {
                         )}
                         {showExamCols && (
                           <td>
-                            {editingExam?.etudiant_id === etudiant.id && editingExam?.type === 'pratique' ? (
+                            {estVerrouille ? (
+                              <span
+                                style={noteDisplayStyle(praEx?.est_absent)}
+                                title={MESSAGE_SEMESTRE_PUBLIE}
+                              >
+                                {praEx ? (praEx.est_absent ? 'Absent' : (praEx.valeur ?? '—')) : '—'}
+                              </span>
+                            ) : editingExam?.etudiant_id === etudiant.id && editingExam?.type === 'pratique' ? (
                               <>
                                 <input
                                   type="number"
