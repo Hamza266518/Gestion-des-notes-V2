@@ -85,12 +85,19 @@ class PortalController extends Controller
             ->where('numero_annee', $niveauNumero)
             ->where('semestre', $semestre)
             ->where('is_active', true)
-            ->with('sequences.controles')
+            ->with('sequences.controles', 'controles')
             ->orderBy('ordre')
             ->get();
 
         // One query for all the student's notes instead of one per control.
-        $controleIds = $unites->pluck('sequences.*.controles.*.id')->flatten()->all();
+        $controleIds = collect();
+        foreach ($unites as $unite) {
+            foreach ($unite->sequences as $s) {
+                $controleIds = $controleIds->merge($s->controles->pluck('id'));
+            }
+            $controleIds = $controleIds->merge($unite->controles->pluck('id'));
+        }
+        $controleIds = $controleIds->unique()->all();
 
         $notesByControle = [];
         if ($controleIds !== []) {
@@ -116,12 +123,28 @@ class PortalController extends Controller
                         'sequence_coefficient' => $sequence->coefficient,
                         'controle_id' => $controle->id,
                         'controle_numero' => $controle->numero,
-                        'type' => $controle->type,
                         'note_max' => $controle->note_max,
                         'valeur' => $note?->valeur,
                         'est_absent' => (bool) ($note?->est_absent ?? false),
                     ];
                 }
+            }
+
+            // Sequence-free units hold their controls directly on the unite.
+            foreach ($unite->controles as $controle) {
+                $note = $notesByControle[$controle->id] ?? null;
+                $notes[] = [
+                    'unite_id' => $unite->id,
+                    'unite_nom' => $unite->nom,
+                    'unite_coefficient' => $unite->coefficient,
+                    'sequence_nom' => $unite->nom,
+                    'sequence_coefficient' => null,
+                    'controle_id' => $controle->id,
+                    'controle_numero' => $controle->numero,
+                    'note_max' => $controle->note_max,
+                    'valeur' => $note?->valeur,
+                    'est_absent' => (bool) ($note?->est_absent ?? false),
+                ];
             }
         }
 
@@ -152,6 +175,9 @@ class PortalController extends Controller
             'moyenne_cc' => $bulletin['moyenne_cc'],
             'moyenne_theorique' => $bulletin['moyenne_theorique'],
             'moyenne_pratique' => $bulletin['moyenne_pratique'],
+            'nsti' => $bulletin['nsti'],
+            'has_soutenance' => $bulletin['has_soutenance'],
+            'weights' => $bulletin['weights'],
             'mention' => $mention['label'],
             'decision' => $bulletin['decision'],
         ];

@@ -22,15 +22,18 @@ class FiliereController extends Controller
 
     public function store(Request $request)
     {
-        try {
-            $request->validate([
-                'nom'            => 'required|string',
-                'code'           => 'required|string|unique:filieres,code',
-                'section'        => 'required|string',
-                'type_formation' => 'required|in:Qualification,Technicien,Specialisation',
-                'nombre_annees'  => 'required|integer|min:1|max:5',
-            ]);
+        // Outside the try on purpose: validate() throws ValidationException,
+        // which extends Exception, so catching it here turned every bad payload
+        // into a 500 instead of a 422 naming the offending field.
+        $request->validate([
+            'nom'            => 'required|string',
+            'code'           => 'required|string|unique:filieres,code',
+            'section'        => 'required|string',
+            'type_formation' => 'required|in:Qualification,Technicien,Specialisation',
+            'nombre_annees'  => 'required|integer|min:1|max:5',
+        ]);
 
+        try {
             $filiere = Filiere::create($request->only(['nom', 'nom_ar', 'code', 'section', 'type_formation', 'nombre_annees']));
             return response()->json(['success' => true, 'data' => $filiere, 'message' => 'Filière créée']);
         } catch (\Exception $e) {
@@ -40,11 +43,14 @@ class FiliereController extends Controller
 
     public function update(Request $request, $id)
     {
+        // Outside the try for the same reason as store(): a ValidationException
+        // caught here became a 500 instead of a 422.
+        $request->validate([
+            'code' => 'string|unique:filieres,code,' . $id,
+        ]);
+
         try {
             $filiere = Filiere::findOrFail($id);
-            $request->validate([
-                'code' => 'string|unique:filieres,code,' . $id,
-            ]);
             $filiere->update($request->only(['nom', 'nom_ar', 'code', 'section', 'type_formation', 'nombre_annees']));
             return response()->json(['success' => true, 'data' => $filiere, 'message' => 'Filière mise à jour']);
         } catch (\Exception $e) {

@@ -19,6 +19,7 @@ const pageTitles = {
   '/admin/diplomes':     'Diplômes',
   '/admin/saisie-notes': 'Saisie des Notes',
   '/admin/stages':       'Stages',
+  '/admin/soutenance':   'Soutenance',
 };
 
 export default function AdminLayout() {

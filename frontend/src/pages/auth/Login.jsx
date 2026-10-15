@@ -2,56 +2,54 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth';
 import { useAuth } from '../../context/AuthContext';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiLoader } from 'react-icons/fi';
+import { FiUser, FiLock, FiEye, FiEyeOff, FiLoader } from 'react-icons/fi';
 import { ForgotPasswordModal } from '../../components/etudiant/ForgotPasswordModal';
 import logoIFP from '../../image/logo IFP.jpeg';
 import bgImage from '../../image/TIBYA.png';
 import '../../css/login.css';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showHint, setShowHint] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const passwordRef = useRef(null);
 
-  const validateEmail = (email) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-  };
+  const validateUsername = (value) => /^[a-z0-9]+(?:\.[a-z0-9]+)*$/.test(value);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
-    if (!email.trim()) {
-      setError('Veuillez entrer votre adresse email');
+
+    const identifier = username.trim().toLowerCase();
+
+    if (!identifier) {
+      setError('Veuillez entrer votre identifiant');
       return;
     }
-    
-    if (!validateEmail(email)) {
-      setError('Veuillez entrer une adresse email valide');
+
+    if (!validateUsername(identifier)) {
+      setError('L\'identifiant ne peut contenir que des lettres, chiffres et points');
       return;
     }
-    
+
     if (!password) {
       setError('Veuillez entrer votre mot de passe');
       return;
     }
-    
+
     if (password.length < 6) {
       setError('Le mot de passe doit contenir au moins 6 caractères');
       return;
     }
-    
+
     setLoading(true);
     try {
-      const res = await authApi.login(email, password);
+      const res = await authApi.login(identifier, password);
       login(res.data.data);
       const r = res.data.data.role;
       setTimeout(() => {
@@ -63,7 +61,7 @@ export default function Login() {
     } catch (err) {
       if (err.response) {
         if (err.response.status === 401) {
-          setError('Email ou mot de passe incorrect');
+          setError('Identifiant ou mot de passe incorrect');
         } else if (err.response.status === 429) {
           setError('Trop de tentatives. Veuillez réessayer plus tard.');
         } else if (err.response.status >= 500) {
@@ -121,19 +119,21 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} noValidate>
               <div className="login-field">
-                <label htmlFor="login-email" className="login-field-label">
-                  Adresse email
+                <label htmlFor="login-username" className="login-field-label">
+                  Identifiant
                 </label>
                 <div className="login-input-wrap">
-                  <FiMail className="login-input-icon" />
+                  <FiUser className="login-input-icon" />
                   <input
-                    id="login-email"
-                    type="email"
+                    id="login-username"
+                    type="text"
                     className="login-input"
-                    placeholder="CIN@ifp.ma"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    autoComplete="email"
+                    placeholder="prenom.nom"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    spellCheck="false"
                     required
                     aria-required="true"
                   />
@@ -189,14 +189,6 @@ export default function Login() {
                 )}
               </button>
             </form>
-
-            {showHint && (
-              <div className="login-hint">
-                <p><strong>Identifiant :</strong> votre CIN suivi de @ifp.ma</p>
-                <p><strong>Mot de passe :</strong> n° inscription + 2 premiers caractères CIN</p>
-                <p className="login-hint-example">Exemple : 01AS27AB</p>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -207,9 +199,8 @@ export default function Login() {
           onSuccess={() => {
             setShowForgotPassword(false);
             setError('');
-            setEmail('');
+            setUsername('');
             setPassword('');
-            alert('Mot de passe réinitialisé avec succès. Veuillez vous connecter avec votre nouveau mot de passe.');
           }}
         />
       )}

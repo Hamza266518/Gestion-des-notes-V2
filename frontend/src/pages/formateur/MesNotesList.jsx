@@ -6,6 +6,7 @@ import { handleApiError, showSuccess } from '../../utils/errorHandler';
 import { controlLabel, noteDisplayStyle } from '../../utils/helpers';
 import Badge from '../../components/common/Badge';
 import Spinner from '../../components/common/Spinner';
+import FilterSelect from '../../components/common/FilterSelect';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -97,52 +98,45 @@ export default function MesNotesList() {
         <>
           <div className="card" style={{ marginBottom: 20 }}>
             <div className="card-body">
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                <div className="form-group" style={{ flex: '1 1 220px', marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontSize: 12, marginBottom: 4 }}>Rechercher un étudiant</label>
-                  <div style={{ position: 'relative' }}>
-                    <FiSearch size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-400)' }} />
+              <div className="smart-filter" style={{ marginBottom: 0 }}>
+                <div className="sf-row">
+                  <div className="sf-searchbox">
+                    <FiSearch size={14} />
                     <input
-                      className="form-input"
                       type="text"
-                      placeholder="Nom, prénom, n° inscription..."
                       value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
-                      style={{ paddingLeft: 32, paddingRight: searchTerm ? 32 : 12 }}
+                      placeholder="Rechercher un étudiant..."
                     />
                     {searchTerm && (
-                      <FiX
-                        size={15}
-                        style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: 'var(--gray-400)' }}
-                        onClick={() => setSearchTerm('')}
-                      />
+                      <button type="button" onClick={() => setSearchTerm('')} aria-label="Effacer">
+                        <FiX size={13} />
+                      </button>
                     )}
                   </div>
-                </div>
 
-                <div className="form-group" style={{ flex: '0 1 200px', marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontSize: 12, marginBottom: 4 }}>Groupe</label>
-                  <select className="form-select" value={selectedGroupeId} onChange={e => setSelectedGroupeId(e.target.value)}>
-                    <option value="">Tous les groupes</option>
-                    {scopedGroupes.map(g => (
-                      <option key={g.id} value={g.id}>{g.nom} — {g.niveau?.filiere?.nom || ''}</option>
-                    ))}
-                  </select>
-                </div>
+                  <FilterSelect
+                    label="Groupe"
+                    value={selectedGroupeId}
+                    options={scopedGroupes.map(g => ({ id: g.id, label: `${g.nom} — ${g.niveau?.filiere?.nom || ''}` }))}
+                    onChange={setSelectedGroupeId}
+                    placeholder="Tous les groupes"
+                    allLabel="Tous les groupes"
+                  />
 
-                <div className="form-group" style={{ flex: '0 1 250px', marginBottom: 0 }}>
-                  <label className="form-label" style={{ fontSize: 12, marginBottom: 4 }}>Séquence</label>
-                  <select className="form-select" value={selectedSeqId} onChange={e => setSelectedSeqId(e.target.value)}>
-                    <option value="">Toutes les séquences</option>
-                    {sequences.map(s => (
-                      <option key={s.id} value={s.id}>{s.unite?.nom} — {s.nom}</option>
-                    ))}
-                  </select>
-                </div>
+                  <FilterSelect
+                    label="Séquence"
+                    value={selectedSeqId}
+                    options={sequences.map(s => ({ id: s.id, label: `${s.unite?.nom} — ${s.nom}` }))}
+                    onChange={setSelectedSeqId}
+                    placeholder="Toutes les séquences"
+                    allLabel="Toutes les séquences"
+                  />
 
-                <button className="btn btn-outline btn-sm" onClick={resetFilters} style={{ height: 36 }}>
-                  <FiRefreshCw size={14} /> Réinitialiser
-                </button>
+                  <button className="btn btn-outline" onClick={resetFilters} style={{ height: 46 }}>
+                    <FiRefreshCw size={14} /> Réinitialiser
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -16,6 +16,7 @@ use App\Models\Sequence;
 use App\Models\SemestrePublication;
 use App\Models\Unite;
 use App\Models\User;
+use App\Services\UsernameGenerator;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,33 @@ use Illuminate\Support\Facades\Hash;
 
 class TestDataSeeder extends Seeder
 {
+    /** @var array<string, array<string, string>> */
+    private array $credentials = ['formateurs' => [], 'etudiants' => []];
+
+    /**
+     * Idempotent account creation keyed on the login username.
+     */
+    private function seedUser(string $name, string $role, string $plainPassword, ?string $username = null): User
+    {
+        $generator = app(UsernameGenerator::class);
+        $username ??= $generator->baseFromName($name);
+
+        $user = User::where('username', $username)->first();
+
+        if ($user) {
+            return $user;
+        }
+
+        return User::create([
+            'name'               => $name,
+            'username'           => $generator->reserve($username),
+            'password'           => Hash::make($plainPassword),
+            'password_encrypted' => Crypt::encryptString($plainPassword),
+            'password_original_encrypted' => Crypt::encryptString($plainPassword),
+            'role'               => $role,
+        ]);
+    }
+
     public function run(): void
     {
         DB::transaction(function () {
@@ -76,38 +104,21 @@ class TestDataSeeder extends Seeder
             $groupes['IP3_A'] = $this->createGroupe($niveaux['IP3'], $annee, 'Groupe A');
 
             // ── Step 4: Admin User ──
-            $admin = User::firstOrCreate(
-                ['email' => 'admin@ifp.ma'],
-                [
-                    'name' => 'Admin IFP',
-                    'password' => Hash::make('admin123'),
-                    'password_encrypted' => Crypt::encryptString('admin123'),
-                    'password_original_encrypted' => Crypt::encryptString('admin123'),
-                    'role' => 'admin',
-                ]
-            );
+            $admin = $this->seedUser('Admin IFP', 'admin', 'admin123', UsernameGenerator::ADMIN_USERNAME);
 
             // ── Step 5: Formateur Users ──
             $formateursData = [
-                ['name' => 'Mohammed Alami', 'email' => 'm.alami@ifp.ma'],
-                ['name' => 'Sara Idrissi', 'email' => 's.idrissi@ifp.ma'],
-                ['name' => 'Youssef Benali', 'email' => 'y.benali@ifp.ma'],
-                ['name' => 'Fatima Zahra Saidi', 'email' => 'fz.saidi@ifp.ma'],
-                ['name' => 'Karim Tazi', 'email' => 'k.tazi@ifp.ma'],
+                ['name' => 'Mohammed Alami', 'username' => 'm.alami'],
+                ['name' => 'Sara Idrissi', 'username' => 's.idrissi'],
+                ['name' => 'Youssef Benali', 'username' => 'y.benali'],
+                ['name' => 'Fatima Zahra Saidi', 'username' => 'f.saidi'],
+                ['name' => 'Karim Tazi', 'username' => 'k.tazi'],
             ];
 
             foreach ($formateursData as $fd) {
-                $user = User::firstOrCreate(
-                    ['email' => $fd['email']],
-                    [
-                        'name' => $fd['name'],
-                        'password' => Hash::make('formateur123'),
-                        'password_encrypted' => Crypt::encryptString('formateur123'),
-                        'password_original_encrypted' => Crypt::encryptString('formateur123'),
-                        'role' => 'formateur',
-                    ]
-                );
+                $user = $this->seedUser($fd['name'], 'formateur', 'formateur123', $fd['username']);
                 Formateur::firstOrCreate(['user_id' => $user->id]);
+                $this->credentials['formateurs'][$user->username] = 'formateur123';
             }
 
             // ── Step 6: Etudiants AS Groupe A (10 students) ──
@@ -126,18 +137,9 @@ class TestDataSeeder extends Seeder
 
             $asEtudiants = [];
             foreach ($asStudents as $s) {
-                $email = strtolower($s['cin']) . '@ifp.ma';
                 $password = $s['num'] . strtoupper(substr($s['cin'], 0, 2));
-                $user = User::firstOrCreate(
-                    ['email' => $email],
-                    [
-                        'name' => $s['nom_prenom'],
-                        'password' => Hash::make($password),
-                        'password_encrypted' => Crypt::encryptString($password),
-                        'password_original_encrypted' => Crypt::encryptString($password),
-                        'role' => 'etudiant',
-                    ]
-                );
+                $user = $this->seedUser($s['nom_prenom'], 'etudiant', $password);
+                $this->credentials['etudiants'][$user->username] = "{$password}  ({$s['nom_prenom']})";
                 $etudiant = Etudiant::firstOrCreate(
                     ['user_id' => $user->id],
                     [
@@ -164,18 +166,9 @@ class TestDataSeeder extends Seeder
 
             $ipEtudiants = [];
             foreach ($ipStudents as $s) {
-                $email = strtolower($s['cin']) . '@ifp.ma';
                 $password = $s['num'] . strtoupper(substr($s['cin'], 0, 2));
-                $user = User::firstOrCreate(
-                    ['email' => $email],
-                    [
-                        'name' => $s['nom_prenom'],
-                        'password' => Hash::make($password),
-                        'password_encrypted' => Crypt::encryptString($password),
-                        'password_original_encrypted' => Crypt::encryptString($password),
-                        'role' => 'etudiant',
-                    ]
-                );
+                $user = $this->seedUser($s['nom_prenom'], 'etudiant', $password);
+                $this->credentials['etudiants'][$user->username] = $password;
                 $etudiant = Etudiant::firstOrCreate(
                     ['user_id' => $user->id],
                     [
@@ -503,34 +496,20 @@ class TestDataSeeder extends Seeder
         echo "═══════════════════════════════════════════════════════\n\n";
 
         echo "ADMIN:\n";
-        echo "  email: admin@ifp.ma\n";
+        echo "  identifiant: " . UsernameGenerator::ADMIN_USERNAME . "\n";
         echo "  password: admin123\n\n";
 
         echo "FORMATEURS (all use same password):\n";
-        echo "  email: m.alami@ifp.ma      password: formateur123\n";
-        echo "  email: s.idrissi@ifp.ma    password: formateur123\n";
-        echo "  email: y.benali@ifp.ma     password: formateur123\n";
-        echo "  email: fz.saidi@ifp.ma     password: formateur123\n";
-        echo "  email: k.tazi@ifp.ma       password: formateur123\n\n";
+        foreach ($this->credentials['formateurs'] as $username => $password) {
+            echo "  identifiant: " . str_pad($username, 22) . "password: {$password}\n";
+        }
+        echo "\n";
 
-        echo "ETUDIANTS (AS Groupe A):\n";
-        echo "  email: ab123456@ifp.ma     password: 01 AS26AB  (FATIMA ZAHRA - strong)\n";
-        echo "  email: cd789012@ifp.ma     password: 02 AS26CD  (SALIMA - average)\n";
-        echo "  email: ef345678@ifp.ma     password: 03 AS26EF  (HANAE)\n";
-        echo "  email: gh901234@ifp.ma     password: 04 AS26GH  (MERYEM)\n";
-        echo "  email: ij567890@ifp.ma     password: 05 AS26IJ  (NOUR)\n";
-        echo "  email: kl234567@ifp.ma     password: 06 AS26KL  (ZINEB)\n";
-        echo "  email: mn890123@ifp.ma     password: 07 AS26MN  (ASMAE)\n";
-        echo "  email: op456789@ifp.ma     password: 08 AS26OP  (SOUKAINA)\n";
-        echo "  email: qr012345@ifp.ma     password: 09 AS26QR  (HAJAR)\n";
-        echo "  email: st678901@ifp.ma     password: 10 AS26ST  (IMANE - weakest)\n\n";
-
-        echo "ETUDIANTS (IP Niveau 3 Groupe A):\n";
-        echo "  email: uv234567@ifp.ma     password: 01 IP26UV\n";
-        echo "  email: wx890123@ifp.ma     password: 02 IP26WX\n";
-        echo "  email: yz456789@ifp.ma     password: 03 IP26YZ\n";
-        echo "  email: aa012345@ifp.ma     password: 04 IP26AA\n";
-        echo "  email: bb678901@ifp.ma     password: 05 IP26BB\n\n";
+        echo "ETUDIANTS:\n";
+        foreach ($this->credentials['etudiants'] as $username => $detail) {
+            echo "  identifiant: " . str_pad($username, 24) . "password: {$detail}\n";
+        }
+        echo "\n";
 
         echo "═══════════════════════════════════════════════════════\n";
     }

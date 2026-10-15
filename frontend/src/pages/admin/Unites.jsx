@@ -10,8 +10,12 @@ import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Modal from '../../components/common/Modal';
 import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
+import FilterBar from '../../components/common/FilterBar';
+import FilterSelect from '../../components/common/FilterSelect';
 import { handleApiError, showSuccess, getFieldErrors } from '../../utils/errorHandler';
 import { formatNiveau } from '../../utils/helpers';
+import { FiEdit2, FiTrash2 } from 'react-icons/fi';
+import usePersistedState from '../../hooks/usePersistedState';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -24,9 +28,15 @@ export default function Unites() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState({});
-  const [filters, setFilters] = useState({ groupe_id: '', filiere_id: '', niveau_id: '' });
-  const [selFiliere, setSelFiliere] = useState('');
-  const [selNiveau, setSelNiveau] = useState('');
+  const [saved, setSaved] = usePersistedState('unites', { seqSearch: '', filiere_id: '', niveau_id: '', groupe_id: '' });
+  const [seqSearch, setSeqSearch] = useState(() => saved.seqSearch);
+  const [filters, setFilters] = useState(() => ({ groupe_id: saved.groupe_id, filiere_id: saved.filiere_id, niveau_id: saved.niveau_id }));
+  const [selFiliere, setSelFiliere] = useState(() => saved.filiere_id);
+  const [selNiveau, setSelNiveau] = useState(() => saved.niveau_id);
+
+  useEffect(() => {
+    setSaved({ seqSearch, filiere_id: filters.filiere_id, niveau_id: filters.niveau_id, groupe_id: filters.groupe_id });
+  }, [seqSearch, filters, setSaved]);
   const [openUnite, setOpenUnite] = useState(false);
   const [openSeq, setOpenSeq] = useState(false);
   const [selectedUnite, setSelectedUnite] = useState(null);
@@ -45,11 +55,14 @@ export default function Unites() {
   const [openEditSeq, setOpenEditSeq] = useState(false);
   const [editingSeq, setEditingSeq] = useState(null);
   const [editNombre, setEditNombre] = useState(2);
-  const [formU, setFormU] = useState({ filiere_id: '', nom: '', numero_annee: '', semestre: '' });
+  const [editNom, setEditNom] = useState('');
+  const [openEditUnite, setOpenEditUnite] = useState(false);
+  const [editingUnite, setEditingUnite] = useState(null);
+  const [formEditU, setFormEditU] = useState({ nom: '', numero_annee: '', semestre: '', coefficient: '' });
+  const [formU, setFormU] = useState({ filiere_id: '', nom: '', numero_annee: '', semestre: '', coefficient: '' });
   const [formS, setFormS] = useState({ nom: '', coefficient: '', nombre_controles: 2, formateur_id: '' });
   const [formErrors, setFormErrors] = useState({});
   const [editingCtrl, setEditingCtrl] = useState({});
-  const [seqSearch, setSeqSearch] = useState('');
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
 
@@ -143,6 +156,7 @@ export default function Unites() {
     if (!formU.nom) errors.nom = 'Le nom est requis';
     if (!formU.numero_annee) errors.numero_annee = "L'année est requise";
     if (!formU.semestre) errors.semestre = 'Le semestre est requis';
+    if (!formU.coefficient) errors.coefficient = 'Le coefficient est requis';
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -154,10 +168,61 @@ export default function Unites() {
     setFormErrors({});
 
     try {
-      await unitesApi.createUnite(formU);
+      await unitesApi.createUnite({ ...formU, coefficient: Number(formU.coefficient), numero_annee: Number(formU.numero_annee), semestre: Number(formU.semestre) });
       showSuccess(toast, 'Unité créée');
       setOpenUnite(false);
-      setFormU({ filiere_id: '', nom: '', numero_annee: '', semestre: '' });
+      setFormU({ filiere_id: '', nom: '', numero_annee: '', semestre: '', coefficient: '' });
+      load();
+    } catch (error) {
+      const fieldErrors = getFieldErrors(error);
+      if (Object.keys(fieldErrors).length > 0) {
+        setFormErrors(fieldErrors);
+      }
+      handleApiError(error, toast);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEditUniteFor = (u) => {
+    setEditingUnite(u);
+    setFormEditU({
+      nom: u.nom,
+      numero_annee: String(u.numero_annee ?? ''),
+      semestre: String(u.semestre ?? ''),
+      coefficient: String(u.coefficient ?? ''),
+    });
+    setFormErrors({});
+    setOpenEditUnite(true);
+  };
+
+  const handleUpdateUnite = async () => {
+    if (!editingUnite) return;
+    const errors = {};
+    if (!formEditU.nom) errors.nom = 'Le nom est requis';
+    if (!formEditU.numero_annee) errors.numero_annee = "L'année est requise";
+    if (!formEditU.semestre) errors.semestre = 'Le semestre est requis';
+    if (!formEditU.coefficient) errors.coefficient = 'Le coefficient est requis';
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    setSaving(true);
+    setFormErrors({});
+
+    try {
+      await unitesApi.updateUnite(editingUnite.id, {
+        nom: formEditU.nom,
+        numero_annee: Number(formEditU.numero_annee),
+        semestre: Number(formEditU.semestre),
+        coefficient: Number(formEditU.coefficient),
+      });
+      showSuccess(toast, 'Unité mise à jour');
+      setOpenEditUnite(false);
+      setEditingUnite(null);
       load();
     } catch (error) {
       const fieldErrors = getFieldErrors(error);
@@ -227,8 +292,17 @@ export default function Unites() {
       toast.error('Le nombre de contrôles doit être entre 1 et 10');
       return;
     }
+    if (!editNom.trim()) {
+      toast.error('Le nom est requis');
+      return;
+    }
     try {
-      await sequencesApi.updateSequence(editingSeq.id, { nombre_controles: newVal });
+      await sequencesApi.updateSequence(editingSeq.id, {
+        nom: editNom.trim(),
+        nombre_controles: newVal,
+        // Mirrors the control count, same derivation as on creation.
+        coefficient: newVal,
+      });
       showSuccess(toast, 'Séquence mise à jour');
       setOpenEditSeq(false);
       setEditingSeq(null);
@@ -329,27 +403,6 @@ export default function Unites() {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            className="btn btn-outline"
-            onClick={() => { setScanOpen(true); setScanImage(null); setScanResults([]); setScanSemestre(''); }}
-            disabled={filieres.length === 0}
-            title={filieres.length === 0 ? "Veuillez d'abord ajouter une filière" : ''}
-          >
-            Scanner Document
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => { setOpenUnite(true); setFormErrors({}); }}
-            disabled={filieres.length === 0}
-            title={filieres.length === 0 ? "Veuillez d'abord ajouter une filière" : ''}
-          >
-            + Nouvelle unité
-          </button>
-        </div>
-      </div>
-
       {error && (
         <div className="alert alert-danger" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -359,49 +412,99 @@ export default function Unites() {
         </div>
       )}
 
-      <div className="filter-bar">
-        <input
-          className="form-input"
-          type="search"
-          placeholder="Rechercher une séquence ou un formateur…"
-          value={seqSearch}
-          onChange={e => setSeqSearch(e.target.value)}
-          style={{ flex: 2, minWidth: 260 }}
-        />
-        <select
-          className="form-select"
+      <FilterBar
+        value={{ search: seqSearch, filiere_id: filters.filiere_id, niveau_id: filters.niveau_id, groupe_id: filters.groupe_id }}
+        onChange={(next) => {
+          setSeqSearch(next.search ?? '');
+          setFilters({ filiere_id: next.filiere_id ?? '', niveau_id: next.niveau_id ?? '', groupe_id: next.groupe_id ?? '' });
+        }}
+        placeholder="Rechercher une séquence ou un formateur…"
+        debounceMs={0}
+        onClear={() => {
+          setSeqSearch('');
+          setFilters({ filiere_id: '', niveau_id: '', groupe_id: '' });
+          setSelFiliere('');
+          setSelNiveau('');
+        }}
+        actions={(
+          <>
+            <button
+              className="btn btn-outline"
+              onClick={() => { setScanOpen(true); setScanImage(null); setScanResults([]); setScanSemestre(''); }}
+              disabled={filieres.length === 0}
+              title={filieres.length === 0 ? "Veuillez d'abord ajouter une filière" : ''}
+            >
+              Scanner Document
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => { setOpenUnite(true); setFormErrors({}); }}
+              disabled={filieres.length === 0}
+              title={filieres.length === 0 ? "Veuillez d'abord ajouter une filière" : ''}
+            >
+              + Nouvelle unité
+            </button>
+          </>
+        )}
+        chips={[
+          filters.filiere_id && {
+            key: 'filiere',
+            label: `Filière: ${filieres.find(f => String(f.id) === String(filters.filiere_id))?.nom ?? ''}`,
+            onRemove: () => {
+              setFilters(p => ({ ...p, filiere_id: '', niveau_id: '', groupe_id: '' }));
+              setSelFiliere('');
+              setSelNiveau('');
+            },
+          },
+          filters.niveau_id && {
+            key: 'niveau',
+            label: `Niveau: ${formatNiveau(niveaux.find(n => String(n.id) === String(filters.niveau_id))?.numero)}`,
+            onRemove: () => {
+              setFilters(p => ({ ...p, niveau_id: '', groupe_id: '' }));
+              setSelNiveau('');
+            },
+          },
+          filters.groupe_id && {
+            key: 'groupe',
+            label: `Groupe: ${groupes.find(g => String(g.id) === String(filters.groupe_id))?.nom ?? ''}`,
+            onRemove: () => setFilters(p => ({ ...p, groupe_id: '' })),
+          },
+        ].filter(Boolean)}
+      >
+        <FilterSelect
+          label="Filière"
           value={filters.filiere_id}
-          onChange={e => {
-            setFilters(p => ({ ...p, filiere_id: e.target.value, niveau_id: '', groupe_id: '' }));
-            setSelFiliere(e.target.value);
+          options={filieres.map(f => ({ id: f.id, label: f.nom }))}
+          onChange={(v) => {
+            setFilters(p => ({ ...p, filiere_id: v, niveau_id: '', groupe_id: '' }));
+            setSelFiliere(v);
             setSelNiveau('');
           }}
-        >
-          <option value="">Toutes les filières</option>
-          {filieres.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-        </select>
-        <select
-          className="form-select"
+          placeholder="Toutes les filières"
+          allLabel="Toutes les filières"
+        />
+        <FilterSelect
+          label="Niveau"
           value={filters.niveau_id}
-          onChange={e => {
-            setFilters(p => ({ ...p, niveau_id: e.target.value, groupe_id: '' }));
-            setSelNiveau(e.target.value);
+          options={niveaux.map(n => ({ id: n.id, label: formatNiveau(n.numero) }))}
+          onChange={(v) => {
+            setFilters(p => ({ ...p, niveau_id: v, groupe_id: '' }));
+            setSelNiveau(v);
           }}
           disabled={!filters.filiere_id}
-        >
-          <option value="">Tous les niveaux</option>
-          {niveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
-        </select>
-        <select
-          className="form-select"
+          placeholder="Tous les niveaux"
+          allLabel="Tous les niveaux"
+        />
+        <FilterSelect
+          label="Groupe"
           value={filters.groupe_id}
-          onChange={e => setFilters(p => ({ ...p, groupe_id: e.target.value }))}
+          options={groupes.map(g => ({ id: g.id, label: g.nom }))}
+          onChange={(v) => setFilters(p => ({ ...p, groupe_id: v }))}
           disabled={!filters.niveau_id}
-        >
-          <option value="">Tous les groupes</option>
-          {groupes.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
-        </select>
-      </div>
+          placeholder="Tous les groupes"
+          allLabel="Tous les groupes"
+        />
+      </FilterBar>
 
       {seqSearch.trim().length >= 2 && (
         <div className="card mb-2" style={{ border: '1px solid var(--gray-200)', borderRadius: 10, overflow: 'hidden' }}>
@@ -486,6 +589,9 @@ export default function Unites() {
                 {!u.is_active && <Badge label="Inactif" color="red" />}
               </div>
               <div style={{ display: 'flex', gap: 8 }} onClick={e => e.stopPropagation()}>
+                <button className="btn btn-sm btn-outline" onClick={() => openEditUniteFor(u)} title="Modifier">
+                  <FiEdit2 size={14} /> Modifier
+                </button>
                 <button className="btn btn-sm btn-outline" onClick={() => { setSelectedUnite(u); setOpenSeq(true); setFormErrors({}); }}>
                   + Séquence
                 </button>
@@ -496,8 +602,11 @@ export default function Unites() {
                   className="btn btn-sm btn-danger"
                   onClick={() => handleDeleteUnite(u.id, u.nom)}
                   disabled={deletingUnite === u.id}
+                  title="Supprimer"
+                  aria-label="Supprimer"
+                  style={{ padding: '5px 9px' }}
                 >
-                  {deletingUnite === u.id ? 'Suppression...' : 'Supprimer'}
+                  <FiTrash2 size={14} />
                 </button>
                 <span>{expanded[u.id] ? '▲' : '▼'}</span>
               </div>
@@ -506,7 +615,59 @@ export default function Unites() {
             {expanded[u.id] && (
               <div className="accordion-body">
                 {u.sequences?.length === 0 ? (
-                  <div style={{ fontSize: 13, color: 'var(--gray-400)' }}>Aucune séquence</div>
+                  u.controles?.length > 0 ? (
+                    <div style={{ marginBottom: 12, padding: 12, border: '1px solid var(--gray-200)', borderRadius: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontWeight: 500 }}>Contrôles</span>
+                          <Badge label={`${u.controles.length} contrôle(s)`} color="teal" />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                        {u.controles.map(c => {
+                          const isEditing = editingCtrl[c.id];
+                          return (
+                            <span key={c.id} style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '4px 10px', background: '#f3f4f6', borderRadius: 4, fontSize: 13,
+                            }}>
+                              {isEditing ? (
+                                <input
+                                  className="form-input"
+                                  style={{ width: 120, padding: '2px 6px', fontSize: 13, height: 24 }}
+                                  defaultValue={c.nom}
+                                  autoFocus
+                                  onBlur={(e) => {
+                                    const newName = e.target.value.trim();
+                                    if (newName && newName !== c.nom) {
+                                      handleRenameControle(c.id, newName);
+                                    }
+                                    setEditingCtrl(p => ({ ...p, [c.id]: false }));
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') e.target.blur();
+                                    if (e.key === 'Escape') {
+                                      setEditingCtrl(p => ({ ...p, [c.id]: false }));
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <span
+                                  style={{ cursor: 'pointer' }}
+                                  onDoubleClick={() => setEditingCtrl(p => ({ ...p, [c.id]: true }))}
+                                  title="Double-cliquez pour renommer"
+                                >
+                                  {c.nom}
+                                </span>
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 13, color: 'var(--gray-400)' }}>Aucune séquence</div>
+                  )
                 ) : u.sequences?.map(s => (
                   <div key={s.id} style={{ marginBottom: 12, padding: 12, border: '1px solid var(--gray-200)', borderRadius: 4 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -515,11 +676,22 @@ export default function Unites() {
                         <Badge label={`${s.controles?.length ?? 0} contrôle(s)`} color="teal" />
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn btn-sm btn-outline" onClick={() => { setEditingSeq(s); setEditNombre(s.nombre_controles ?? 2); setOpenEditSeq(true); }}>
-                          Contrôles ({s.controles?.length ?? 0})
+                        <button
+                          className="btn btn-sm btn-outline"
+                          title="Modifier"
+                          onClick={() => { setEditingSeq(s); setEditNombre(s.nombre_controles ?? 2); setEditNom(s.nom); setOpenEditSeq(true); }}
+                        >
+                          <FiEdit2 size={14} /> Modifier
                         </button>
-                        <button className="btn btn-sm btn-danger" onClick={() => handleDeleteSeq(s.id, s.nom)} disabled={deletingSeq === s.id}>
-                          {deletingSeq === s.id ? 'Suppression...' : 'Supprimer'}
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDeleteSeq(s.id, s.nom)}
+                          disabled={deletingSeq === s.id}
+                          title="Supprimer"
+                          aria-label="Supprimer"
+                          style={{ padding: '5px 9px' }}
+                        >
+                          <FiTrash2 size={14} />
                         </button>
                       </div>
                     </div>
@@ -607,7 +779,7 @@ export default function Unites() {
             <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.nom}</div>
           )}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
           <div className="form-group">
             <label className="form-label">Année *</label>
             <select
@@ -642,11 +814,108 @@ export default function Unites() {
               <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.semestre}</div>
             )}
           </div>
+          <div className="form-group">
+            <label className="form-label">Coefficient *</label>
+            <input
+              type="number"
+              min="1"
+              className={`form-input ${formErrors.coefficient ? 'border-red-500' : ''}`}
+              value={formU.coefficient ?? ''}
+              onChange={e => setFormU(p => ({ ...p, coefficient: e.target.value }))}
+              placeholder="ex: 4"
+              style={formErrors.coefficient ? { borderColor: '#ef4444' } : {}}
+            />
+            {formErrors.coefficient && (
+              <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.coefficient}</div>
+            )}
+          </div>
         </div>
         <div className="modal-footer">
           <button className="btn btn-outline" onClick={() => { setOpenUnite(false); setFormErrors({}); }}>Annuler</button>
           <button className="btn btn-primary" onClick={handleCreateUnite} disabled={saving}>
             {saving ? 'Création...' : 'Créer'}
+          </button>
+        </div>
+      </Modal>
+
+      {/* Edit unite modal */}
+      <Modal open={openEditUnite} onClose={() => { setOpenEditUnite(false); setEditingUnite(null); setFormErrors({}); }} title={`Modifier l'Unité — ${editingUnite?.nom}`}>
+        <div className="form-group">
+          <label className="form-label">Filière</label>
+          <input
+            className="form-input"
+            value={editingUnite?.filiere?.nom ?? ''}
+            disabled
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Nom de l'unité *</label>
+          <input
+            className={`form-input ${formErrors.nom ? 'border-red-500' : ''}`}
+            value={formEditU.nom ?? ''}
+            onChange={e => setFormEditU(p => ({ ...p, nom: e.target.value }))}
+            style={formErrors.nom ? { borderColor: '#ef4444' } : {}}
+          />
+          {formErrors.nom && (
+            <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.nom}</div>
+          )}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div className="form-group">
+            <label className="form-label">Année *</label>
+            <select
+              className={`form-select ${formErrors.numero_annee ? 'border-red-500' : ''}`}
+              value={formEditU.numero_annee ?? ''}
+              onChange={e => setFormEditU(p => ({ ...p, numero_annee: e.target.value }))}
+              style={formErrors.numero_annee ? { borderColor: '#ef4444' } : {}}
+            >
+              <option value="">—</option>
+              {Array.from(
+                { length: filieres.find(f => String(f.id) === String(editingUnite?.filiere_id))?.nombre_annees || 0 },
+                (_, i) => i + 1
+              ).map(n => (
+                <option key={n} value={n}>{n === 1 ? '1ère année' : `${n}ème année`}</option>
+              ))}
+            </select>
+            {formErrors.numero_annee && (
+              <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.numero_annee}</div>
+            )}
+          </div>
+          <div className="form-group">
+            <label className="form-label">Semestre *</label>
+            <select
+              className={`form-select ${formErrors.semestre ? 'border-red-500' : ''}`}
+              value={formEditU.semestre ?? ''}
+              onChange={e => setFormEditU(p => ({ ...p, semestre: e.target.value }))}
+              style={formErrors.semestre ? { borderColor: '#ef4444' } : {}}
+            >
+              <option value="">—</option>
+              <option value="1">S1</option>
+              <option value="2">S2</option>
+            </select>
+            {formErrors.semestre && (
+              <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.semestre}</div>
+            )}
+          </div>
+          <div className="form-group">
+            <label className="form-label">Coefficient *</label>
+            <input
+              type="number"
+              min="1"
+              className={`form-input ${formErrors.coefficient ? 'border-red-500' : ''}`}
+              value={formEditU.coefficient ?? ''}
+              onChange={e => setFormEditU(p => ({ ...p, coefficient: e.target.value }))}
+              style={formErrors.coefficient ? { borderColor: '#ef4444' } : {}}
+            />
+            {formErrors.coefficient && (
+              <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.coefficient}</div>
+            )}
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={() => { setOpenEditUnite(false); setEditingUnite(null); setFormErrors({}); }}>Annuler</button>
+          <button className="btn btn-primary" onClick={handleUpdateUnite} disabled={saving}>
+            {saving ? 'Enregistrement...' : 'Enregistrer'}
           </button>
         </div>
       </Modal>
@@ -711,8 +980,16 @@ export default function Unites() {
         </div>
       </Modal>
 
-      {/* Edit sequence controles modal */}
-      <Modal open={openEditSeq} onClose={() => { setOpenEditSeq(false); setEditingSeq(null); }} title={`Contrôles — ${editingSeq?.nom}`}>
+      {/* Edit sequence modal */}
+      <Modal open={openEditSeq} onClose={() => { setOpenEditSeq(false); setEditingSeq(null); }} title={`Modifier la séquence — ${editingSeq?.nom}`}>
+        <div className="form-group">
+          <label className="form-label">Nom de la séquence *</label>
+          <input
+            className="form-input"
+            value={editNom}
+            onChange={e => setEditNom(e.target.value)}
+          />
+        </div>
         <p style={{ marginBottom: 12, fontSize: 14, color: 'var(--gray-600)' }}>
           Cette séquence a actuellement <strong>{editingSeq?.controles?.length ?? 0} contrôle(s)</strong>.
         </p>
@@ -743,7 +1020,7 @@ export default function Unites() {
       </Modal>
 
       {/* Scan unites document modal */}
-      <Modal open={scanOpen} onClose={() => { setScanOpen(false); setScanImage(null); setScanResults([]); setScanSemestre(''); }} title="Scanner Document Unités & Séquences" style={{ maxWidth: 1200, width: '90vw', maxHeight: '80vh', overflowY: 'auto' }}>
+      <Modal open={scanOpen} onClose={() => { setScanOpen(false); setScanImage(null); setScanResults([]); setScanSemestre(''); }} title="Scanner Document Unités & Séquences" style={{ maxWidth: 900, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
           <div className="form-group">
             <label className="form-label">Filière *</label>
@@ -776,22 +1053,12 @@ export default function Unites() {
           </button>
         </div>
 
-        {extracting && (
-          <div style={{ textAlign: 'center', padding: 20 }}>
-            <Spinner />
-            <p style={{ marginTop: 8, color: '#666' }}>Analyse du document en cours... Veuillez patienter.</p>
-          </div>
-        )}
-
         {!extracting && scanResults.length === 0 && scanImage && scanFiliere && scanSemestre && (
           <div style={{ textAlign: 'center', padding: 32, border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <h4 style={{ color: '#666', marginBottom: 8 }}>Aucune unite detectee</h4>
-            <p style={{ color: '#999', marginBottom: 16, fontSize: 14 }}>
-              Verifiez l'image ou ressayer le scan.
+            <p style={{ color: '#999', marginBottom: 0, fontSize: 14 }}>
+              Verifiez l'image ou relancez le scan.
             </p>
-            <button className="btn btn-primary" onClick={handleScanUnites}>
-              Ressayer le scan
-            </button>
           </div>
         )}
 

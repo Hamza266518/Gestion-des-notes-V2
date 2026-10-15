@@ -26,6 +26,8 @@ export const scanApi = {
       }),
   confirmScanCin: (data) =>
       apiClient.post('/admin/scan-cin/confirm', data),
+  applyScanCin: (data) =>
+      apiClient.post('/admin/scan-cin/apply', data),
   checkExistingCins: (cins) =>
       apiClient.post('/admin/scan-cin/check-existing', { cins }),
 

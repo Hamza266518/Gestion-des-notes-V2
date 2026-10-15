@@ -23,13 +23,17 @@ class GroupeController extends Controller
 
     public function store(Request $request)
     {
+        // Outside the try on purpose: validate() throws ValidationException,
+        // which extends Exception, so catching it here turned every bad payload
+        // into a 500 instead of a 422 naming the offending field.
+        $request->validate([
+            'niveau_id'           => 'required|exists:niveaux,id',
+            'annee_academique_id' => 'required|exists:annees_academiques,id',
+            'nom'                 => 'required|string',
+            'promotion'           => 'required|string',
+        ]);
+
         try {
-            $request->validate([
-                'niveau_id'           => 'required|exists:niveaux,id',
-                'annee_academique_id' => 'required|exists:annees_academiques,id',
-                'nom'                 => 'required|string',
-                'promotion'           => 'required|string',
-            ]);
             $groupe = Groupe::create($request->all());
             return response()->json(['success' => true, 'data' => $groupe, 'message' => 'Groupe créé']);
         } catch (\Exception $e) {

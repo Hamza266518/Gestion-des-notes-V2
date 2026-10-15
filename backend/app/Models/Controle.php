@@ -8,8 +8,8 @@ class Controle extends Model
 {
     protected $fillable = [
         'sequence_id',
+        'unite_id',
         'numero',
-        'type',
         'nom',
         'date',
         'note_max',
@@ -19,6 +19,11 @@ class Controle extends Model
     public function sequence()
     {
         return $this->belongsTo(Sequence::class);
+    }
+
+    public function unite()
+    {
+        return $this->belongsTo(Unite::class);
     }
 
     public function formateur()

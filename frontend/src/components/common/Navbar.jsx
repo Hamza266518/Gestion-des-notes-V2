@@ -1,6 +1,7 @@
 import { useAuth } from '../../context/AuthContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
-import { FiMenu } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
+import { FiMenu, FiUser } from 'react-icons/fi';
 import '../../css/navbar.css';
 
 const roleLabels = {
@@ -21,6 +22,9 @@ export default function Navbar({ title, onToggleSidebar }) {
       <span className="navbar-title">{title}</span>
       <div className="navbar-right">
         {currentAnnee && <span className="navbar-year">{currentAnnee.label}</span>}
+        <Link to="/mon-compte" className="navbar-account">
+          <FiUser size={14} /> Mon compte
+        </Link>
         <span className="navbar-user">{user?.name}</span>
         <span className="navbar-role">{roleLabels[role] ?? role}</span>
       </div>

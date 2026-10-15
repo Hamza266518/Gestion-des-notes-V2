@@ -133,6 +133,26 @@ final class OfficialCurriculum
     ];
 
     /**
+     * Criteria of the NSTI jury grid ("Critères arrêtés par le jury d'examens"),
+     * transcribed verbatim from the IP3 reference recap with their coefficients.
+     * Each is graded /20 and the soutenance mark is their coefficient-weighted
+     * mean (sum of coefficients = 20). The criteria hang off the "Soutenance"
+     * unit as its direct controls, numbered 1..10 in this order.
+     */
+    public const NSTI_CRITERIA = [
+        ['nom' => 'Intérêt du sujet traité', 'coefficient' => 3],
+        ['nom' => 'Démarche adoptée pour réaliser le travail', 'coefficient' => 2],
+        ['nom' => 'Présentation et organisation générale des travaux présentés', 'coefficient' => 2],
+        ['nom' => "Méthodes et outils de l'exposé", 'coefficient' => 2],
+        ['nom' => "Qualité de l'exposé", 'coefficient' => 2],
+        ['nom' => 'Clarté des propos et élocution', 'coefficient' => 1],
+        ['nom' => 'Pertinence des résultats obtenus ou du raisonnement développé', 'coefficient' => 3],
+        ['nom' => 'Maitrise du sujet exposé', 'coefficient' => 2],
+        ['nom' => "Capacité à développer des réponses adaptées aux questions posées lors de l'exposé", 'coefficient' => 2],
+        ['nom' => "Maitrise de soi durant l'exposé", 'coefficient' => 1],
+    ];
+
+    /**
      * Programme/year pairs where the official coefficient table cannot be trusted.
      *
      * @return array<string, string>

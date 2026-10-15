@@ -7,21 +7,28 @@ use App\Models\Controle;
 use App\Models\Etudiant;
 use App\Models\Note;
 use App\Models\StageEvaluation;
+use App\Models\StageNote;
 use App\Models\Unite;
 
 /**
- * Bridges the Stage page (three JSON grids per student) into the ordinary
- * grading tables so the official coefficient 4 of the Stage units actually
- * counts in the averages.
+ * Bridges the Stage page (one JSON grid per service and per student) into the
+ * ordinary grading tables so the official coefficient 4 of the Stage units
+ * actually counts in the averages.
  *
- * Two marks are written, matching the official documents:
+ * Every Stage unit owns its controls directly (no sequence), one per official
+ * service ("Médecine", "Chirurgie", ...). Each service carries two marks:
  *
- *   grille_evaluation -> control type 'cc'       -> feeds MPCC
- *   grille_examen     -> control type 'pratique' -> feeds MPEFCFP
+ *   grille_evaluation -> the service's own note in `notes` (the Évaluation side;
+ *                        it can also be typed by hand in the generic grid)
+ *   grille_examen     -> a row in `stage_notes` (the Examen side)
  *
- * The unit keeps its single coefficient of 4, so Stage is weighted 4 in MPCC
- * and 4 in MPEFCFP. The "garde de nuit" grid is administrative only and never
- * produces a mark.
+ * `notes` is unique on (etudiant_id, controle_id) — one row per student and
+ * control is the invariant every read path assumes — so the second mark per
+ * service lives in `stage_notes` instead (unique per student, control, type).
+ *
+ * A Stage unit only counts once every service has BOTH marks; see
+ * MoyenneService::stageUniteIncomplete(). The "garde de nuit" grid is
+ * administrative only and never produces a mark.
  */
 class StageService
 {
@@ -30,9 +37,6 @@ class StageService
     private const APTITUDES_MAX   = 40;   // 10 criteria x 0-4
     private const PRATIQUE_MAX    = 40;   // 2 evaluations x /20
     private const GRILLE_DIVISEUR = 5;    // (score1 + score2) / 5  -> /20
-
-    private const EVALUATION_CONTROL = 'cc';
-    private const EXAMEN_CONTROL     = 'pratique';
 
     /** Barème of the 7 lines of the exam grid; sums to 20. */
     private const EXAMEN_BAREME = [1, 2, 2, 10, 1, 1, 3];
@@ -113,32 +117,14 @@ class StageService
     }
 
     /**
-     * Copy the stored grids into the Stage unit's controls as ordinary notes.
+     * Recompute every stored grid and write its mark to the right service.
      *
-     * Nothing is written when a grid has not been filled in, so an empty Stage
-     * page never injects a silent zero into the averages. Existing notes are
-     * updated in place and re-confirmed so they stay protected.
+     * The grids are stored per service ({ service => grid }); the Évaluation
+     * mark goes to the service's note in `notes`, the Examen mark to
+     * `stage_notes`. Nothing is written for a grid that has not been filled in,
+     * so an empty Stage page never injects a silent zero into the averages.
      */
     public function syncForEtudiant(Etudiant $etudiant, int $anneeAcademiqueId): array
-    {
-        $evaluations = StageEvaluation::where('etudiant_id', $etudiant->id)
-            ->where('annee_academique_id', $anneeAcademiqueId)
-            ->get()
-            ->keyBy('type');
-
-        $marks = $this->computeMarks(
-            $evaluations['grille_evaluation']->data ?? null,
-            $evaluations['grille_examen']->data ?? null,
-        );
-
-        return $this->writeMarks($etudiant, $anneeAcademiqueId, $marks);
-    }
-
-    /**
-     * @param  array<string,float|null>  $marks
-     * @return array<string,mixed>
-     */
-    public function writeMarks(Etudiant $etudiant, int $anneeAcademiqueId, array $marks): array
     {
         $annee = AnneeAcademique::find($anneeAcademiqueId);
         if (!$annee) {
@@ -168,67 +154,70 @@ class StageService
             return ['synced' => [], 'message' => 'Aucune unité Stage active pour cette filière/année.'];
         }
 
-        $synced = [];
+        // The controls are the services; match the grid's service key by name.
+        $controles = Controle::whereIn('unite_id', $unites->pluck('id'))
+            ->get()
+            ->keyBy(fn (Controle $c) => $this->serviceKey($c->nom));
 
-        foreach ($unites as $unite) {
-            $controles = Controle::whereHas('sequence', fn($q) => $q->where('unite_id', $unite->id))
-                ->get()
-                ->keyBy('type');
+        $evaluations = StageEvaluation::where('etudiant_id', $etudiant->id)
+            ->where('annee_academique_id', $anneeAcademiqueId)
+            ->whereIn('type', ['grille_evaluation', 'grille_examen'])
+            ->get()
+            ->keyBy('type');
 
-            $wanted = [
-                self::EVALUATION_CONTROL => $marks['grille_evaluation'] ?? null,
-                self::EXAMEN_CONTROL     => $marks['grille_examen'] ?? null,
-            ];
+        $evalMap = $this->normalizeGridData($evaluations['grille_evaluation']->data ?? null);
+        $examMap = $this->normalizeGridData($evaluations['grille_examen']->data ?? null);
 
-            foreach ($wanted as $type => $valeur) {
-                $controle = $controles->get($type);
-                if (!$controle) {
-                    continue;
-                }
+        // Évaluation: the service's own note (hand-editable from the grid too).
+        foreach ($evalMap as $service => $grid) {
+            $controle = $controles->get($this->serviceKey((string) $service));
+            if (!$controle) continue;
 
-                $label = $this->controleLabel($controle);
-
-                $existing = Note::where('etudiant_id', $etudiant->id)
-                    ->where('controle_id', $controle->id)
-                    ->first();
-
-                if ($valeur === null) {
-                    // Grid cleared: drop the derived note rather than keep a
-                    // stale mark that no longer matches the printed grid.
-                    if ($existing) {
-                        $existing->delete();
-                        $synced[$label] = null;
-                    }
-                    continue;
-                }
-
-                if ($existing) {
-                    $existing->update([
-                        'valeur'       => $valeur,
-                        'est_absent'   => false,
-                        'is_confirmed' => true,
-                        'confirmed_at' => now(),
-                    ]);
-                } else {
-                    Note::create([
-                        'etudiant_id'  => $etudiant->id,
-                        'controle_id'  => $controle->id,
-                        'valeur'       => $valeur,
-                        'est_absent'   => false,
-                        'is_confirmed' => true,
-                        'confirmed_at' => now(),
-                    ]);
-                }
-
-                $synced[$label] = $valeur;
-            }
+            $this->writeNote($etudiant, $controle, $this->computeEvaluationMark($grid));
         }
 
-        return ['synced' => $synced, 'message' => ''];
+        // Examen: derived, stored in stage_notes.
+        $writtenExam = [];
+        foreach ($examMap as $service => $grid) {
+            $controle = $controles->get($this->serviceKey((string) $service));
+            if (!$controle) continue;
+
+            $valeur = $this->computeExamenMark($grid);
+
+            if ($valeur === null) {
+                StageNote::where('etudiant_id', $etudiant->id)
+                    ->where('controle_id', $controle->id)
+                    ->where('type', StageNote::EXAMEN_TYPE)
+                    ->delete();
+                continue;
+            }
+
+            StageNote::updateOrCreate(
+                [
+                    'etudiant_id' => $etudiant->id,
+                    'controle_id' => $controle->id,
+                    'type'        => StageNote::EXAMEN_TYPE,
+                ],
+                ['valeur' => $valeur, 'est_absent' => false]
+            );
+
+            $writtenExam[] = $controle->id;
+        }
+
+        // A service whose exam grid has been cleared must not keep a stale mark.
+        StageNote::where('etudiant_id', $etudiant->id)
+            ->whereIn('controle_id', $controles->pluck('id'))
+            ->where('type', StageNote::EXAMEN_TYPE)
+            ->whereNotIn('controle_id', $writtenExam)
+            ->delete();
+
+        return ['synced' => $this->syncedMarksForEtudiant($etudiant, $anneeAcademiqueId), 'message' => ''];
     }
 
     /**
-     * Marks currently derived from the grids, for display on the Stage page.
+     * Both marks of every service, for display on the Stage page.
+     *
+     * @return array<int,array{controle_id:int,numero:int,service:string,evaluation:?float,examen:?float}>
      */
     public function syncedMarksForEtudiant(Etudiant $etudiant, int $anneeAcademiqueId): array
     {
@@ -243,31 +232,113 @@ class StageService
 
         if ($unites->isEmpty()) return [];
 
-        $sequenceIds = \App\Models\Sequence::whereIn('unite_id', $unites->pluck('id'))->pluck('id');
-        $controles = Controle::whereIn('sequence_id', $sequenceIds)->get();
+        $controles = Controle::whereIn('unite_id', $unites->pluck('id'))
+            ->orderBy('unite_id')
+            ->orderBy('numero')
+            ->get();
 
         $notes = Note::where('etudiant_id', $etudiant->id)
             ->whereIn('controle_id', $controles->pluck('id'))
             ->get()
             ->keyBy('controle_id');
 
+        $examens = StageNote::where('etudiant_id', $etudiant->id)
+            ->whereIn('controle_id', $controles->pluck('id'))
+            ->where('type', StageNote::EXAMEN_TYPE)
+            ->get()
+            ->keyBy('controle_id');
+
         $out = [];
         foreach ($controles as $controle) {
-            $note = $notes->get($controle->id);
-            $out[$controle->type] = [
-                'controle' => $this->controleLabel($controle),
-                'valeur'   => $note?->valeur,
+            $evaluation = $notes->get($controle->id)?->valeur;
+            $examen     = $examens->get($controle->id)?->valeur;
+
+            $out[$controle->id] = [
+                'controle_id' => $controle->id,
+                'numero'      => $controle->numero,
+                'service'     => $controle->nom,
+                'evaluation'  => $evaluation !== null ? (float) $evaluation : null,
+                'examen'      => $examen !== null ? (float) $examen : null,
             ];
         }
 
         return $out;
     }
 
-    private function controleLabel(Controle $controle): string
+    /**
+     * Write (or clear) a service's Évaluation note in `notes`, keeping the
+     * derived marks protected as confirmed.
+     */
+    private function writeNote(Etudiant $etudiant, Controle $controle, ?float $valeur): void
     {
-        return $controle->type === self::EXAMEN_CONTROL
-            ? 'Examen de stage'
-            : 'Évaluation de stage';
+        $existing = Note::where('etudiant_id', $etudiant->id)
+            ->where('controle_id', $controle->id)
+            ->first();
+
+        if ($valeur === null) {
+            // Grid cleared: drop the derived note rather than keep a stale mark
+            // that no longer matches the printed grid.
+            if ($existing) {
+                $existing->delete();
+            }
+            return;
+        }
+
+        if ($existing) {
+            $existing->update([
+                'valeur'       => $valeur,
+                'est_absent'   => false,
+                'is_confirmed' => true,
+                'confirmed_at' => now(),
+            ]);
+            return;
+        }
+
+        Note::create([
+            'etudiant_id'  => $etudiant->id,
+            'controle_id'  => $controle->id,
+            'valeur'       => $valeur,
+            'est_absent'   => false,
+            'is_confirmed' => true,
+            'confirmed_at' => now(),
+        ]);
+    }
+
+    /**
+     * The grids are stored as { service => grid }. Older sheets stored a single
+     * grid (one service) with the scoring fields at the top level; normalize
+     * both shapes to the keyed map so a saved sheet keeps working.
+     */
+    private function normalizeGridData(?array $data): array
+    {
+        if (!is_array($data)) return [];
+
+        if (!$this->looksLikeSingleGrid($data)) {
+            return $data;
+        }
+
+        $service = is_string($data['service'] ?? null) ? trim($data['service']) : '';
+        if ($service === '') return [];
+
+        return [$service => $data];
+    }
+
+    /** True when the array holds the scoring fields of one grid sheet. */
+    private function looksLikeSingleGrid(array $data): bool
+    {
+        foreach (['comportement', 'aptitudes', 'eval_pratique_1', 'eval_pratique_2', 'lignes', 'pratique_executee'] as $key) {
+            if (array_key_exists($key, $data)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Normalize a service name for matching grid keys to controls. */
+    private function serviceKey(string $nom): string
+    {
+        return mb_strtolower(trim($nom));
     }
 
     /**

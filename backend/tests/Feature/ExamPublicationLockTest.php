@@ -33,6 +33,8 @@ class ExamPublicationLockTest extends TestCase
     private array $createdEtudiants = [];
     private array $createdExamens = [];
     private array $createdPublications = [];
+    private array $publicationSnapshots = [];
+    private array $createdGroupes = [];
     private array $createdUsers = [];
 
     protected function setUp(): void
@@ -69,12 +71,81 @@ class ExamPublicationLockTest extends TestCase
         SemestrePublication::whereIn('id', $this->createdPublications)->delete();
         Etudiant::whereIn('id', $this->createdEtudiants)->forceDelete();
         User::whereIn('id', $this->createdUsers)->delete();
+        Groupe::whereIn('id', $this->createdGroupes)->delete();
+
+        $this->restorePublications();
 
         parent::tearDown();
     }
 
+    /**
+     * Other classes leave publication rows behind on the very groups this
+     * class runs against. A sibling that is already published makes a
+     * "per group" scenario read as "per level", so every group is snapshotted
+     * first and every write is restored to its previous state in tearDown.
+     */
+    private function snapPublication(int $groupeId, int $anneeId, string $type): void
+    {
+        $key = $groupeId . ':' . $anneeId . ':' . $type;
+        if (array_key_exists($key, $this->publicationSnapshots)) return;
+
+        $row = SemestrePublication::where('groupe_id', $groupeId)
+            ->where('annee_academique_id', $anneeId)
+            ->where('type', $type)
+            ->first();
+
+        $this->publicationSnapshots[$key] = $row ? $row->attributesToArray() : null;
+    }
+
+    /** Drops every publication of a group for the current year, remembering what was there. */
+    private function neutralise(int $groupeId): void
+    {
+        foreach (['notes_s1', 'notes_s2', 'bulletin'] as $t) {
+            $this->snapPublication($groupeId, $this->annee->id, $t);
+            SemestrePublication::where('groupe_id', $groupeId)
+                ->where('annee_academique_id', $this->annee->id)
+                ->where('type', $t)
+                ->delete();
+        }
+    }
+
+    private function restorePublications(): void
+    {
+        foreach ($this->publicationSnapshots as $key => $row) {
+            [$groupeId, $anneeId, $type] = explode(':', $key);
+            $groupeId = (int) $groupeId;
+            $anneeId = (int) $anneeId;
+
+            if ($row === null) continue;
+
+            $q = SemestrePublication::where('groupe_id', $groupeId)
+                ->where('annee_academique_id', $anneeId)
+                ->where('type', $type);
+
+            if ($q->exists()) {
+                $q->update([
+                    'is_published' => $row['is_published'],
+                    'published_at' => $row['published_at'],
+                    'updated_at'   => $row['updated_at'],
+                ]);
+            } else {
+                SemestrePublication::create([
+                    'groupe_id'           => $groupeId,
+                    'annee_academique_id' => $anneeId,
+                    'type'                => $type,
+                    'is_published'        => $row['is_published'],
+                    'published_at'        => $row['published_at'],
+                    'created_at'          => $row['created_at'],
+                    'updated_at'          => $row['updated_at'],
+                ]);
+            }
+        }
+    }
+
     private function publier(Groupe $groupe, string $type): void
     {
+        $this->snapPublication($groupe->id, $this->annee->id, $type);
+
         $publication = SemestrePublication::updateOrCreate(
             [
                 'groupe_id'           => $groupe->id,
@@ -84,7 +155,9 @@ class ExamPublicationLockTest extends TestCase
             ['is_published' => true, 'published_at' => now()]
         );
 
-        if (!in_array($publication->id, $this->createdPublications, true)) {
+        // Only a row this test created is theirs to delete: an updateOrCreate
+        // that hit a pre-existing row must be left for restorePublications().
+        if ($publication->wasRecentlyCreated) {
             $this->createdPublications[] = $publication->id;
         }
     }
@@ -174,11 +247,20 @@ class ExamPublicationLockTest extends TestCase
                 'nom'                 => 'EXAM-LOCK-' . bin2hex(random_bytes(3)),
                 'promotion'           => 'EXAMTMP',
             ]);
+            $this->createdGroupes[] = $frere->id;
 
-            return [$groupes->first(), $frere];
+            $pair = [$groupes->first(), $frere];
+        } else {
+            $pair = [$groupes[0], $groupes[1]];
         }
 
-        return [$groupes[0], $groupes[1]];
+        // Clean sheets: a publication another class left on a sibling would make
+        // the per-group rule read as per-level.
+        foreach ($pair as $g) {
+            $this->neutralise($g->id);
+        }
+
+        return $pair;
     }
 
     private function payload(Etudiant $etudiant, Unite $unite, int $semestre, float $valeur = 12.5): array

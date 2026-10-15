@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
 
 trait ValidatesScanUploads
@@ -24,6 +25,18 @@ trait ValidatesScanUploads
             );
         }
 
+        foreach ($files as $index => $file) {
+            if ($file instanceof UploadedFile && $file->getError() !== UPLOAD_ERR_OK) {
+                $message = match ($file->getError()) {
+                    UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Fichier trop volumineux pour le serveur PHP (limite ' . (ini_get('upload_max_filesize') ?: 'inconnue') . ').',
+                    UPLOAD_ERR_PARTIAL => 'Envoi du fichier interrompu. Réessayez.',
+                    UPLOAD_ERR_NO_FILE => 'Aucun fichier reçu.',
+                    default => "Échec de l'envoi du fichier.",
+                };
+                return $this->scanUploadError($message, ["files.{$index}" => [$message]]);
+            }
+        }
+
         $validator = Validator::make(
             ['files' => $files],
             [
@@ -31,8 +44,11 @@ trait ValidatesScanUploads
                 'files.*' => ['required', 'file', 'mimes:' . implode(',', $mimes), 'max:' . self::SCAN_MAX_FILE_SIZE_KB],
             ],
             [
-                'files.*.mimes' => 'Type de fichier non autorisé (PDF, JPG, PNG ou WEBP uniquement).',
-                'files.*.max'   => 'Fichier trop volumineux (10 Mo maximum).',
+                'files.*.uploaded' => "Échec de l'envoi du fichier. Vérifiez sa taille et réessayez.",
+                'files.*.file'     => 'Fichier invalide ou envoi interrompu.',
+                'files.*.required' => 'Fichier manquant.',
+                'files.*.mimes'    => 'Type de fichier non autorisé (PDF, JPG, PNG ou WEBP uniquement).',
+                'files.*.max'      => 'Fichier trop volumineux (10 Mo maximum).',
             ]
         );
 

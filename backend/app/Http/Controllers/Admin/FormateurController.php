@@ -8,6 +8,7 @@ use App\Models\Formateur;
 use App\Models\Sequence;
 use App\Models\User;
 use App\Services\GeminiService;
+use App\Services\UsernameGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
@@ -41,13 +42,20 @@ class FormateurController extends Controller
         try {
             $request->validate([
                 'name'     => 'required|string',
-                'email'    => 'required|email|unique:users,email',
+                'username' => 'nullable|string|max:60|regex:/^[a-z0-9]+(?:\.[a-z0-9]+)*$|unique:users,username',
                 'password' => 'required|string|min:6',
             ]);
 
+            $generator = app(UsernameGenerator::class);
+
+            // Left empty, the identifier is generated from the name (e.g. "m.alami").
+            $username = filled($request->username)
+                ? mb_strtolower(trim($request->username))
+                : $generator->reserveFor($request->name, 'formateur');
+
             $user = User::create([
                 'name'               => $request->name,
-                'email'              => $request->email,
+                'username'           => $username,
                 'password'           => Hash::make($request->password),
                 'password_encrypted' => Crypt::encryptString($request->password),
                 'password_original_encrypted' => Crypt::encryptString($request->password),

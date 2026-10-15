@@ -5,12 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Controle;
 use App\Models\Sequence;
-use App\Traits\HasControleType;
 use Illuminate\Http\Request;
 
 class SequenceController extends Controller
 {
-    use HasControleType;
     public function index(Request $request)
     {
         try {
@@ -46,7 +44,6 @@ class SequenceController extends Controller
                     'sequence_id' => $sequence->id,
                     'numero'      => $i,
                     'nom'         => 'Contrôle ' . $i,
-                    'type'        => $this->getControleType($i, $nb),
                     'note_max'    => 20,
                 ]);
             }
@@ -78,16 +75,8 @@ class SequenceController extends Controller
                             'sequence_id' => $sequence->id,
                             'numero'      => $i,
                             'nom'         => 'Contrôle ' . $i,
-                            'type'        => $this->getControleType($i, $newCount),
                             'note_max'    => 20,
                         ]);
-                    }
-
-                    $existing = Controle::where('sequence_id', $sequence->id)
-                        ->where('numero', '<=', $oldCount)
-                        ->get();
-                    foreach ($existing as $ctrl) {
-                        $ctrl->update(['type' => $this->getControleType($ctrl->numero, $newCount)]);
                     }
                 } elseif ($newCount < $oldCount) {
                     $toDelete = Controle::where('sequence_id', $sequence->id)
@@ -106,11 +95,6 @@ class SequenceController extends Controller
                     Controle::where('sequence_id', $sequence->id)
                         ->where('numero', '>', $newCount)
                         ->delete();
-
-                    $remaining = Controle::where('sequence_id', $sequence->id)->get();
-                    foreach ($remaining as $ctrl) {
-                        $ctrl->update(['type' => $this->getControleType($ctrl->numero, $newCount)]);
-                    }
                 }
             }
 
@@ -155,18 +139,6 @@ class SequenceController extends Controller
             return response()->json(['success' => true, 'data' => $controle]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors du renommage'], 500);
-        }
-    }
-
-    public function setControleType(Request $request, $id)
-    {
-        try {
-            $request->validate(['type' => 'required|in:cc,theorique,pratique']);
-            $controle = Controle::findOrFail($id);
-            $controle->update(['type' => $request->type]);
-            return response()->json(['success' => true, 'data' => $controle]);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Erreur lors de la modification du type'], 500);
         }
     }
 

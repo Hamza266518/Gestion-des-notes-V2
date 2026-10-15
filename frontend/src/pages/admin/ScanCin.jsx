@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '../../api/admin';
 import { scanApi } from '../../api/scan';
+import { translateLieu } from '../../api/etudiants';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
-import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
-import { formatNiveau, toWesternDigits, isoToArabicDate } from '../../utils/helpers';
+import FilterSelect from '../../components/common/FilterSelect';
+import { formatNiveau, toWesternDigits, isoToArabicDate, lieuToArabic, normalizeNationality, autoNationaliteAr } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
 const DEFAULT_NATIONALITE = 'MAROCAINE';
-const DEFAULT_NATIONALITE_AR = 'مغربية';
 
 export default function ScanCin() {
   const [step, setStep]         = useState(1);
@@ -99,13 +99,21 @@ export default function ScanCin() {
     }
   };
 
-  const withDefaults = r => ({
-    ...r,
-    nationalite: r.nationalite || DEFAULT_NATIONALITE,
-    nationalite_ar: r.nationalite_ar || DEFAULT_NATIONALITE_AR,
-    nom_ar: r.nom_ar || r.nom_prenom || '',
-    cin_ar: r.cin_ar || r.cin || '',
-  });
+  const withDefaults = r => {
+    const today = new Date().toISOString().split('T')[0];
+    const nationalite = normalizeNationality(r.nationalite) || DEFAULT_NATIONALITE;
+    return {
+      ...r,
+      nationalite,
+      nationalite_ar: autoNationaliteAr(r.nationalite || '', nationalite, r.nationalite_ar || '') || '',
+      nom_ar: r.nom_ar || r.nom_prenom || '',
+      cin_ar: r.cin || '',
+      lieu_naissance_ar: r.lieu_naissance_ar || lieuToArabic(r.lieu_naissance || ''),
+      date_inscription: r.date_inscription || today,
+      date_inscription_ar: r.date_inscription_ar || isoToArabicDate(r.date_inscription || today),
+      numero_inscription_ar: r.numero_inscription_ar || r.numero_inscription || '',
+    };
+  };
 
   const handleConfirm = async () => {
     setSaving(true);
@@ -143,6 +151,31 @@ export default function ScanCin() {
       const next = { ...r, [key]: val };
       if (key === 'cin') next.cin_ar = toWesternDigits(val).toUpperCase();
       if (key === 'date_naissance') next.date_naissance_ar = isoToArabicDate(val) || '';
+if (key === 'lieu_naissance') {
+        const prevAuto = lieuToArabic(r.lieu_naissance || '');
+        const ar = r.lieu_naissance_ar || '';
+        const auto = lieuToArabic(val);
+        next.lieu_naissance_ar = (!ar || ar === prevAuto) ? (auto || (val ? ar : '')) : ar;
+        if (!auto && String(val || '').trim()) {
+          translateLieu(val).then(res => {
+            const ar2 = res?.lieu_ar;
+            if (!ar2) return;
+            setResults(prev => prev.map((row, j) => {
+              if (j !== i) return row;
+              if (String(row.lieu_naissance || '') !== val) return row;
+              const pa = lieuToArabic(row.lieu_naissance || '');
+              const cur = row.lieu_naissance_ar || '';
+              return (!cur || cur === pa) ? { ...row, lieu_naissance_ar: ar2 } : row;
+            }));
+          }).catch(() => {});
+        }
+      }
+      if (key === 'nationalite') {
+        next.nationalite = normalizeNationality(val);
+        next.nationalite_ar = autoNationaliteAr(r.nationalite || '', next.nationalite, r.nationalite_ar || '');
+      }
+      if (key === 'date_inscription') next.date_inscription_ar = isoToArabicDate(val) || '';
+      if (key === 'numero_inscription') next.numero_inscription_ar = val || '';
       return next;
     }));
   };
@@ -184,31 +217,51 @@ export default function ScanCin() {
       {step === 1 && (
         <div className="card card-body" style={{ maxWidth: 500 }}>
           <div className="form-group">
-            <label className="form-label">Filière</label>
-            <select className="form-select" value={selFiliere} onChange={e => { setSelFiliere(e.target.value); setSelNiveau(''); setSelGroupe(''); }}>
-              <option value="">Sélectionner</option>
-              {filieres.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-            </select>
+            <FilterSelect
+              block
+              label="Filière"
+              value={selFiliere}
+              options={filieres.map(f => ({ id: f.id, label: f.nom }))}
+              onChange={(v) => { setSelFiliere(v); setSelNiveau(''); setSelGroupe(''); }}
+              placeholder="Sélectionner"
+              allLabel="Sélectionner"
+            />
           </div>
           <div className="form-group">
-            <label className="form-label">Niveau</label>
-            <select className="form-select" value={selNiveau} onChange={e => { setSelNiveau(e.target.value); setSelGroupe(''); }} disabled={!selFiliere}>
-              <option value="">Sélectionner</option>
-              {niveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
-            </select>
+            <FilterSelect
+              block
+              label="Niveau"
+              value={selNiveau}
+              options={niveaux.map(n => ({ id: n.id, label: formatNiveau(n.numero) }))}
+              onChange={(v) => { setSelNiveau(v); setSelGroupe(''); }}
+              disabled={!selFiliere}
+              placeholder="Sélectionner"
+              allLabel="Sélectionner"
+            />
           </div>
           <div className="form-group">
-            <label className="form-label">Année académique</label>
-            <select className="form-select" value={currentAnnee?.id || ''} disabled>
-              <option value="">{currentAnnee?.label || 'Chargement...'}</option>
-            </select>
+            <FilterSelect
+              block
+              label="Année académique"
+              value={currentAnnee?.id || ''}
+              options={currentAnnee ? [{ id: currentAnnee.id, label: currentAnnee.label }] : []}
+              onChange={() => {}}
+              disabled
+              placeholder={currentAnnee?.label || 'Chargement...'}
+              allLabel={currentAnnee?.label || 'Chargement...'}
+            />
           </div>
           <div className="form-group">
-            <label className="form-label">Groupe</label>
-            <select className="form-select" value={selGroupe} onChange={e => setSelGroupe(e.target.value)} disabled={!selNiveau || !currentAnnee}>
-              <option value="">Sélectionner</option>
-              {groupes.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
-            </select>
+            <FilterSelect
+              block
+              label="Groupe"
+              value={selGroupe}
+              options={groupes.map(g => ({ id: g.id, label: g.nom }))}
+              onChange={setSelGroupe}
+              disabled={!selNiveau || !currentAnnee}
+              placeholder="Sélectionner"
+              allLabel="Sélectionner"
+            />
           </div>
           <button className="btn btn-primary" disabled={!selGroupe} onClick={() => setStep(2)}>
             Suivant →
@@ -254,8 +307,6 @@ export default function ScanCin() {
               {scanning ? 'Lecture en cours...' : 'Scanner les CIN'}
             </button>
           </div>
-
-          {scanning && <Spinner />}
         </div>
       )}
 

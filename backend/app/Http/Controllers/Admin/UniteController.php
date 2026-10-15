@@ -13,7 +13,7 @@ class UniteController extends Controller
     public function index(Request $request)
     {
         try {
-            $unites = Unite::with(['filiere', 'sequences.controles'])
+            $unites = Unite::with(['filiere', 'sequences.controles', 'controles'])
                 ->when($request->filiere_id, fn($q) => $q->where('filiere_id', $request->filiere_id))
                 ->when($request->numero_annee, fn($q) => $q->where('numero_annee', $request->numero_annee))
                 ->when($request->semestre, fn($q) => $q->where('semestre', $request->semestre))

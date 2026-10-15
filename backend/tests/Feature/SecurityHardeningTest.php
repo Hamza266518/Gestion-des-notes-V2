@@ -17,10 +17,28 @@ class SecurityHardeningTest extends TestCase
         return $route->gatherMiddleware();
     }
 
-    public function test_password_reset_endpoints_are_rate_limited(): void
+    public function test_password_recovery_endpoints_are_rate_limited(): void
     {
-        $this->assertContains('throttle:6,1', $this->middlewareFor('POST', 'etudiant/password/forgot-verify'));
-        $this->assertContains('throttle:5,1', $this->middlewareFor('POST', 'etudiant/password/reset'));
+        $this->assertContains('throttle:6,1', $this->middlewareFor('POST', 'auth/password/forgot'));
+        $this->assertContains('throttle:5,1', $this->middlewareFor('POST', 'auth/password/reset'));
+    }
+
+    public function test_account_endpoints_are_rate_limited(): void
+    {
+        $this->assertContains('auth:sanctum', $this->middlewareFor('GET', 'account'));
+        $this->assertContains('throttle:6,1', $this->middlewareFor('PUT', 'account/email'));
+        $this->assertContains('throttle:8,1', $this->middlewareFor('POST', 'account/email/verify'));
+        $this->assertContains('throttle:5,1', $this->middlewareFor('POST', 'account/password'));
+    }
+
+    public function test_legacy_forgot_password_routes_are_gone(): void
+    {
+        foreach (['etudiant/password/forgot-verify', 'etudiant/password/reset'] as $legacy) {
+            $route = collect(Route::getRoutes()->getRoutes())
+                ->first(fn ($r) => in_array('POST', $r->methods(), true) && str_ends_with($r->uri(), $legacy));
+
+            $this->assertNull($route, "La route obsolète {$legacy} doit être supprimée");
+        }
     }
 
     public function test_admin_routes_require_authentication_and_admin_role(): void

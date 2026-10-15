@@ -47,10 +47,12 @@ class CinScanService
     public function createEtudiant(array $data): array
     {
         $cin      = strtoupper($data['cin']);
-        $email    = strtolower($cin) . '@ifp.ma';
         $password = $data['numero_inscription'] . substr($cin, 0, 2);
 
-        $user = User::where('email', $email)->first();
+        // The account is identified by the CIN, never by the username, so that a
+        // renamed student keeps the same account (and the same username).
+        $existingEtudiant = Etudiant::with('user')->where('cin', $cin)->first();
+        $user = $existingEtudiant?->user;
 
         if ($user) {
             $user->update(['name' => $data['nom_prenom']]);
@@ -58,7 +60,7 @@ class CinScanService
         } else {
             $user = User::create([
                 'name'               => $data['nom_prenom'],
-                'email'              => $email,
+                'username'           => app(UsernameGenerator::class)->reserveFor($data['nom_prenom'], 'etudiant'),
                 'password'           => Hash::make($password),
                 'password_encrypted' => Crypt::encryptString($password),
                 'password_original_encrypted' => Crypt::encryptString($password),
@@ -79,6 +81,6 @@ class CinScanService
             ]
         );
 
-        return ['status' => $status, 'email' => $email];
+        return ['status' => $status, 'username' => $user->username];
     }
 }

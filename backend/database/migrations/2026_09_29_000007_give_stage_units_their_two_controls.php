@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\DB;
  * completely disconnected from `notes`. This migration gives every Stage unit
  * one sequence holding the two marks the official documents count:
  *
- *   controle 1  type 'cc'       -> Grille d'Évaluation  (feeds MPCC)
- *   controle 2  type 'pratique' -> Grille d'Examen      (feeds MPEFCFP)
+ *   controle 1 -> Grille d'Évaluation  (feeds MPCC)
+ *   controle 2 -> Grille d'Examen      (feeds MPEFCFP)
  *
  * The unit keeps its single coefficient of 4, which is what the documents
  * give it, and StageService copies the two /20 grid results into these
@@ -60,7 +60,6 @@ return new class extends Migration
                 [
                     'sequence_id' => $sequenceId,
                     'numero'      => 1,
-                    'type'        => 'cc',
                     'date'        => null,
                     'note_max'    => 20,
                     'created_at'  => now(),
@@ -69,7 +68,6 @@ return new class extends Migration
                 [
                     'sequence_id' => $sequenceId,
                     'numero'      => 2,
-                    'type'        => 'pratique',
                     'date'        => null,
                     'note_max'    => 20,
                     'created_at'  => now(),
@@ -82,7 +80,7 @@ return new class extends Migration
                 'cible_id'        => $unite->id,
                 'champ'           => 'structure',
                 'ancienne_valeur' => '0 sequence / 0 controle',
-                'nouvelle_valeur' => '1 sequence / 2 controles (cc + pratique)',
+                'nouvelle_valeur' => '1 sequence / 2 controles',
                 'source'          => 'grilles officielles du stage : note d\'évaluation et note d\'examen, unite de coefficient 4',
                 'applied_at'      => now(),
                 'created_at'      => now(),

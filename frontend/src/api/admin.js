@@ -9,6 +9,10 @@ export const adminApi = {
         apiClient.post(`/admin/annees-academiques/${id}/set-current`),
     archiveAnnee: (id) =>
         apiClient.post(`/admin/annees-academiques/${id}/archive`),
+    unarchiveAnnee: (id) =>
+        apiClient.post(`/admin/annees-academiques/${id}/unarchive`),
+    updateAnnee: (id, data) =>
+        apiClient.put(`/admin/annees-academiques/${id}`, data),
 
     getFilieres: () =>
         apiClient.get('/admin/filieres'),

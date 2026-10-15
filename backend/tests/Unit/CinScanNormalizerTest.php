@@ -187,6 +187,70 @@ class CinScanNormalizerTest extends TestCase
         $this->assertSame('PORTUGAISE', $data['nationalite']);
     }
 
+    public function test_misspelled_moroccan_nationality_is_corrected_in_both_languages(): void
+    {
+        $data = $this->normalizer->normalize([
+            'nom_prenom'     => 'SALMA IDRISSI',
+            'cin'            => 'AB123456',
+            'nationalite'    => 'Maroccain',
+            'nationalite_ar' => '',
+        ]);
+
+        $this->assertSame('MAROCAINE', $data['nationalite']);
+        $this->assertSame('مغربية', $data['nationalite_ar']);
+    }
+
+    public function test_latin_text_in_the_arabic_nationality_box_is_replaced(): void
+    {
+        $data = $this->normalizer->normalize([
+            'nom_prenom'     => 'SALMA IDRISSI',
+            'cin'            => 'AB123456',
+            'nationalite'    => 'marocaine',
+            'nationalite_ar' => 'Marocaine', // AI echoed the Latin text instead of Arabic
+        ]);
+
+        $this->assertSame('MAROCAINE', $data['nationalite']);
+        $this->assertSame('مغربية', $data['nationalite_ar']);
+    }
+
+    public function test_arabic_word_in_the_french_nationality_box_is_normalised(): void
+    {
+        $data = $this->normalizer->normalize([
+            'nom_prenom'  => 'SALMA IDRISSI',
+            'cin'         => 'AB123456',
+            'nationalite' => 'المغربية',
+        ]);
+
+        $this->assertSame('MAROCAINE', $data['nationalite']);
+        $this->assertSame('مغربية', $data['nationalite_ar']);
+    }
+
+    public function test_hand_written_arabic_nationality_is_kept(): void
+    {
+        $data = $this->normalizer->normalize([
+            'nom_prenom'     => 'SALMA IDRISSI',
+            'cin'            => 'AB123456',
+            'nationalite'    => 'Marocaine',
+            'nationalite_ar' => 'المغربية',
+        ]);
+
+        $this->assertSame('MAROCAINE', $data['nationalite']);
+        $this->assertSame('المغربية', $data['nationalite_ar']);
+    }
+
+    public function test_foreign_nationality_keeps_its_own_arabic_text(): void
+    {
+        $data = $this->normalizer->normalize([
+            'nom_prenom'     => 'ANA SILVA',
+            'cin'            => 'EE111222',
+            'nationalite'    => 'PORTUGAISE',
+            'nationalite_ar' => 'برتغالية',
+        ]);
+
+        $this->assertSame('PORTUGAISE', $data['nationalite']);
+        $this->assertSame('برتغالية', $data['nationalite_ar']);
+    }
+
     public function test_name_is_uppercased_and_whitespace_collapsed(): void
     {
         $data = $this->normalizer->normalize([

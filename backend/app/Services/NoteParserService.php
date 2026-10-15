@@ -24,23 +24,46 @@ class NoteParserService
 
     public function parseNotes(string $rawText): array
     {
-        $clean = preg_replace('/```json|```/', '', $rawText);
-        $data  = json_decode(trim($clean), true);
-        return is_array($data) ? $data : [];
+        return $this->decodeList($rawText);
     }
 
     public function parseCin(string $rawText): array
     {
-        $clean = preg_replace('/```json|```/', '', $rawText);
-        $data  = json_decode(trim($clean), true);
-        return is_array($data) ? $data : [];
+        return $this->decodeList($rawText);
     }
 
     public function parseExamens(string $rawText): array
     {
+        return $this->decodeList($rawText);
+    }
+
+    /**
+     * Same decoding as the other scans: one record per student, each carrying a
+     * "notes" array aligned to the jury criteria given in the scan context.
+     */
+    public function parseSoutenance(string $rawText): array
+    {
+        return $this->decodeList($rawText);
+    }
+
+    /**
+     * Decode the model's JSON text into a list of records.
+     *
+     * A model that answers with a single object instead of an array used to be
+     * returned as-is, and its field values were then iterated as if each were a
+     * record (the "string given where array expected" failure). Wrapping the
+     * object makes it exactly one record.
+     */
+    private function decodeList(string $rawText): array
+    {
         $clean = preg_replace('/```json|```/', '', $rawText);
         $data  = json_decode(trim($clean), true);
-        return is_array($data) ? $data : [];
+
+        if (!is_array($data)) {
+            return [];
+        }
+
+        return array_is_list($data) ? $data : [$data];
     }
 
     /**
@@ -62,6 +85,12 @@ class NoteParserService
 
         if (is_int($raw) || is_float($raw)) {
             $value = (float) $raw;
+            if ($this->tropDeChiffres((string) $value, $noteMax)) {
+                return ['valeur' => null, 'est_absent' => false, 'invalid' => true];
+            }
+            if (!$this->isValidQuarterStep($value)) {
+                return ['valeur' => null, 'est_absent' => false, 'invalid' => true];
+            }
             return $this->clamp($value, $noteMax);
         }
 
@@ -112,6 +141,9 @@ class NoteParserService
                 if ($num > $den) {
                     return ['valeur' => null, 'est_absent' => false, 'invalid' => true];
                 }
+                if (!$this->isValidQuarterStep($num)) {
+                    return ['valeur' => null, 'est_absent' => false, 'invalid' => true];
+                }
                 $noteMax = $den;
                 $value = $num;
                 return $this->clamp($value, $noteMax);
@@ -121,6 +153,12 @@ class NoteParserService
         // Decimal comma -> dot, then a plain number.
         $candidate = str_replace(',', '.', $text);
         if (is_numeric($candidate)) {
+            if ($this->tropDeChiffres($candidate, $noteMax)) {
+                return ['valeur' => null, 'est_absent' => false, 'invalid' => true];
+            }
+            if (!$this->isValidQuarterStep((float) $candidate)) {
+                return ['valeur' => null, 'est_absent' => false, 'invalid' => true];
+            }
             return $this->clamp((float) $candidate, $noteMax);
         }
 
@@ -128,11 +166,40 @@ class NoteParserService
         if (preg_match('/(\d+(?:[.,]\d+)?)/', $text, $m)) {
             $candidate = str_replace(',', '.', $m[1]);
             if (is_numeric($candidate)) {
+                if ($this->tropDeChiffres($candidate, $noteMax)) {
+                    return ['valeur' => null, 'est_absent' => false, 'invalid' => true];
+                }
+                if (!$this->isValidQuarterStep((float) $candidate)) {
+                    return ['valeur' => null, 'est_absent' => false, 'invalid' => true];
+                }
                 return $this->clamp((float) $candidate, $noteMax);
             }
         }
 
         return ['valeur' => null, 'est_absent' => false, 'invalid' => true];
+    }
+
+    /**
+     * A bare number with more integer digits than the maximum is a misread
+     * ("145" for "14.5"), not a perfect score: clamping would silently award
+     * full marks, so it is handed to a human instead. The check is on the digit
+     * count, not the value, so a genuine grade like "25" on /20 is still clamped
+     * to 20 (both are two digits) while "145" is refused.
+     */
+    private function tropDeChiffres(string $number, float $noteMax): bool
+    {
+        // The caller using PHP_FLOAT_MAX wants the value untouched; it performs
+        // its own upper-bound check.
+        if ($noteMax >= PHP_FLOAT_MAX) {
+            return false;
+        }
+
+        $entier = (string) abs((float) $number);
+        $entier = ltrim(explode('.', $entier)[0], '0');
+
+        $maxEntier = ltrim((string) (int) floor($noteMax), '0');
+
+        return strlen($entier) > strlen($maxEntier);
     }
 
     private function clamp(float $value, float $noteMax): array
@@ -145,5 +212,19 @@ class NoteParserService
             $value = $noteMax;
         }
         return ['valeur' => $value, 'est_absent' => false, 'invalid' => false];
+    }
+
+    /**
+     * A grade is only ever a quarter step: 0, 0.25, 0.5, 0.75, 1, ... A reading
+     * like 14.7 or 14.9 is a misread of the sheet and must be corrected by hand,
+     * so parseValue refuses it instead of rounding it silently.
+     */
+    public function isValidQuarterStep(float $value): bool
+    {
+        // Magnitude only: a negative read ("-3") is clamped to 0 by clamp(),
+        // exactly as before, and only a non-quarter magnitude is refused.
+        $steps = abs($value) * 4.0;
+        $rounded = round($steps);
+        return abs($steps - $rounded) < 1e-4;
     }
 }

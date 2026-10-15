@@ -2,19 +2,19 @@ import { useState } from 'react';
 import Modal from '../common/Modal';
 import { passwordApi } from '../../api/password';
 import { validatePassword, getPasswordRequirements } from '../../utils/passwordValidator';
-import { FiEye, FiEyeOff, FiArrowLeft, FiCheck } from 'react-icons/fi';
+import { FiEye, FiEyeOff, FiArrowLeft, FiCheck, FiUser, FiMail } from 'react-icons/fi';
+
+const GENERIC_FAILURE = 'Identifiant ou code invalide. Veuillez recommencer.';
 
 export function ForgotPasswordModal({ onClose, onSuccess }) {
   const [phase, setPhase] = useState(1);
   const [formData, setFormData] = useState({
-    oldPassword: '',
-    cin: '',
+    username: '',
+    code: '',
     newPassword: '',
     confirmPassword: '',
   });
-  const [tempToken, setTempToken] = useState('');
-  const [studentName, setStudentName] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [info, setInfo] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [errors, setErrors] = useState([]);
   const [generalError, setGeneralError] = useState('');
@@ -28,36 +28,35 @@ export function ForgotPasswordModal({ onClose, onSuccess }) {
     setGeneralError('');
   };
 
-  const handleVerifyIdentity = async (e) => {
+  const handleSendCode = async (e) => {
     e.preventDefault();
     setGeneralError('');
     setErrors([]);
 
-    const newErrors = [];
-    if (!formData.oldPassword) newErrors.push("L'ancien mot de passe est requis");
-    if (!formData.cin) newErrors.push("Le CIN est requis");
+    const username = formData.username.trim().toLowerCase();
 
-    if (newErrors.length > 0) {
-      setErrors(newErrors);
+    if (!username) {
+      setErrors(['Votre identifiant est requis']);
       return;
     }
 
     try {
       setLoading(true);
-      const response = await passwordApi.verifyForgotPassword(
-        formData.oldPassword,
-        formData.cin
-      );
+      const response = await passwordApi.requestRecoveryCode(username);
 
-      if (response.data.success) {
-        setTempToken(response.data.temp_token);
-        setStudentName(response.data.student_name);
-        setPhase(2);
-      }
-    } catch (err) {
-      setGeneralError(
-        err.response?.data?.message || 'Vérification échouée. Veuillez vérifier vos identifiants.'
+      // Message volontairement identique pour tout identifiant : ne révèle rien.
+      setInfo(
+        response.data?.message ||
+          'Si un compte correspond à cet identifiant et possède une adresse email vérifiée, un code vient d\'être envoyé.'
       );
+      setFormData((prev) => ({ ...prev, username }));
+      setPhase(2);
+    } catch (err) {
+      if (err.response?.status === 429) {
+        setGeneralError('Trop de demandes. Veuillez patienter avant de réessayer.');
+      } else {
+        setGeneralError(err.response?.data?.message || 'Impossible d\'envoyer le code. Veuillez réessayer.');
+      }
     } finally {
       setLoading(false);
     }
@@ -68,33 +67,35 @@ export function ForgotPasswordModal({ onClose, onSuccess }) {
     setGeneralError('');
     setErrors([]);
 
+    const newErrors = [];
+    if (!formData.code.trim()) newErrors.push('Le code reçu par email est requis');
+    if (!formData.code.trim().match(/^\d{6}$/)) newErrors.push('Le code est composé de 6 chiffres');
+
     const validation = validatePassword(formData.newPassword);
-    if (!validation.isValid) {
-      setErrors(validation.errors);
-      return;
-    }
+    if (!validation.isValid) newErrors.push(...validation.errors);
 
     if (formData.newPassword !== formData.confirmPassword) {
-      setErrors(['Les mots de passe ne correspondent pas']);
+      newErrors.push('Les mots de passe ne correspondent pas');
+    }
+
+    if (newErrors.length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     try {
       setLoading(true);
-      const response = await passwordApi.resetForgotPassword(
-        tempToken,
+      await passwordApi.resetPassword(
+        formData.username.trim().toLowerCase(),
+        formData.code.trim(),
         formData.newPassword,
         formData.confirmPassword
       );
 
-      if (response.data.success) {
-        setSuccess(true);
-        setTimeout(() => onSuccess?.(), 2000);
-      }
+      setSuccess(true);
+      setTimeout(() => onSuccess?.(), 2000);
     } catch (err) {
-      setGeneralError(
-        err.response?.data?.message || 'Erreur lors de la réinitialisation du mot de passe'
-      );
+      setGeneralError(err.response?.data?.message || GENERIC_FAILURE);
     } finally {
       setLoading(false);
     }
@@ -137,55 +138,40 @@ export function ForgotPasswordModal({ onClose, onSuccess }) {
       )}
 
       {phase === 1 && (
-        <form onSubmit={handleVerifyIdentity}>
+        <form onSubmit={handleSendCode}>
           <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--gray-800)' }}>
-            Vérification d'identité
+            Identifiant du compte
           </h3>
           <p style={{ margin: '0 0 20px', color: 'var(--gray-500)', fontSize: 13 }}>
-            Entrez votre ancien mot de passe et votre CIN pour confirmer votre identité
+            Un code de 6 chiffres sera envoyé à l'adresse email vérifiée de votre compte.
+            Sans adresse email vérifiée, contactez l'administrateur.
           </p>
 
           <div className="form-group">
-            <label className="form-label">Ancien mot de passe</label>
+            <label className="form-label">Identifiant</label>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <input
-                type={showPassword ? 'text' : 'password'}
-                name="oldPassword"
+                type="text"
+                name="username"
                 className="form-input"
-                value={formData.oldPassword}
+                value={formData.username}
                 onChange={handleInputChange}
-                placeholder="Votre mot de passe actuel"
+                placeholder="prenom.nom"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck="false"
                 disabled={loading}
                 required
-                style={{ paddingRight: 40 }}
+                style={{ paddingLeft: 38 }}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                disabled={loading}
+              <FiUser
+                size={18}
                 style={{
-                  position: 'absolute', right: 10, background: 'none', border: 'none',
-                  cursor: 'pointer', color: 'var(--gray-400)', padding: 4, display: 'flex'
+                  position: 'absolute', left: 12, color: 'var(--gray-400)',
+                  pointerEvents: 'none'
                 }}
-                tabIndex={-1}
-              >
-                {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
-              </button>
+              />
             </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Numéro de CIN</label>
-            <input
-              type="text"
-              name="cin"
-              className="form-input"
-              value={formData.cin}
-              onChange={handleInputChange}
-              placeholder="Votre numéro CIN"
-              disabled={loading}
-              required
-            />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
@@ -200,9 +186,9 @@ export function ForgotPasswordModal({ onClose, onSuccess }) {
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={loading || !formData.oldPassword || !formData.cin}
+              disabled={loading || !formData.username.trim()}
             >
-              {loading ? 'Vérification...' : 'Vérifier'}
+              {loading ? 'Envoi...' : 'Envoyer le code'}
             </button>
           </div>
         </form>
@@ -211,11 +197,38 @@ export function ForgotPasswordModal({ onClose, onSuccess }) {
       {phase === 2 && (
         <form onSubmit={handleResetPassword}>
           <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--gray-800)' }}>
-            Nouveau mot de passe
+            Code et nouveau mot de passe
           </h3>
-          <p style={{ margin: '0 0 20px', color: 'var(--gray-500)', fontSize: 13 }}>
-            Bienvenue {studentName}! Créez un nouveau mot de passe sécurisé
+          <p style={{ margin: '0 0 16px', color: 'var(--gray-500)', fontSize: 13 }}>
+            {info || 'Saisissez le code reçu par email pour réinitialiser votre mot de passe.'}
           </p>
+
+          <div className="form-group">
+            <label className="form-label">Code reçu par email</label>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                type="text"
+                name="code"
+                className="form-input"
+                value={formData.code}
+                onChange={handleInputChange}
+                placeholder="000000"
+                inputMode="numeric"
+                maxLength={6}
+                autoComplete="one-time-code"
+                disabled={loading}
+                required
+                style={{ paddingLeft: 38, letterSpacing: 4 }}
+              />
+              <FiMail
+                size={18}
+                style={{
+                  position: 'absolute', left: 12, color: 'var(--gray-400)',
+                  pointerEvents: 'none'
+                }}
+              />
+            </div>
+          </div>
 
           <div style={{
             background: 'var(--gray-50)', border: '1px solid var(--gray-200)',
@@ -229,14 +242,14 @@ export function ForgotPasswordModal({ onClose, onSuccess }) {
             </h4>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {getPasswordRequirements().map((req, idx) => {
-                const met = formData.newPassword && validatePassword(formData.newPassword).isValid;
+                const met = req.check(formData.newPassword);
                 return (
                   <li key={idx} style={{
                     fontSize: 13, color: met ? 'var(--success)' : 'var(--gray-400)',
                     display: 'flex', alignItems: 'center', gap: 8, transition: 'color 0.3s'
                   }}>
-                    {met ? '✓' : '○'}
-                    {req}
+                    <span style={{ fontSize: 14, fontWeight: 700 }}>{met ? '✓' : '○'}</span>
+                    {req.text}
                   </li>
                 );
               })}
@@ -279,7 +292,7 @@ export function ForgotPasswordModal({ onClose, onSuccess }) {
               name="confirmPassword"
               className="form-input"
               value={formData.confirmPassword}
-              onChange={handleInputChange}
+                onChange={handleInputChange}
               placeholder="Confirmez votre mot de passe"
               disabled={loading}
               required
@@ -292,7 +305,9 @@ export function ForgotPasswordModal({ onClose, onSuccess }) {
               className="btn btn-ghost"
               onClick={() => {
                 setPhase(1);
-                setFormData((prev) => ({ ...prev, newPassword: '', confirmPassword: '' }));
+                setFormData((prev) => ({ ...prev, code: '', newPassword: '', confirmPassword: '' }));
+                setInfo('');
+                setGeneralError('');
               }}
               disabled={loading}
             >
@@ -301,7 +316,7 @@ export function ForgotPasswordModal({ onClose, onSuccess }) {
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={loading || !formData.newPassword || !formData.confirmPassword}
+              disabled={loading || !formData.code.trim() || !formData.newPassword || !formData.confirmPassword}
             >
               {loading ? 'Traitement...' : 'Réinitialiser'}
             </button>

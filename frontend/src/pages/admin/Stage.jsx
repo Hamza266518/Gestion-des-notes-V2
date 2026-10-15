@@ -11,6 +11,9 @@ import GardeDeNuit from '../../components/stage/GardeDeNuit';
 import GrilleEvaluationStage from '../../components/stage/GrilleEvaluationStage';
 import GrilleExamenStage from '../../components/stage/GrilleExamenStage';
 import Spinner from '../../components/common/Spinner';
+import FilterBar from '../../components/common/FilterBar';
+import FilterSelect from '../../components/common/FilterSelect';
+import usePersistedState from '../../hooks/usePersistedState';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -29,10 +32,15 @@ export default function Stage() {
   const [groupes, setGroupes] = useState([]);
   const [etudiants, setEtudiants] = useState([]);
 
-  const [filiereId, setFiliereId] = useState('');
-  const [niveauId, setNiveauId] = useState('');
-  const [groupeId, setGroupeId] = useState('');
-  const [etudiantId, setEtudiantId] = useState('');
+  const [saved, setSaved] = usePersistedState('stage', { filiereId: '', niveauId: '', groupeId: '', etudiantId: '' });
+  const [filiereId, setFiliereId] = useState(() => saved.filiereId);
+  const [niveauId, setNiveauId] = useState(() => saved.niveauId);
+  const [groupeId, setGroupeId] = useState(() => saved.groupeId);
+  const [etudiantId, setEtudiantId] = useState(() => saved.etudiantId);
+
+  useEffect(() => {
+    setSaved({ filiereId, niveauId, groupeId, etudiantId });
+  }, [filiereId, niveauId, groupeId, etudiantId, setSaved]);
 
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [activeTab, setActiveTab] = useState('garde_nuit');
@@ -84,25 +92,49 @@ export default function Stage() {
   }, []);
 
   useEffect(() => {
-    if (filiereId) {
-      adminApi.getNiveaux(filiereId)
-        .then(res => { setNiveaux(res.data.data || []); setNiveauId(''); setGroupeId(''); })
-        .catch(() => setNiveaux([]));
-    } else { setNiveaux([]); setNiveauId(''); setGroupeId(''); }
+    if (!filiereId) {
+      setNiveaux([]);
+      setNiveauId('');
+      setGroupeId('');
+      return;
+    }
+    adminApi.getNiveaux(filiereId)
+      .then(res => {
+        const niveauxData = res.data.data || [];
+        setNiveaux(niveauxData);
+        setNiveauId(cur => (niveauxData.some(n => String(n.id) === String(cur)) ? cur : ''));
+      })
+      .catch(() => setNiveaux([]));
   }, [filiereId]);
 
   useEffect(() => {
-    if (!niveauId || !currentAnnee) { setGroupes([]); setGroupeId(''); return; }
+    if (!niveauId || !currentAnnee) {
+      setGroupes([]);
+      setGroupeId('');
+      return;
+    }
     adminApi.getGroupes({ niveau_id: niveauId, annee_academique_id: currentAnnee.id })
-      .then(res => { setGroupes(res.data.data || []); setGroupeId(''); })
+      .then(res => {
+        const groupesData = res.data.data || [];
+        setGroupes(groupesData);
+        setGroupeId(cur => (groupesData.some(g => String(g.id) === String(cur)) ? cur : ''));
+      })
       .catch(() => setGroupes([]));
   }, [niveauId, currentAnnee]);
 
   useEffect(() => {
-    if (!groupeId) { setEtudiants([]); setEtudiantId(''); return; }
+    if (!groupeId) {
+      setEtudiants([]);
+      setEtudiantId('');
+      return;
+    }
     setLoadingEtudiants(true);
     etudiantsApi.getEtudiants({ groupe_id: groupeId })
-      .then(res => { setEtudiants(res.data.data || []); setEtudiantId(''); })
+      .then(res => {
+        const etudiantsData = res.data.data || [];
+        setEtudiants(etudiantsData);
+        setEtudiantId(cur => (etudiantsData.some(e => String(e.id) === String(cur)) ? cur : ''));
+      })
       .catch(() => setEtudiants([]))
       .finally(() => setLoadingEtudiants(false));
   }, [groupeId]);
@@ -176,7 +208,7 @@ export default function Stage() {
     }
   };
 
-  const syncedMarks = Object.values(moyennes || {}).filter(m => m && m.valeur !== null && m.valeur !== undefined);
+  const syncedMarks = Object.values(moyennes || {});
 
   return (
     <div className="page">
@@ -197,20 +229,35 @@ export default function Stage() {
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-body" style={{ padding: '10px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-              <strong style={{ fontSize: 13 }}>Pris en compte dans la moyenne (Stage, coef 4) :</strong>
+              <strong style={{ fontSize: 13 }}>Notes des grilles de stage (coef 4) :</strong>
               {syncedMarks.length === 0 ? (
                 <span style={{ fontSize: 13, color: 'var(--gray-500)' }}>
                   aucune note reportée — remplissez une grille d'évaluation ou d'examen
                 </span>
               ) : syncedMarks.map(m => (
-                <span key={m.controle} style={{
-                  padding: '3px 10px', background: '#dcfce7', color: '#166534',
-                  borderRadius: 6, fontSize: 13, fontWeight: 600
+                <span key={m.controle_id} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '3px 8px', background: 'var(--gray-100)', borderRadius: 6, fontSize: 13
                 }}>
-                  {m.controle} : {Number(m.valeur).toFixed(2)}/20
+                  <strong>{m.service}</strong>
+                  <span title="Note d'évaluation" style={{
+                    padding: '2px 8px', background: '#dcfce7', color: '#166534',
+                    borderRadius: 999, fontWeight: 600
+                  }}>
+                    Éval. {m.evaluation != null ? Number(m.evaluation).toFixed(2) : '—'}
+                  </span>
+                  <span title="Note d'examen" style={{
+                    padding: '2px 8px', background: '#dbeafe', color: '#1e40af',
+                    borderRadius: 999, fontWeight: 600
+                  }}>
+                    Exam. {m.examen != null ? Number(m.examen).toFixed(2) : '—'}
+                  </span>
                 </span>
               ))}
             </div>
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--gray-500)' }}>
+              Le stage n'entre dans la moyenne que lorsque tous les services sont notés (évaluation + examen).
+            </p>
           </div>
         </div>
       )}
@@ -218,24 +265,75 @@ export default function Stage() {
       {!selectedStudent && (
         <div className="card" style={{marginBottom:16}}>
           <div className="card-body">
-            <div className="data-grid">
-              <select className="form-select" value={filiereId} onChange={e => setFiliereId(e.target.value)}>
-                <option value="">Filière</option>
-                {filieres.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-              </select>
-              <select className="form-select" value={niveauId} onChange={e => setNiveauId(e.target.value)} disabled={!filiereId}>
-                <option value="">Niveau</option>
-                {niveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
-              </select>
-              <select className="form-select" value={groupeId} onChange={e => setGroupeId(e.target.value)} disabled={!niveauId}>
-                <option value="">Groupe</option>
-                {groupes.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
-              </select>
-              <select className="form-select" value={etudiantId} onChange={e => setEtudiantId(e.target.value)} disabled={!groupeId || loadingEtudiants}>
-                <option value="">{loadingEtudiants ? 'Chargement...' : 'Étudiant'}</option>
-                {etudiants.map(e => <option key={e.id} value={e.id}>{e.nom_prenom}</option>)}
-              </select>
-            </div>
+            <FilterBar
+              showSearch={false}
+              value={{ filiere_id: filiereId, niveau_id: niveauId, groupe_id: groupeId, etudiant_id: etudiantId }}
+              onChange={() => {}}
+              onClear={() => {
+                setFiliereId('');
+                setNiveauId('');
+                setGroupeId('');
+                setEtudiantId('');
+              }}
+              chips={[
+                filiereId && {
+                  key: 'filiere',
+                  label: `Filière: ${filieres.find(f => String(f.id) === String(filiereId))?.nom ?? ''}`,
+                  onRemove: () => setFiliereId(''),
+                },
+                niveauId && {
+                  key: 'niveau',
+                  label: `Niveau: ${formatNiveau(niveaux.find(n => String(n.id) === String(niveauId))?.numero)}`,
+                  onRemove: () => { setNiveauId(''); setGroupeId(''); setEtudiantId(''); },
+                },
+                groupeId && {
+                  key: 'groupe',
+                  label: `Groupe: ${groupes.find(g => String(g.id) === String(groupeId))?.nom ?? ''}`,
+                  onRemove: () => { setGroupeId(''); setEtudiantId(''); },
+                },
+                etudiantId && {
+                  key: 'etudiant',
+                  label: `Étudiant: ${etudiants.find(e => String(e.id) === String(etudiantId))?.nom_prenom ?? ''}`,
+                  onRemove: () => setEtudiantId(''),
+                },
+              ].filter(Boolean)}
+            >
+              <FilterSelect
+                label="Filière"
+                value={filiereId}
+                options={filieres.map(f => ({ id: f.id, label: f.nom }))}
+                onChange={(v) => { setFiliereId(v); setNiveauId(''); setGroupeId(''); setEtudiantId(''); }}
+                placeholder="Toutes les filières"
+                allLabel="Toutes les filières"
+              />
+              <FilterSelect
+                label="Niveau"
+                value={niveauId}
+                options={niveaux.map(n => ({ id: n.id, label: formatNiveau(n.numero) }))}
+                onChange={(v) => { setNiveauId(v); setGroupeId(''); setEtudiantId(''); }}
+                disabled={!filiereId}
+                placeholder="Tous les niveaux"
+                allLabel="Tous les niveaux"
+              />
+              <FilterSelect
+                label="Groupe"
+                value={groupeId}
+                options={groupes.map(g => ({ id: g.id, label: g.nom }))}
+                onChange={(v) => { setGroupeId(v); setEtudiantId(''); }}
+                disabled={!niveauId}
+                placeholder="Tous les groupes"
+                allLabel="Tous les groupes"
+              />
+              <FilterSelect
+                label="Étudiant"
+                value={etudiantId}
+                options={etudiants.map(e => ({ id: e.id, label: e.nom_prenom }))}
+                onChange={setEtudiantId}
+                disabled={!groupeId || loadingEtudiants}
+                placeholder={loadingEtudiants ? 'Chargement...' : 'Tous les étudiants'}
+                allLabel={loadingEtudiants ? 'Chargement...' : 'Tous les étudiants'}
+              />
+            </FilterBar>
 
             <div style={{position:'relative', marginTop:12}}>
               <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:4}}>

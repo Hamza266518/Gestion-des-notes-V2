@@ -27,6 +27,9 @@
 .navbar-title { font-size: 16px; font-weight: 600; color: var(--gray-800); letter-spacing: -0.01em; }
 
 .navbar-right { display: flex; align-items: center; gap: 16px; margin-left: auto; }
+.navbar-user-block { display: none; }
+.navbar-user { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+.navbar-role { font-size: 11px; color: var(--gray-500); background: var(--primary-faint); color: var(--primary); padding: 3px 10px; border-radius: 20px; font-weight: 600; }
 
 .navbar-year {
   display: flex; align-items: center; gap: 6px;
@@ -50,6 +53,14 @@
   font-size: 11px; font-weight: 600;
   padding: 3px 10px; border-radius: 20px;
 }
+.navbar-account {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--primary-faint); color: var(--primary);
+  font-size: 11px; font-weight: 600;
+  padding: 4px 10px; border-radius: 20px;
+  text-decoration: none; white-space: nowrap;
+}
+.navbar-account:hover { background: var(--primary); color: #fff; }
 
 @media (max-width: 768px) {
   .navbar { left: 0 !important; padding: 0 14px !important; }

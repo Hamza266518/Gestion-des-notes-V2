@@ -72,7 +72,6 @@ class NoteCreatePathTest extends TestCase
         $this->controle = Controle::create([
             'sequence_id' => $this->sequence->id,
             'numero'      => 1,
-            'type'        => 'cc',
             'note_max'    => 20,
         ]);
 

@@ -3,8 +3,10 @@ import { adminApi } from '../../api/admin';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Modal from '../../components/common/Modal';
+import ArchiveAnneeModal from '../../components/admin/ArchiveAnneeModal';
 import Badge from '../../components/common/Badge';
 import Spinner from '../../components/common/Spinner';
+import FilterBar from '../../components/common/FilterBar';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -17,6 +19,10 @@ export default function AnneesAcademiques() {
   const [saving, setSaving]   = useState(false);
   const [archiveId, setArchiveId] = useState(null);
   const [archiveCounts, setArchiveCounts] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editLabel, setEditLabel] = useState('');
+  const [editStart, setEditStart] = useState('');
+  const [editEnd, setEditEnd] = useState('');
   const toast                 = useToast();
 
   // History modal state
@@ -24,11 +30,19 @@ export default function AnneesAcademiques() {
   const [historyGroups, setHistoryGroups] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  // Read-only archive viewer (relevé + bulletins) for a chosen year
+  const [archiveViewYear, setArchiveViewYear] = useState(null);
+
   // Redoublant modal state
   const [redoublantModal, setRedoublantModal] = useState(null); // { newYearId, students: [...] }
   const [redoublantChecks, setRedoublantChecks] = useState({});
   const [processingRedoublants, setProcessingRedoublants] = useState(false);
   const [checkingRedoublants, setCheckingRedoublants] = useState(false);
+
+  // Destination picker, shown when a niveau runs several groups in the new year
+  const [ambiguousModal, setAmbiguousModal] = useState(null); // { fromAnneeId, toAnneeId, entries: [...] }
+  const [groupChoices, setGroupChoices] = useState({});
+  const [resolvingGroups, setResolvingGroups] = useState(false);
 
   const predictNextYear = (label) => {
     if (!label || !/^\d{4}\/\d{4}$/.test(label)) return '';
@@ -42,7 +56,8 @@ export default function AnneesAcademiques() {
       toast.error(`Vous devez d'abord archiver l'année ${currentAnnee.label} avant d'en créer une nouvelle.`);
       return;
     }
-    setLabel(predictNextYear(currentAnnee?.label));
+    // Guarded: with no current year the old call yielded "NaN/NaN" in the field.
+    setLabel(currentAnnee?.label ? predictNextYear(currentAnnee.label) : '');
     setStartDate('');
     setEndDate('');
     setOpen(true);
@@ -78,9 +93,7 @@ export default function AnneesAcademiques() {
           .filter(a => a.is_archived && (a.groupes_count || 0) > 0)
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
         if (fromYear) {
-          const promoteRes = await transitionToNewYear(fromYear.id, newYearId);
-          const promoteMsg = promoteRes.data?.message || '';
-          toast.success(`Année mise à jour. ${promoteMsg}`);
+          await runTransition(fromYear.id, newYearId);
         } else {
           await adminApi.setCurrentAnnee(newYearId);
           toast.success('Année courante mise à jour');
@@ -94,9 +107,7 @@ export default function AnneesAcademiques() {
       const redoublants = res.data.data || [];
 
       if (redoublants.length === 0) {
-        const promoteRes = await transitionToNewYear(currentAnnee.id, newYearId);
-        const promoteMsg = promoteRes.data?.message || '';
-        toast.success(`Année mise à jour. ${promoteMsg}`);
+        await runTransition(currentAnnee.id, newYearId);
         refreshAnnees();
         return;
       }
@@ -128,13 +139,11 @@ export default function AnneesAcademiques() {
       .map(([id]) => parseInt(id));
 
     try {
-      const promoteRes = await transitionToNewYear(
+      await runTransition(
         redoublantModal.fromAnneeId,
         redoublantModal.newYearId,
         { confirmIds, dropIds }
       );
-      const promoteMsg = promoteRes.data?.message || '';
-      toast.success(`Année mise à jour. ${promoteMsg}`);
       setRedoublantModal(null);
       refreshAnnees();
     } catch (e) {
@@ -153,13 +162,11 @@ export default function AnneesAcademiques() {
     const allIds = redoublantModal.students.map(s => s.id);
 
     try {
-      const promoteRes = await transitionToNewYear(
+      await runTransition(
         redoublantModal.fromAnneeId,
         redoublantModal.newYearId,
         { dropIds: allIds }
       );
-      const promoteMsg = promoteRes.data?.message || '';
-      toast.success(`Année mise à jour. ${promoteMsg}`);
       setRedoublantModal(null);
       refreshAnnees();
     } catch (e) {
@@ -171,23 +178,89 @@ export default function AnneesAcademiques() {
     }
   };
 
-  const transitionToNewYear = async (fromId, toId, { confirmIds = [], dropIds = [] } = {}) => {
+  const transitionToNewYear = async (fromId, toId, { confirmIds = [], dropIds = [], groupeIds = {} } = {}) => {
     await adminApi.copyGroups({ from_annee_id: fromId, to_annee_id: toId });
-    if (confirmIds.length > 0)
-      await adminApi.confirmRedoublants({ etudiant_ids: confirmIds, to_annee_id: toId });
+
+    const ambiguous = [];
+
+    if (confirmIds.length > 0) {
+      const res = await adminApi.confirmRedoublants({
+        etudiant_ids: confirmIds,
+        to_annee_id: toId,
+        groupe_ids: groupeIds,
+      });
+      (res.data?.ambiguous || []).forEach(a => ambiguous.push({ ...a, kind: 'redoublant' }));
+    }
+
     if (dropIds.length > 0)
       await adminApi.dropRedoublants({ etudiant_ids: dropIds });
-    const promoteRes = await adminApi.promoteAdmis({ from_annee_id: fromId, to_annee_id: toId });
-    await adminApi.setCurrentAnnee(toId);
-    return promoteRes;
+
+    const promoteRes = await adminApi.promoteAdmis({
+      from_annee_id: fromId,
+      to_annee_id: toId,
+      groupe_ids: groupeIds,
+    });
+    (promoteRes.data?.ambiguous || []).forEach(a => ambiguous.push({ ...a, kind: 'admis' }));
+
+    return { promoteRes, ambiguous };
   };
 
-  const handleViewHistory = async (anneeId) => {
+  /**
+   * Run the transition, but only close the year once every student has a group.
+   *
+   * A niveau that runs several groups in the new year used to leave those
+   * students behind: the backend reported the ambiguity in a message string and
+   * the year was switched anyway. Now the year stays put until the admin has
+   * named a destination for each of them.
+   */
+  const runTransition = async (fromId, toId, options = {}) => {
+    const { promoteRes, ambiguous } = await transitionToNewYear(fromId, toId, options);
+
+    if (ambiguous.length > 0) {
+      setAmbiguousModal({ fromAnneeId: fromId, toAnneeId: toId, entries: ambiguous });
+      setGroupChoices({});
+      return false;
+    }
+
+    await adminApi.setCurrentAnnee(toId);
+    toast.success(`Année mise à jour. ${promoteRes.data?.message || ''}`);
+    return true;
+  };
+
+  const handleAmbiguousConfirm = async () => {
+    if (!ambiguousModal) return;
+
+    const entries = ambiguousModal.entries;
+    const groupeIds = {};
+    entries.forEach(e => { groupeIds[e.etudiant_id] = parseInt(groupChoices[e.etudiant_id], 10); });
+    const redoublantIds = entries.filter(e => e.kind === 'redoublant').map(e => e.etudiant_id);
+
+    setResolvingGroups(true);
+    try {
+      // Re-running is safe: students already moved are no longer in the old year,
+      // and copyGroups skips the groups it created.
+      const done = await runTransition(ambiguousModal.fromAnneeId, ambiguousModal.toAnneeId, {
+        confirmIds: redoublantIds,
+        groupeIds,
+      });
+
+      if (done) {
+        setAmbiguousModal(null);
+        refreshAnnees();
+      }
+    } catch (e) {
+      toast.error(e.response?.data?.message || e.message || 'Erreur lors de la répartition');
+    } finally {
+      setResolvingGroups(false);
+    }
+  };
+
+  const handleViewHistory = async (annee) => {
     setHistoryLoading(true);
     try {
-      const res = await adminApi.getAnneeStats(anneeId);
+      const res = await adminApi.getAnneeStats(annee.id);
       setHistoryGroups(res.data.data || {});
-      setHistoryYear(annees.find(a => a.id === anneeId) || null);
+      setHistoryYear(annee);
     } catch (e) {
       if (e.response?.status === 404) {
         toast.warning('Bientôt disponible');
@@ -222,13 +295,54 @@ export default function AnneesAcademiques() {
     }
   };
 
+  const handleUnarchive = async (id) => {
+    try {
+      await adminApi.unarchiveAnnee(id);
+      toast.success('Année désarchivée');
+      refreshAnnees();
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? 'Erreur');
+    }
+  };
+
+  const handleOpenEdit = (a) => {
+    setEditingId(a.id);
+    setEditLabel(a.label);
+    setEditStart(a.start_date ? a.start_date.slice(0, 10) : '');
+    setEditEnd(a.end_date ? a.end_date.slice(0, 10) : '');
+  };
+
+  const confirmEdit = async () => {
+    if (!editLabel.trim()) return;
+    setSaving(true);
+    try {
+      await adminApi.updateAnnee(editingId, {
+        label: editLabel.trim(),
+        start_date: editStart || null,
+        end_date: editEnd || null,
+      });
+      toast.success('Année mise à jour');
+      setEditingId(null);
+      refreshAnnees();
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? 'Erreur');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="page">
-      <div className="page-header">
-        <button className="btn btn-primary" onClick={handleOpenCreate}>
-          + Nouvelle année
-        </button>
-      </div>
+      <FilterBar
+        showSearch={false}
+        value={{}}
+        onChange={() => {}}
+        actions={(
+          <button className="btn btn-primary" onClick={handleOpenCreate}>
+            + Nouvelle année
+          </button>
+        )}
+      />
 
       {warning && (
         <div className="alert alert-warning" style={{ marginBottom: 16 }}>
@@ -276,6 +390,12 @@ export default function AnneesAcademiques() {
                   </td>
                   <td>{new Date(a.created_at).toLocaleDateString('fr-FR')}</td>
                   <td style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      className="btn btn-sm btn-outline"
+                      onClick={() => setArchiveViewYear(a)}
+                    >
+                      Consulter
+                    </button>
                     {a.is_current ? (
                       <button
                         className="btn btn-sm btn-warning"
@@ -285,14 +405,28 @@ export default function AnneesAcademiques() {
                       </button>
                     ) : (
                       <>
+                        <button
+                          className="btn btn-sm btn-outline"
+                          onClick={() => handleOpenEdit(a)}
+                        >
+                          Modifier
+                        </button>
                         {a.is_archived && (
-                          <button
-                            className="btn btn-sm btn-outline"
-                            onClick={() => handleViewHistory(a.id)}
-                            disabled={historyLoading}
-                          >
-                            {historyLoading ? 'Chargement...' : 'Afficher'}
-                          </button>
+                          <>
+                            <button
+                              className="btn btn-sm btn-outline"
+                              onClick={() => handleViewHistory(a)}
+                              disabled={historyLoading}
+                            >
+                              {historyLoading && historyYear?.id === a.id ? 'Chargement...' : 'Statistiques'}
+                            </button>
+                            <button
+                              className="btn btn-sm btn-outline"
+                              onClick={() => handleUnarchive(a.id)}
+                            >
+                              Désarchiver
+                            </button>
+                          </>
                         )}
                         {!a.is_archived && (
                           <button
@@ -351,6 +485,32 @@ export default function AnneesAcademiques() {
             disabled={saving}
           >
             {saving ? 'Création...' : 'Créer'}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={editingId !== null} onClose={() => setEditingId(null)} title="Modifier l'année académique">
+        <div className="form-group">
+          <label className="form-label">Label</label>
+          <input
+            className="form-input"
+            placeholder="ex: 2025/2026"
+            value={editLabel}
+            onChange={e => setEditLabel(e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Date de début</label>
+          <input type="date" className="form-input" value={editStart} onChange={e => setEditStart(e.target.value)} />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Date de fin</label>
+          <input type="date" className="form-input" value={editEnd} onChange={e => setEditEnd(e.target.value)} />
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={() => setEditingId(null)}>Annuler</button>
+          <button className="btn btn-primary" onClick={confirmEdit} disabled={saving}>
+            {saving ? 'Enregistrement...' : 'Enregistrer'}
           </button>
         </div>
       </Modal>
@@ -538,6 +698,79 @@ export default function AnneesAcademiques() {
           </>
         )}
       </Modal>
+
+      <Modal
+        open={ambiguousModal !== null}
+        onClose={() => !resolvingGroups && setAmbiguousModal(null)}
+        title="Répartition dans les groupes"
+        style={{ maxWidth: 720 }}
+      >
+        {ambiguousModal && (
+          <>
+            <div style={{ padding: 12, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, fontSize: 12, color: '#92400e', marginBottom: 12 }}>
+              {ambiguousModal.entries.length} étudiant(s) ont plusieurs groupes possibles dans la nouvelle année.
+              L'année ne sera pas mise en cours tant que chaque étudiant n'a pas son groupe.
+            </div>
+
+            <div className="table-wrap" style={{ maxHeight: 340, overflowY: 'auto' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nom et Prénom</th>
+                    <th>Passage</th>
+                    <th>Groupe de destination</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ambiguousModal.entries.map(e => (
+                    <tr key={`${e.kind}-${e.etudiant_id}`}>
+                      <td>{e.nom_prenom}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {e.kind === 'redoublant' ? 'Redouble' : `Passe au niveau ${e.niveau_numero ?? ''}`}
+                      </td>
+                      <td>
+                        <select
+                          className="form-select"
+                          value={groupChoices[e.etudiant_id] ?? ''}
+                          onChange={ev => setGroupChoices(prev => ({ ...prev, [e.etudiant_id]: ev.target.value }))}
+                        >
+                          <option value="">— Choisir —</option>
+                          {e.groupes.map(g => (
+                            <option key={g.id} value={g.id}>{g.nom}</option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="modal-footer" style={{ marginTop: 16 }}>
+              <button
+                className="btn btn-outline"
+                onClick={() => setAmbiguousModal(null)}
+                disabled={resolvingGroups}
+              >
+                Plus tard
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleAmbiguousConfirm}
+                disabled={resolvingGroups || ambiguousModal.entries.some(e => !groupChoices[e.etudiant_id])}
+              >
+                {resolvingGroups ? 'Traitement...' : 'Confirmer la répartition'}
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      <ArchiveAnneeModal
+        open={archiveViewYear !== null}
+        annee={archiveViewYear}
+        onClose={() => setArchiveViewYear(null)}
+      />
     </div>
   );
 }

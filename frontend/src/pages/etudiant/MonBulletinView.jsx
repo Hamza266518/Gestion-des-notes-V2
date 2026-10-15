@@ -85,6 +85,11 @@ export default function MonBulletinView() {
   if (bulletinData.semestres?.[1]) allUnites.push(...bulletinData.semestres[1]);
   if (bulletinData.semestres?.[2]) allUnites.push(...bulletinData.semestres[2]);
 
+  // A final-year soutenance programme weighs its components 30/20/30/20; every
+  // other programme keeps the historical 36,67/26,66/36,67 split.
+  const weights = bulletinData.weights || { cc: 0.3667, theorique: 0.2666, pratique: 0.3667 };
+  const pct = (w) => (w === null || w === undefined ? '—' : `${String(Math.round(w * 10000) / 100).replace('.', ',')}%`);
+
   return (
     <div className="bv-page">
       <div className="bv-card">
@@ -126,9 +131,9 @@ export default function MonBulletinView() {
               <thead>
                 <tr>
                   <th>Unité</th>
-                  <th className="bulletin-col-cc">CC (36.66%)</th>
-                  <th className="bulletin-col-theo">Théorique (26.66%)</th>
-                  <th className="bulletin-col-pra">Pratique (36.66%)</th>
+                  <th className="bulletin-col-cc">CC (36,67%)</th>
+                  <th className="bulletin-col-theo">Théorique (26,66%)</th>
+                  <th className="bulletin-col-pra">Pratique (36,67%)</th>
                   <th>Moy. Unité</th>
                   <th>Coef</th>
                 </tr>
@@ -164,23 +169,31 @@ export default function MonBulletinView() {
 }
 
 function SummaryCalculations({ bulletinData }) {
+  const pct = (w) => (w === null || w === undefined ? '—' : `${String(Math.round(w * 10000) / 100).replace('.', ',')}%`);
   const moyenneFinale = bulletinData.moyenne_generale;
   const mentionLabel = bulletinData.mention || '—';
+  const weights = bulletinData.weights || { cc: 0.3667, theorique: 0.2666, pratique: 0.3667 };
 
   return (
     <div className="summary-grid">
       <div className="summary-item">
-        <span className="summary-label">Moyenne CC</span>
+        <span className="summary-label">Moyenne CC ({pct(weights.cc)})</span>
         <span className="summary-value">{bulletinData.moyenne_cc?.toFixed(2) || '—'}</span>
       </div>
       <div className="summary-item">
-        <span className="summary-label">Moyenne Théorique</span>
+        <span className="summary-label">Moyenne Théorique ({pct(weights.theorique)})</span>
         <span className="summary-value">{bulletinData.moyenne_theorique?.toFixed(2) || '—'}</span>
       </div>
       <div className="summary-item">
-        <span className="summary-label">Moyenne Pratique</span>
+        <span className="summary-label">Moyenne Pratique ({pct(weights.pratique)})</span>
         <span className="summary-value">{bulletinData.moyenne_pratique?.toFixed(2) || '—'}</span>
       </div>
+      {bulletinData.has_soutenance && (
+        <div className="summary-item">
+          <span className="summary-label">Note de soutenance (NSTI) ({pct(weights.nsti)})</span>
+          <span className="summary-value">{bulletinData.nsti?.toFixed(2) || '—'}</span>
+        </div>
+      )}
       <div className="summary-item summary-item-total">
         <span className="summary-label">Moyenne Générale</span>
         <span className="summary-value summary-value-main">{moyenneFinale?.toFixed(2) || '—'}</span>

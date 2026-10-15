@@ -68,9 +68,13 @@ class ReplaceFormateursSequencesSeeder extends Seeder
 
     protected function createFormateur($nom, $email, $code): Formateur
     {
+        // The legacy signature keeps the @ifp.ma address, but only its local part is used.
+        $username = app(\App\Services\UsernameGenerator::class)
+            ->reserve(strstr((string) $email, '@', true) ?: $email);
+
         $user = User::create([
             'name'     => $nom,
-            'email'    => $email,
+            'username' => $username,
             'password' => Hash::make($code),
             'password_encrypted' => Crypt::encryptString($code),
             'password_original_encrypted' => Crypt::encryptString($code),

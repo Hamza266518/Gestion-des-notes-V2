@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { FiSearch, FiX } from 'react-icons/fi';
 import { notesApi } from '../../api/notes';
+import { stagesApi } from '../../api/stages';
 import { etudiantsApi } from '../../api/etudiants';
 import { unitesApi } from '../../api/unites';
 import { sequencesApi } from '../../api/sequences';
@@ -8,9 +9,12 @@ import { publicationsApi } from '../../api/publications';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import FiliereCascade from '../../components/common/FiliereCascade';
+import FilterBar from '../../components/common/FilterBar';
+import FilterSelect from '../../components/common/FilterSelect';
 import Spinner from '../../components/common/Spinner';
 import EmptyState from '../../components/common/EmptyState';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
+import usePersistedState from '../../hooks/usePersistedState';
 import {
   controlLabel,
   noteDisplayStyle,
@@ -20,20 +24,37 @@ import {
 import '../../css/components.css';
 import '../../css/layout.css';
 
+/**
+ * A Stage unit shows one column per service in both modes: the Évaluation note
+ * on the controls screen and the Examen note on the exam screen. Both are
+ * normally produced by the Stage page's grids but stay editable here; a grid
+ * save replaces them. The Stage only reaches the averages once every service
+ * carries both marks.
+ */
 export default function GestionNotes() {
-  const [selected, setSelected] = useState({
-    filiere_id: '',
-    niveau_id: '',
-    groupe_id: '',
-    annee_academique_id: '',
+  const [saved, setSaved] = usePersistedState('gestionNotes', {
+    selected: {
+      filiere_id: '',
+      niveau_id: '',
+      groupe_id: '',
+      annee_academique_id: '',
+    },
+    selectedUniteId: '',
+    selectedSequenceId: '',
+    semestre: '',
+    mode: 'controles',
   });
+  const [selected, setSelected] = useState(() => saved.selected);
   const [unites, setUnites] = useState([]);
-  const [selectedUniteId, setSelectedUniteId] = useState('');
+  const [selectedUniteId, setSelectedUniteId] = useState(() => saved.selectedUniteId);
   const [sequences, setSequences] = useState([]);
-  const [selectedSequenceId, setSelectedSequenceId] = useState('');
+  const [selectedSequenceId, setSelectedSequenceId] = useState(() => saved.selectedSequenceId);
+  const [semestre, setSemestre] = useState(() => saved.semestre || '');
+  const [mode, setMode] = useState(() => saved.mode || 'controles');
   const [notesByControl, setNotesByControl] = useState({});
   const [roster, setRoster] = useState([]);
   const [examens, setExamens] = useState({}); // { theorique: { studentId: valeur }, pratique: { studentId: valeur } }
+  const [stageExamens, setStageExamens] = useState({}); // Stage: { controleId: { studentId: row } } — one exam mark per service
   const [publications, setPublications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -41,6 +62,7 @@ export default function GestionNotes() {
   const [editValue, setEditValue] = useState('');
   const [newNote, setNewNote] = useState(null);
   const [editingExam, setEditingExam] = useState(null);
+  const [editingStageExam, setEditingStageExam] = useState(null);
   const [editExamValue, setEditExamValue] = useState('');
   const [editExamAbsent, setEditExamAbsent] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -50,32 +72,39 @@ export default function GestionNotes() {
   const { currentAnnee } = useAnneeAcademique();
 
   useEffect(() => {
-    if (selected.filiere_id) {
-      setLoading(true);
-      setError(null);
-      unitesApi.getUnites({ filiere_id: selected.filiere_id })
-        .then(res => setUnites(res.data.data || []))
-        .catch(err => {
-          const info = handleApiError(err, toast, { showToast: false });
-          setError(info.message);
-        })
-        .finally(() => setLoading(false));
-      setSelectedUniteId('');
-      setSelectedSequenceId('');
-      setSequences([]);
-      setNotesByControl({});
-      setExamens({});
-      setRoster([]);
-    } else {
+    setSaved({ selected, selectedUniteId, selectedSequenceId, semestre, mode });
+  }, [selected, selectedUniteId, selectedSequenceId, semestre, mode, setSaved]);
+
+  useEffect(() => {
+    if (!selected.filiere_id || !selected.niveau_id) {
       setUnites([]);
       setSelectedUniteId('');
       setSelectedSequenceId('');
       setSequences([]);
       setNotesByControl({});
       setExamens({});
+      setStageExamens({});
       setRoster([]);
+      return;
     }
-  }, [selected.filiere_id]);
+    setLoading(true);
+    setError(null);
+    unitesApi.getUnites({
+      filiere_id: selected.filiere_id,
+      niveau_id: selected.niveau_id,
+      ...(semestre ? { semestre } : {}),
+    })
+      .then(res => {
+        const data = res.data.data || [];
+        setUnites(data);
+        setSelectedUniteId(cur => (data.some(u => String(u.id) === String(cur)) ? cur : ''));
+      })
+      .catch(err => {
+        const info = handleApiError(err, toast, { showToast: false });
+        setError(info.message);
+      })
+      .finally(() => setLoading(false));
+  }, [selected.filiere_id, selected.niveau_id, semestre]);
 
   useEffect(() => {
     if (selectedUniteId) {
@@ -85,8 +114,7 @@ export default function GestionNotes() {
         .then(res => {
           const data = res.data.data || [];
           setSequences(data);
-          if (data.length > 0) setSelectedSequenceId(data[0].id);
-          else setSelectedSequenceId('');
+          setSelectedSequenceId(cur => (data.some(s => String(s.id) === String(cur)) ? cur : (data.length > 0 ? data[0].id : '')));
         })
         .catch(err => {
           const info = handleApiError(err, toast, { showToast: false });
@@ -100,31 +128,65 @@ export default function GestionNotes() {
     }
   }, [selectedUniteId]);
 
-  const seqControles = useMemo(
-    () => sequences.find(s => s.id === selectedSequenceId)?.controles || [],
-    [sequences, selectedSequenceId]
+  const selectedUnite = useMemo(
+    () => unites.find(u => String(u.id) === String(selectedUniteId)) || null,
+    [unites, selectedUniteId]
   );
 
-  const loadNotesForSequence = useCallback(async () => {    const seq = sequences.find(s => s.id === selectedSequenceId);
-    if (!seq) return;
-    const ctrlIds = seq.controles?.map(c => c.id) || [];
-    if (ctrlIds.length === 0) return;
+  // A stage unit has no sequence: its controls hang directly off the unit. The
+  // grid falls back to those so the admin can still see the unit at all.
+  const directControles = useMemo(
+    () => [...(selectedUnite?.controles || [])]
+      .sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0)),
+    [selectedUnite]
+  );
+
+  const isDirectUnit = sequences.length === 0 && directControles.length > 0;
+  const isStageDirect = isDirectUnit && selectedUnite?.nom === 'Stage';
+  const isSoutenanceDirect = isDirectUnit && selectedUnite?.nom === 'Soutenance';
+
+  // The controls shown in the grid: the unit's own (a Stage's services / a
+  // Soutenance's criteria) when it has no sequence, otherwise the selected
+  // sequence's controls.
+  const seqControles = useMemo(() => {
+    if (isDirectUnit) return directControles;
+    return [...(sequences.find(s => s.id === selectedSequenceId)?.controles || [])]
+      .sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0));
+  }, [isDirectUnit, directControles, sequences, selectedSequenceId]);
+
+  // A Stage unit owns many controls at once (up to 14). With `table { width:100% }`
+  // the browser squeezes those columns instead of overflowing, so no horizontal
+  // scrollbar ever appears. For these wide direct-unit grids (both the controls
+  // and the exam view), force a minimum width so the wrapper's `overflow-x: auto`
+  // can actually scroll.
+  const wideGridMinWidth = useMemo(() => {
+    if (!isDirectUnit) return undefined;
+    const columns = seqControles.length + 1; // + the student-name column
+    if (columns <= 6) return undefined;
+    return `${seqControles.length * 116 + 220}px`;
+  }, [isDirectUnit, seqControles.length]);
+
+  const loadNotesForGrid = useCallback(async () => {
+    const controles = isDirectUnit
+      ? directControles
+      : (sequences.find(s => s.id === selectedSequenceId)?.controles || []);
+    if (controles.length === 0) return;
 
     setError(null);
     try {
-      const responses = await Promise.all(
-        ctrlIds.map(id => notesApi.getNotes({ controle_id: id, groupe_id: selected.groupe_id }))
-      );
+      const params = isDirectUnit
+        ? { unite_id: selectedUniteId, groupe_id: selected.groupe_id }
+        : { sequence_id: selectedSequenceId, groupe_id: selected.groupe_id };
+      const res = await notesApi.getNotes(params);
+      const list = res.data?.data || [];
       const map = {};
-      responses.forEach((res, idx) => {
-        map[ctrlIds[idx]] = res.data?.data || [];
-      });
+      controles.forEach(c => { map[c.id] = list.filter(n => n.controle_id === c.id); });
       setNotesByControl(map);
     } catch (err) {
       const info = handleApiError(err, toast, { showToast: false });
       setError(info.message);
     }
-  }, [selectedSequenceId, selected.groupe_id, sequences]);
+  }, [isDirectUnit, directControles, sequences, selectedSequenceId, selectedUniteId, selected.groupe_id]);
 
   const loadRoster = useCallback(async () => {
     setError(null);
@@ -143,7 +205,13 @@ export default function GestionNotes() {
   const loadExamens = useCallback(async () => {
     setError(null);
     try {
-      const res = await notesApi.getExamens({ groupe_id: selected.groupe_id, unite_id: selectedUniteId, annee_academique_id: currentAnnee?.id });
+      const unite = unites.find(u => u.id == selectedUniteId);
+      const res = await notesApi.getExamens({
+        groupe_id: selected.groupe_id,
+        unite_id: selectedUniteId,
+        bloc: unite?.semestre || 1,
+        annee_academique_id: currentAnnee?.id,
+      });
       const data = res.data?.data || [];
       const theoMap = {};
       const praMap = {};
@@ -156,7 +224,33 @@ export default function GestionNotes() {
       const info = handleApiError(err, toast, { showToast: false });
       setError(info.message);
     }
-  }, [selectedUniteId, selected.groupe_id]);
+  }, [selectedUniteId, selected.groupe_id, unites]);
+
+  // The Stage exam marks, keyed by service (control) then student, mirroring
+  // notesByControl so the exam view can render one column per service.
+  const loadStageExamens = useCallback(async () => {
+    if (directControles.length === 0) {
+      setStageExamens({});
+      return;
+    }
+    setError(null);
+    try {
+      const res = await stagesApi.notes({
+        unite_id: selectedUniteId,
+        groupe_id: selected.groupe_id,
+      });
+      const data = res.data?.data || [];
+      const map = {};
+      directControles.forEach(c => { map[c.id] = {}; });
+      data.forEach(ex => {
+        if (map[ex.controle_id]) map[ex.controle_id][ex.etudiant_id] = ex;
+      });
+      setStageExamens(map);
+    } catch (err) {
+      const info = handleApiError(err, toast, { showToast: false });
+      setError(info.message);
+    }
+  }, [directControles, selectedUniteId, selected.groupe_id]);
 
   const anneeCourante = currentAnnee?.id;
 
@@ -183,8 +277,8 @@ export default function GestionNotes() {
     setError(null);
     setFiltersApplied(true);
     const promises = [];
-    if (selectedSequenceId) promises.push(loadNotesForSequence());
-    if (selectedUniteId) promises.push(loadExamens());
+    if (selectedSequenceId || isDirectUnit) promises.push(loadNotesForGrid());
+    if (selectedUniteId && !isSoutenanceDirect) promises.push(isStageDirect ? loadStageExamens() : loadExamens());
     promises.push(loadRoster());
     promises.push(loadPublications());
     try {
@@ -192,7 +286,7 @@ export default function GestionNotes() {
     } finally {
       setLoading(false);
     }
-  }, [selectedSequenceId, selectedUniteId, selected.groupe_id, loadNotesForSequence, loadExamens, loadRoster, loadPublications]);
+  }, [selectedSequenceId, isDirectUnit, isStageDirect, selectedUniteId, selected.groupe_id, loadNotesForGrid, loadExamens, loadStageExamens, loadRoster, loadPublications]);
 
   const prevSelections = useRef({ groupe_id: '', unite_id: '', sequence_id: '' });
 
@@ -202,20 +296,57 @@ export default function GestionNotes() {
 
     if (!prev.groupe_id && !prev.unite_id && !prev.sequence_id) return;
 
-    if (selected.groupe_id && selectedUniteId && selectedSequenceId) {
+    if (selected.groupe_id && selectedUniteId && (selectedSequenceId || isDirectUnit)) {
       handleLoad();
     }
-  }, [selected.groupe_id, selectedUniteId, selectedSequenceId, handleLoad]);
+  }, [selected.groupe_id, selectedUniteId, selectedSequenceId, isDirectUnit, handleLoad]);
 
   useEffect(() => {
     const onFocus = () => {
-      if (selected.groupe_id && selectedUniteId && selectedSequenceId && filtersApplied) {
+      if (selected.groupe_id && selectedUniteId && (selectedSequenceId || isDirectUnit) && filtersApplied) {
         handleLoad();
       }
     };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [selected.groupe_id, selectedUniteId, selectedSequenceId, filtersApplied, handleLoad]);
+  }, [selected.groupe_id, selectedUniteId, selectedSequenceId, isDirectUnit, filtersApplied, handleLoad]);
+
+  const patchNoteById = (noteId, valeur) => {
+    setNotesByControl(prev => {
+      let found = false;
+      const next = {};
+      Object.keys(prev).forEach(k => {
+        next[k] = prev[k].map(n => {
+          if (n.id === noteId) {
+            found = true;
+            return { ...n, valeur, est_absent: false };
+          }
+          return n;
+        });
+      });
+      return found ? next : prev;
+    });
+  };
+
+  const patchCreatedNote = (created) => {
+    if (!created || !created.controle_id) return;
+    setNotesByControl(prev => {
+      const list = prev[created.controle_id] || [];
+      if (list.some(n => n.id === created.id)) return prev;
+      return { ...prev, [created.controle_id]: [...list, created] };
+    });
+  };
+
+  const patchExamens = (type, etudiantId, row) => {
+    setExamens(prev => ({ ...prev, [type]: { ...(prev[type] || {}), [etudiantId]: row } }));
+  };
+
+  const patchStageExamens = (controleId, etudiantId, row) => {
+    setStageExamens(prev => ({
+      ...prev,
+      [controleId]: { ...(prev[controleId] || {}), [etudiantId]: row },
+    }));
+  };
 
   const handleSaveNote = async (noteId) => {
     if (editValue === '' || editValue === null) return;
@@ -227,13 +358,12 @@ export default function GestionNotes() {
     }
     setSaving(true);
     try {
-      await notesApi.updateNote(noteId, parseFloat(editValue));
+      const valeur = parseFloat(editValue);
+      await notesApi.updateNote(noteId, valeur);
       showSuccess(toast, 'Note enregistrée');
+      patchNoteById(noteId, valeur);
       setEditingNote(null);
       setEditValue('');
-      if (selectedSequenceId && selected.groupe_id) {
-        await loadNotesForSequence();
-      }
     } catch (err) {
       handleApiError(err, toast);
     } finally {
@@ -257,17 +387,15 @@ export default function GestionNotes() {
     }
     setSaving(true);
     try {
-      await notesApi.createNote({
+      const res = await notesApi.createNote({
         etudiant_id: newNote.etudiant_id,
         controle_id: newNote.controle_id,
         valeur: parseFloat(editValue),
       });
       showSuccess(toast, 'Note enregistrée');
+      patchCreatedNote(res.data?.data);
       setNewNote(null);
       setEditValue('');
-      if (selectedSequenceId && selected.groupe_id) {
-        await loadNotesForSequence();
-      }
     } catch (err) {
       handleApiError(err, toast);
     } finally {
@@ -296,7 +424,7 @@ export default function GestionNotes() {
           est_absent: editExamAbsent,
         }],
         unite_id: selectedUniteId,
-        bloc: 1,
+        bloc: unite.semestre || 1,
         type: type,
         semestre: unite.semestre || 1,
         annee_academique_id: selected.annee_academique_id || currentAnnee?.id || 1,
@@ -304,10 +432,54 @@ export default function GestionNotes() {
       showSuccess(toast, editExamAbsent
         ? `Absence d'examen ${type} enregistrée`
         : `Note d'examen ${type} enregistrée`);
+      patchExamens(type, editingExam.etudiant_id, {
+        etudiant_id: editingExam.etudiant_id,
+        valeur: editExamAbsent ? 0 : parseFloat(editExamValue),
+        est_absent: editExamAbsent,
+      });
       setEditingExam(null);
       setEditExamValue('');
       setEditExamAbsent(false);
-      await loadExamens();
+    } catch (err) {
+      handleApiError(err, toast);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Save one service's Examen note (its own column for a Stage unit).
+  const handleSaveStageExam = async (controleId) => {
+    if (!editingStageExam) return;
+    if (!editExamAbsent && (editExamValue === '' || editExamValue === null)) return;
+    if (estVerrouille) {
+      toast.warning(MESSAGE_SEMESTRE_PUBLIE);
+      setEditingStageExam(null);
+      setEditExamValue('');
+      setEditExamAbsent(false);
+      return;
+    }
+    const valeur = editExamAbsent ? 0 : parseFloat(editExamValue);
+    setSaving(true);
+    try {
+      await stagesApi.saveNote({
+        etudiant_id: editingStageExam.etudiant_id,
+        controle_id: controleId,
+        valeur,
+        est_absent: editExamAbsent,
+        annee_academique_id: selected.annee_academique_id || currentAnnee?.id,
+      });
+      showSuccess(toast, editExamAbsent
+        ? "Absence d'examen enregistrée"
+        : "Note d'examen enregistrée");
+      patchStageExamens(controleId, editingStageExam.etudiant_id, {
+        etudiant_id: editingStageExam.etudiant_id,
+        controle_id: controleId,
+        valeur,
+        est_absent: editExamAbsent,
+      });
+      setEditingStageExam(null);
+      setEditExamValue('');
+      setEditExamAbsent(false);
     } catch (err) {
       handleApiError(err, toast);
     } finally {
@@ -336,10 +508,8 @@ export default function GestionNotes() {
     );
   }, [etudiants, searchTerm]);
 
-  const showExamCols = selectedUniteId && selected.groupe_id;
-
-  // The unit decides the semester, so one flag covers both the note cells and
-  // the exam columns of this view. anneeId repeats the fallback chain the exam
+  // The unit decides the semester, so one flag covers the note cells and the
+  // exam columns of this view. anneeId repeats the fallback chain the exam
   // save itself uses, otherwise the grid could show an open cell for a year the
   // server then treats as published.
   const anneeId = selected.annee_academique_id || anneeCourante;
@@ -352,65 +522,117 @@ export default function GestionNotes() {
 
   return (
     <div className="page">
-      <FiliereCascade selected={selected} onChange={setSelected} />
+      <FilterBar
+        showSearch={false}
+        value={{
+          filiere_id: selected.filiere_id,
+          niveau_id: selected.niveau_id,
+          groupe_id: selected.groupe_id,
+          unite_id: selectedUniteId,
+          sequence_id: selectedSequenceId,
+        }}
+        onChange={() => {}}
+        onClear={() => {
+          setSelected({ filiere_id: '', niveau_id: '', groupe_id: '', annee_academique_id: selected.annee_academique_id });
+          setSelectedUniteId('');
+          setSelectedSequenceId('');
+          setSequences([]);
+          setNotesByControl({});
+          setExamens({});
+          setStageExamens({});
+          setRoster([]);
+          setFiltersApplied(false);
+        }}
+        actions={(
+          <>
+            {selectedUnite && selectedUnite.nom !== 'Soutenance' && (
+              <button
+                className="btn btn-outline"
+                onClick={() => setMode(m => m === 'controles' ? 'examens' : 'controles')}
+                disabled={!selected.groupe_id}
+              >
+                {mode === 'controles' ? "Saisie examens de l'unité" : 'Saisie des contrôles'}
+              </button>
+            )}
+            <button className="btn btn-primary" onClick={handleLoad} disabled={!selected.groupe_id}>
+              Afficher
+            </button>
+            {!selected.groupe_id && selected.filiere_id && (
+              <span className="alert alert-warning" style={{ margin: 0 }}>
+                Sélectionnez un groupe
+              </span>
+            )}
+          </>
+        )}
+      >
+        <FiliereCascade selected={selected} onChange={setSelected} />
+        <FilterSelect
+          label="Semestre"
+          value={semestre}
+          options={[
+            { id: '1', label: 'S1' },
+            { id: '2', label: 'S2' },
+          ]}
+          onChange={(v) => {
+            setSemestre(v);
+            setSelectedUniteId('');
+            setSelectedSequenceId('');
+            setSequences([]);
+            setNotesByControl({});
+            setExamens({});
+            setStageExamens({});
+            setRoster([]);
+            setFiltersApplied(false);
+          }}
+          disabled={!selected.niveau_id}
+          placeholder="S1 & S2"
+          allLabel="S1 & S2"
+        />
+        <FilterSelect
+          label="Unité"
+          value={selectedUniteId}
+          options={unites.map(u => ({ id: u.id, label: u.nom }))}
+          onChange={(v) => {
+            setSelectedUniteId(v);
+            setSelectedSequenceId('');
+            setSequences([]);
+            setNotesByControl({});
+            setExamens({});
+            setStageExamens({});
+            setRoster([]);
+            setFiltersApplied(false);
+          }}
+          disabled={!selected.niveau_id || unites.length === 0}
+          placeholder="Toutes les unités"
+          allLabel="Toutes les unités"
+        />
+        {mode === 'controles' && !isDirectUnit && (
+          <FilterSelect
+            label="Séquence"
+            value={selectedSequenceId}
+            options={sequences.map(s => ({ id: s.id, label: `${s.nom} (Coef: ${s.coefficient})` }))}
+            onChange={(v) => {
+              setSelectedSequenceId(v);
+              setNotesByControl({});
+              setFiltersApplied(false);
+            }}
+            disabled={!selectedUniteId || sequences.length === 0}
+            placeholder="Toutes les séquences"
+            allLabel="Toutes les séquences"
+          />
+        )}
+      </FilterBar>
 
       {error && <div className="alert alert-error">{error}</div>}
 
       {loading && <Spinner />}
 
-      {selected.filiere_id && unites.length > 0 && !loading && (
-        <div className="filter-bar">
-          <select
-            className="form-select"
-            value={selectedUniteId}
-            onChange={e => {
-              setSelectedUniteId(e.target.value);
-              setSelectedSequenceId('');
-              setSequences([]);
-              setNotesByControl({});
-              setExamens({});
-              setRoster([]);
-              setFiltersApplied(false);
-            }}
-          >
-            <option value="">Toutes les unités</option>
-            {unites.map(u => (
-              <option key={u.id} value={u.id}>{u.nom}</option>
-            ))}
-          </select>
-          <select
-            className="form-select"
-            value={selectedSequenceId}
-            onChange={e => {
-              setSelectedSequenceId(e.target.value);
-              setNotesByControl({});
-              setFiltersApplied(false);
-            }}
-            disabled={!selectedUniteId || sequences.length === 0}
-          >
-            {sequences.length === 0 ? (
-              <option value="">Sélectionnez une unité</option>
-            ) : (
-              sequences.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.nom} (Coef: {s.coefficient})
-                </option>
-              ))
-            )}
-          </select>
-          <button className="btn btn-primary" onClick={handleLoad} disabled={!selected.groupe_id}>
-            Afficher
-          </button>
-          {!selected.groupe_id && (
-            <span className="alert alert-warning" style={{ margin: 0 }}>
-              Sélectionnez un groupe
-            </span>
-          )}
-        </div>
+      {selected.filiere_id && !selected.niveau_id && !loading && (
+        <EmptyState message="Sélectionnez un niveau (année) pour afficher les unités." />
       )}
 
-      {selected.filiere_id && unites.length === 0 && !loading && (
-        <EmptyState message="Aucune unité trouvée pour cette filière." />
+      {selected.filiere_id && selected.niveau_id && unites.length === 0 && !loading && (
+        <EmptyState message="Aucune unité trouvée pour cette année." />
       )}
 
       {!selected.filiere_id && !loading && (
@@ -421,12 +643,11 @@ export default function GestionNotes() {
         <div className="card">
           <div className="card-header">
             <h5 className="mb-0">
-              Notes — {sequences.find(s => s.id === selectedSequenceId)?.nom || ''}
-              {showExamCols && (
-                <span className="ml-2" style={{ fontSize: 12, color: '#666', marginLeft: 8 }}>
-                  (Examens inclus)
-                </span>
-              )}
+              Notes — {mode === 'examens'
+                ? (selectedUnite?.nom || "Examens de l'unité")
+                : (isDirectUnit
+                  ? (selectedUnite?.nom || '')
+                  : (sequences.find(s => s.id === selectedSequenceId)?.nom || ''))}
             </h5>
           </div>
           <div className="card-body">
@@ -457,16 +678,31 @@ export default function GestionNotes() {
                 {filteredEtudiants.length} étudiant(s) trouvé(s)
               </p>
             )}
-            <div className="table-wrap">
-              <table className="table mb-0">
+            <div className="table-wrap" style={{ overflowX: 'auto' }}>
+              <table className="table mb-0" style={wideGridMinWidth ? { minWidth: wideGridMinWidth } : undefined}>
                 <thead>
                   <tr>
                     <th>Étudiant</th>
-                    {seqControles.map(ctrl => (
-                      <th key={ctrl.id}>{controlLabel(ctrl)}</th>
-                    ))}
-                    {showExamCols && <th>Théorique</th>}
-                    {showExamCols && <th>Pratique</th>}
+                    {mode === 'examens' ? (
+                      isStageDirect ? (
+                        seqControles.map(ctrl => (
+                          <th key={ctrl.id}>{controlLabel(ctrl)}</th>
+                        ))
+                      ) : (isSoutenanceDirect ? (
+                        seqControles.map(ctrl => (
+                          <th key={ctrl.id}>{controlLabel(ctrl)}</th>
+                        ))
+                      ) : (
+                        <>
+                          <th>Examen théorique</th>
+                          <th>Examen pratique</th>
+                        </>
+                      ))
+                    ) : (
+                      seqControles.map(ctrl => (
+                        <th key={ctrl.id}>{controlLabel(ctrl)}</th>
+                      ))
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -481,8 +717,10 @@ export default function GestionNotes() {
 
                     return (
                       <tr key={etudiant.id}>
-                        <td><strong>{etudiant.nom_prenom}</strong></td>
-                        {ctrlCells.map(({ ctrl, note }) => (
+                        <td>
+                          <strong>{etudiant.nom_prenom}</strong>
+                        </td>
+                        {mode !== 'examens' && ctrlCells.map(({ ctrl, note }) => (
                           <td key={ctrl?.id}>
                             {estVerrouille ? (
                               <span
@@ -499,7 +737,7 @@ export default function GestionNotes() {
                                 min="0"
                                 max={ctrl?.note_max || 20}
                                 step="0.25"
-                                style={{ width: '60px' }}
+                                style={{ width: '72px' }}
                                 onChange={e => setEditValue(e.target.value)}
                                 onBlur={handleSaveNewNote}
                                 onKeyDown={e => { if (e.key === 'Enter') handleSaveNewNote(); }}
@@ -515,7 +753,7 @@ export default function GestionNotes() {
                                   min="0"
                                   max="20"
                                   step="0.25"
-                                  style={{ width: '60px' }}
+                                  style={{ width: '72px' }}
                                   onChange={e => setEditValue(e.target.value)}
                                   onBlur={() => handleSaveNote(note.id)}
                                   onKeyDown={e => { if (e.key === 'Enter') handleSaveNote(note.id); }}
@@ -547,19 +785,105 @@ export default function GestionNotes() {
                               )
                             ) : (
                               <span
-                                style={{ color: '#ccc', cursor: 'pointer' }}
+                                style={{ color: '#b45309', background: '#fffbeb', outline: '1px dashed #f59e0b', cursor: 'pointer' }}
                                 onClick={() => {
                                   setNewNote({ etudiant_id: etudiant.id, controle_id: ctrl?.id });
                                   setEditValue('');
                                 }}
-                                title="Aucune note — cliquer pour saisir"
+                                title="Note manquante — cliquer pour saisir"
                               >
                                 —
                               </span>
                             )}
                           </td>
                         ))}
-                        {showExamCols && (
+                        {mode === 'examens' && isStageDirect && seqControles.map(ctrl => {
+                          const ex = stageExamens[ctrl?.id]?.[etudiant.id];
+                          const editing = editingStageExam?.etudiant_id === etudiant.id
+                            && editingStageExam?.controle_id === ctrl?.id;
+                          return (
+                            <td key={ctrl?.id}>
+                              {estVerrouille ? (
+                                <span style={noteDisplayStyle(ex?.est_absent)} title={MESSAGE_SEMESTRE_PUBLIE}>
+                                  {ex ? (ex.est_absent ? 'Absent' : (ex.valeur ?? '—')) : '—'}
+                                </span>
+                              ) : editing ? (
+                                <>
+                                  <input
+                                    type="number"
+                                    className="form-input form-input-sm"
+                                    value={editExamAbsent ? '' : editExamValue}
+                                    min="0"
+                                    max="20"
+                                    step="0.01"
+                                    style={{ width: '72px' }}
+                                    onChange={e => setEditExamValue(e.target.value)}
+                                    onBlur={() => handleSaveStageExam(ctrl.id)}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleSaveStageExam(ctrl.id); }}
+                                    disabled={saving || editExamAbsent}
+                                    autoFocus
+                                  />
+                                  <label
+                                    title="Marquer comme absent"
+                                    onMouseDown={e => e.preventDefault()}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 4, fontSize: 11, color: '#666', cursor: 'pointer' }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={editExamAbsent}
+                                      disabled={saving}
+                                      onChange={e => {
+                                        const next = e.target.checked;
+                                        setEditExamAbsent(next);
+                                        setEditExamValue(next ? '' : (ex?.valeur ?? ''));
+                                      }}
+                                    />
+                                    Abs.
+                                  </label>
+                                </>
+                              ) : ex ? (
+                                ex.est_absent ? (
+                                  <span
+                                    style={{ ...noteDisplayStyle(), cursor: 'pointer' }}
+                                    onClick={() => {
+                                      setEditingStageExam({ etudiant_id: etudiant.id, controle_id: ctrl.id });
+                                      setEditExamValue('');
+                                      setEditExamAbsent(true);
+                                    }}
+                                    title="Absent — cliquer pour corriger"
+                                  >
+                                    Absent
+                                  </span>
+                                ) : (
+                                  <span
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => {
+                                      setEditingStageExam({ etudiant_id: etudiant.id, controle_id: ctrl.id });
+                                      setEditExamValue(ex.valeur ?? '');
+                                      setEditExamAbsent(false);
+                                    }}
+                                    title="Cliquer pour modifier"
+                                  >
+                                    {ex.valeur ?? '—'}
+                                  </span>
+                                )
+                              ) : (
+                                <span
+                                  style={{ color: '#ccc', cursor: 'pointer' }}
+                                  onClick={() => {
+                                    setEditingStageExam({ etudiant_id: etudiant.id, controle_id: ctrl.id });
+                                    setEditExamValue('');
+                                    setEditExamAbsent(false);
+                                  }}
+                                  title="Aucun examen — cliquer pour saisir"
+                                >
+                                  —
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        {mode === 'examens' && !isStageDirect && !isSoutenanceDirect && (
                           <td>
                             {estVerrouille ? (
                               <span
@@ -577,7 +901,7 @@ export default function GestionNotes() {
                                   min="0"
                                   max="20"
                                   step="0.25"
-                                  style={{ width: '60px' }}
+                                  style={{ width: '72px' }}
                                   onChange={e => setEditExamValue(e.target.value)}
                                   onBlur={() => handleSaveExam('theorique')}
                                   onKeyDown={e => { if (e.key === 'Enter') handleSaveExam('theorique'); }}
@@ -642,7 +966,7 @@ export default function GestionNotes() {
                             )}
                           </td>
                         )}
-                        {showExamCols && (
+                        {mode === 'examens' && !isStageDirect && !isSoutenanceDirect && (
                           <td>
                             {estVerrouille ? (
                               <span
@@ -660,7 +984,7 @@ export default function GestionNotes() {
                                   min="0"
                                   max="20"
                                   step="0.25"
-                                  style={{ width: '60px' }}
+                                  style={{ width: '72px' }}
                                   onChange={e => setEditExamValue(e.target.value)}
                                   onBlur={() => handleSaveExam('pratique')}
                                   onKeyDown={e => { if (e.key === 'Enter') handleSaveExam('pratique'); }}
@@ -736,7 +1060,7 @@ export default function GestionNotes() {
       )}
 
       {filtersApplied && etudiants.length === 0 && !loading && selected.groupe_id && (
-        <EmptyState message="Aucune note trouvée pour cette séquence et ce groupe." />
+        <EmptyState message="Aucun étudiant trouvé pour ce groupe." />
       )}
     </div>
   );

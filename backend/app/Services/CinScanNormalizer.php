@@ -144,7 +144,6 @@ class CinScanNormalizer
     public function normalize(array $student): array
     {
         $cin           = $this->normalizeCin($student['cin'] ?? null);
-        $cinAr         = $this->normalizeCin($student['cin_ar'] ?? null);
         $dateNaissance = $this->normalizeDate($student['date_naissance'] ?? null)
             ?? $this->parseArabicDate($student['date_naissance_ar'] ?? null);
 
@@ -163,8 +162,23 @@ class CinScanNormalizer
             $nationalite = self::NATIONALITE_FR;
         }
 
-        if ($nationaliteAr === '') {
-            $nationaliteAr = $nationalite === self::NATIONALITE_FR ? self::NATIONALITE_AR : $nationalite;
+        // The student body is almost entirely Moroccan: any obvious spelling of
+        // "Marocaine" (accents, doubled letters, stray affixes, even the Arabic
+        // word) collapses to the canonical value.
+        if ($this->isMoroccanNationality($nationalite)) {
+            $nationalite = self::NATIONALITE_FR;
+            // The Arabic box must hold Arabic script. When it is empty or the
+            // scan only produced Latin text, مغربية replaces it.
+            if ($nationaliteAr === '' || !$this->hasArabicScript($nationaliteAr)) {
+                $nationaliteAr = self::NATIONALITE_AR;
+            }
+        }
+
+        $dateInscription   = $this->normalizeDate($student['date_inscription'] ?? null)
+            ?? $this->parseArabicDate($student['date_inscription_ar'] ?? null);
+        $dateInscriptionAr = $this->cleanText($student['date_inscription_ar'] ?? null);
+        if ($dateInscriptionAr === '' || $this->parseArabicDate($dateInscriptionAr) !== $dateInscription) {
+            $dateInscriptionAr = $this->toArabicDate($dateInscription);
         }
 
         $numeroInscription = $this->toWesternDigits((string) ($student['numero_inscription'] ?? ''));
@@ -173,15 +187,15 @@ class CinScanNormalizer
             'nom_prenom'          => $this->normalizeName($student['nom_prenom'] ?? null),
             'nom_ar'              => $this->cleanText($student['nom_ar'] ?? null),
             'cin'                 => $cin,
-            'cin_ar'              => $cinAr !== '' ? $cinAr : $cin,
+            'cin_ar'              => $cin,
             'date_naissance'      => $dateNaissance,
             'date_naissance_ar'   => $dateNaissanceAr,
             'lieu_naissance'      => $lieuNaissance,
             'lieu_naissance_ar'   => $lieuNaissanceAr,
             'nationalite'         => $nationalite,
             'nationalite_ar'      => $nationaliteAr,
-            'date_inscription'    => $this->normalizeDate($student['date_inscription'] ?? null),
-            'date_inscription_ar' => $this->cleanText($student['date_inscription_ar'] ?? null),
+            'date_inscription'    => $dateInscription,
+            'date_inscription_ar' => $dateInscriptionAr,
             'numero_inscription'  => $numeroInscription,
             'numero_inscription_ar' => $numeroInscription,
         ];
@@ -192,6 +206,35 @@ class CinScanNormalizer
         $value = trim((string) $value);
 
         return $value === '' ? '' : $this->toWesternDigits($value);
+    }
+
+    private function isMoroccanNationality(string $value): bool
+    {
+        if ($value === '') {
+            return false;
+        }
+
+        if ($this->hasArabicScript($value)) {
+            return str_contains($this->foldArabic($value), 'مغرب');
+        }
+
+        $folded = mb_strtolower($value, 'UTF-8');
+        $folded = strtr($folded, [
+            'à' => 'a', 'â' => 'a', 'ä' => 'a', 'á' => 'a',
+            'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'î' => 'i', 'ï' => 'i', 'ì' => 'i',
+            'ô' => 'o', 'ö' => 'o', 'ò' => 'o',
+            'ù' => 'u', 'û' => 'u', 'ü' => 'u',
+            'ç' => 'c',
+        ]);
+        $folded = preg_replace('/[^a-z0-9]/', '', $folded) ?? $folded;
+
+        return str_contains($folded, 'maroc') || str_contains($folded, 'moroc');
+    }
+
+    private function hasArabicScript(string $value): bool
+    {
+        return (bool) preg_match('/[\x{0600}-\x{06FF}]/u', $value);
     }
 
     private function isoDate(int $year, int $month, int $day): ?string

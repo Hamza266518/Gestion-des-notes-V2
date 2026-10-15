@@ -32,6 +32,7 @@ class ScanPublicationLockTest extends TestCase
     private array $createdUsers = [];
     private array $createdGroupes = [];
     private array $createdPublications = [];
+    private array $publicationSnapshots = [];
     private array $createdNotes = [];
 
     protected function setUp(): void
@@ -72,7 +73,81 @@ class ScanPublicationLockTest extends TestCase
         DB::table('formateur_sequences')->where('formateur_id', $this->formateur->id)->delete();
         \App\Models\Formateur::where('user_id', $this->formateurUser->id)->delete();
 
+        $this->restorePublications();
+
         parent::tearDown();
+    }
+
+    /**
+     * The suite shares one database, and other classes leave publication rows
+     * behind for the very groups these tests run against. A sibling that is
+     * already published makes a "per group" scenario read as "per level", so
+     * every group a scenario touches is snapshotted first and restored here.
+     */
+    private function snapPublication(int $groupeId, int $anneeId, string $type): void
+    {
+        $key = $groupeId . ':' . $anneeId . ':' . $type;
+        if (array_key_exists($key, $this->publicationSnapshots)) return;
+
+        $row = SemestrePublication::where('groupe_id', $groupeId)
+            ->where('annee_academique_id', $anneeId)
+            ->where('type', $type)
+            ->first();
+
+        $this->publicationSnapshots[$key] = $row ? $row->attributesToArray() : null;
+    }
+
+    /** Drops every publication of a group for the current year, remembering what was there. */
+    private function neutralise(int $groupeId, ?string $type = null): void
+    {
+        foreach ($type !== null ? [$type] : ['notes_s1', 'notes_s2', 'bulletin'] as $t) {
+            $this->snapPublication($groupeId, $this->annee->id, $t);
+            SemestrePublication::where('groupe_id', $groupeId)
+                ->where('annee_academique_id', $this->annee->id)
+                ->where('type', $t)
+                ->delete();
+        }
+    }
+
+    /** Same, for every group a control's level owns. */
+    private function neutraliseNiveau(Controle $controle): void
+    {
+        foreach ($this->groupesDuNiveau($controle) as $groupe) {
+            $this->neutralise($groupe->id);
+        }
+    }
+
+    private function restorePublications(): void
+    {
+        foreach ($this->publicationSnapshots as $key => $row) {
+            [$groupeId, $anneeId, $type] = explode(':', $key);
+            $groupeId = (int) $groupeId;
+            $anneeId = (int) $anneeId;
+
+            if ($row === null) continue;
+
+            $q = SemestrePublication::where('groupe_id', $groupeId)
+                ->where('annee_academique_id', $anneeId)
+                ->where('type', $type);
+
+            if ($q->exists()) {
+                $q->update([
+                    'is_published' => $row['is_published'],
+                    'published_at' => $row['published_at'],
+                    'updated_at'   => $row['updated_at'],
+                ]);
+            } else {
+                SemestrePublication::create([
+                    'groupe_id'           => $groupeId,
+                    'annee_academique_id' => $anneeId,
+                    'type'                => $type,
+                    'is_published'        => $row['is_published'],
+                    'published_at'        => $row['published_at'],
+                    'created_at'          => $row['created_at'],
+                    'updated_at'          => $row['updated_at'],
+                ]);
+            }
+        }
     }
 
     private function assignerSequence(int $sequenceId): void
@@ -95,6 +170,7 @@ class ScanPublicationLockTest extends TestCase
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
             app(\App\Services\PublicationLockService::class),
+            app(\App\Services\ScanEtudiantMatcher::class),
         );
     }
 
@@ -105,6 +181,16 @@ class ScanPublicationLockTest extends TestCase
 
     private function publier(Groupe $groupe, string $type): void
     {
+        // The suite shares one database and other classes leave publication rows
+        // behind, so clear this key first: a leaked row for the same
+        // groupe/annee/type would turn the helper into a duplicate-key error
+        // instead of the assertion under test.
+        $this->snapPublication($groupe->id, $this->annee->id, $type);
+        SemestrePublication::where('groupe_id', $groupe->id)
+            ->where('annee_academique_id', $this->annee->id)
+            ->where('type', $type)
+            ->delete();
+
         $publication = SemestrePublication::create([
             'groupe_id'           => $groupe->id,
             'annee_academique_id' => $this->annee->id,
@@ -151,6 +237,11 @@ class ScanPublicationLockTest extends TestCase
             if (!$controle->sequence?->unite) continue;
 
             $groupes = $this->groupesDuNiveau($controle);
+
+            // A leaked publication on any sibling would make a per-group
+            // scenario read as per-level, so the level starts clean.
+            $this->neutraliseNiveau($controle);
+
             if (count($groupes) >= 2) {
                 return [$controle, $groupes[0], $groupes[1]];
             }
@@ -287,6 +378,7 @@ class ScanPublicationLockTest extends TestCase
     public function test_notes_s1_publication_does_not_close_semester_two(): void
     {
         $s2 = $this->controleSemestre(2);
+        $this->neutraliseNiveau($s2);
         $groupe = $this->groupesDuNiveau($s2)[0] ?? null;
         if (!$groupe) {
             $this->markTestSkipped('Need a group in the current year.');
@@ -303,6 +395,7 @@ class ScanPublicationLockTest extends TestCase
     public function test_a_bulletin_closes_semester_two(): void
     {
         $s2 = $this->controleSemestre(2);
+        $this->neutraliseNiveau($s2);
         $groupe = $this->groupesDuNiveau($s2)[0] ?? null;
         if (!$groupe) {
             $this->markTestSkipped('Need a group in the current year.');
@@ -319,6 +412,7 @@ class ScanPublicationLockTest extends TestCase
     public function test_notes_s2_publication_closes_semester_two(): void
     {
         $s2 = $this->controleSemestre(2);
+        $this->neutraliseNiveau($s2);
         $groupe = $this->groupesDuNiveau($s2)[0] ?? null;
         if (!$groupe) {
             $this->markTestSkipped('Need a group in the current year.');
@@ -335,6 +429,7 @@ class ScanPublicationLockTest extends TestCase
         // rows for the same groupe_id. The perimeter count must not see that as
         // two locked groups, or a fully published sequence reads as open.
         $s2 = $this->controleSemestre(2);
+        $this->neutraliseNiveau($s2);
         $groupe = $this->groupesDuNiveau($s2)[0] ?? null;
         if (!$groupe) {
             $this->markTestSkipped('Need a group in the current year.');

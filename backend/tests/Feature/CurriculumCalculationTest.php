@@ -18,9 +18,10 @@ use Tests\TestCase;
  * Guards the curriculum rules taken from the official documents.
  *
  * Key rule under test: a sequence's `coefficient` column is NOT a curriculum
- * weight. It only mirrors `nombre_controles`, so sequences must be averaged
- * with equal weight inside a unit, and only the unit coefficient may scale the
- * unit in the general average.
+ * weight. It only mirrors `nombre_controles`. The unite-level MPCC therefore
+ * sums every controle of every sequence and divides by the total controles
+ * configured, and only the unit coefficient may scale the unit in the general
+ * average.
  */
 class CurriculumCalculationTest extends TestCase
 {
@@ -84,12 +85,11 @@ class CurriculumCalculationTest extends TestCase
         return $seq;
     }
 
-    private function addControle(Sequence $seq, string $type, ?float $valeur): int
+    private function addControle(Sequence $seq, ?float $valeur): int
     {
         $ctrl = Controle::create([
             'sequence_id' => $seq->id,
             'numero'      => 1,
-            'type'        => $type,
             'note_max'    => 20,
         ]);
         $this->controles[] = $ctrl->id;
@@ -110,7 +110,6 @@ class CurriculumCalculationTest extends TestCase
         return app(MoyenneService::class)->moyenneUnite(
             $this->etudiant->id,
             $this->unite->id,
-            null,
             $this->annee->id
         );
     }
@@ -120,8 +119,8 @@ class CurriculumCalculationTest extends TestCase
         $heavy = $this->addSequence('SEQ LOURD', 5, 5);
         $light = $this->addSequence('SEQ LEGER', 1, 1);
 
-        $this->addControle($heavy, 'cc', 20.0);
-        $this->addControle($light, 'cc', 4.0);
+        $this->addControle($heavy, 20.0);
+        $this->addControle($light, 4.0);
 
         // Equal sequence weighting -> (20 + 4) / 2 = 12
         // Coefficient weighting would give (20*5 + 4*1) / 6 = 17.33
@@ -133,20 +132,20 @@ class CurriculumCalculationTest extends TestCase
         $normal = $this->addSequence('SEQ NORMAL', 2, 2);
         $zeroed = $this->addSequence('SEQ COEF ZERO', 0, 0);
 
-        $this->addControle($normal, 'cc', 10.0);
-        $this->addControle($zeroed, 'cc', 20.0);
+        $this->addControle($normal, 10.0);
+        $this->addControle($zeroed, 20.0);
 
         // The zero coefficient must not drop the sequence: (10 + 20) / 2 = 15
         $this->assertEqualsWithDelta(15.00, $this->moyenneUnite(), 0.01);
     }
 
-    public function test_typed_average_also_uses_equal_sequence_weight(): void
+    public function test_cc_average_uses_equal_sequence_weight(): void
     {
         $heavy = $this->addSequence('SEQ LOURD CC', 4, 4);
         $light = $this->addSequence('SEQ LEGER CC', 1, 1);
 
-        $this->addControle($heavy, 'cc', 20.0);
-        $this->addControle($light, 'cc', 4.0);
+        $this->addControle($heavy, 20.0);
+        $this->addControle($light, 4.0);
 
         $b = app(BulletinService::class)->calculateBulletin($this->etudiant->id, $this->annee->id, 1);
         $unit = collect($b['unites'])->firstWhere('id', $this->unite->id);
@@ -170,7 +169,7 @@ class CurriculumCalculationTest extends TestCase
 
         try {
             $seqA = $this->addSequence('SEQ A', 1, 1);
-            $this->addControle($seqA, 'cc', 20.0);
+            $this->addControle($seqA, 20.0);
 
             $seqB = Sequence::create([
                 'unite_id'         => $other->id,
@@ -179,7 +178,7 @@ class CurriculumCalculationTest extends TestCase
                 'nombre_controles' => 1,
             ]);
             $this->sequences[] = $seqB;
-            $this->addControle($seqB, 'cc', 0.0);
+            $this->addControle($seqB, 0.0);
 
             $generale = app(MoyenneService::class)->moyenneGenerale(
                 $this->etudiant->id,
@@ -214,7 +213,7 @@ class CurriculumCalculationTest extends TestCase
 
         try {
             $seq = $this->addSequence('SEQ ANNEE COURANTE', 1, 1);
-            $this->addControle($seq, 'cc', 12.0);
+            $this->addControle($seq, 12.0);
 
             $generale = app(MoyenneService::class)->moyenneGenerale(
                 $this->etudiant->id,
@@ -238,7 +237,7 @@ class CurriculumCalculationTest extends TestCase
     public function test_bulletin_controls_expose_a_label_and_the_scale(): void
     {
         $seq = $this->addSequence('SEQ LIBELLE', 1, 1);
-        $this->addControle($seq, 'cc', 14.0);
+        $this->addControle($seq, 14.0);
 
         $b = app(BulletinService::class)->calculateBulletin($this->etudiant->id, $this->annee->id, 1);
         $unit = collect($b['unites'])->firstWhere('id', $this->unite->id);

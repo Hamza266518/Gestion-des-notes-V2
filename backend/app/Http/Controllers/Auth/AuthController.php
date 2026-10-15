@@ -14,16 +14,16 @@ class AuthController extends Controller
     {
         try {
             $request->validate([
-                'email'    => 'required|email',
+                'username' => 'required|string|max:60',
                 'password' => 'required',
             ]);
 
-            $user = User::where('email', $request->email)->first();
+            $user = User::where('username', mb_strtolower(trim($request->username)))->first();
 
             if (!$user || !Hash::check($request->password, $user->password)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Email ou mot de passe incorrect',
+                    'message' => 'Identifiant ou mot de passe incorrect',
                 ], 401);
             }
 
@@ -32,12 +32,16 @@ class AuthController extends Controller
             return response()->json([
                 'success' => true,
                 'data'    => [
-                    'token' => $token,
-                    'role'  => $user->role,
-                    'name'  => $user->name,
-                    'email' => $user->email,
+                    'token'                    => $token,
+                    'role'                     => $user->role,
+                    'name'                     => $user->name,
+                    'username'                 => $user->username,
+                    'contact_email'            => $user->contact_email,
+                    'contact_email_verified_at'=> $user->contact_email_verified_at?->toIso8601String(),
                 ],
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Erreur connexion: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Erreur lors de la connexion'], 500);
@@ -64,13 +68,15 @@ class AuthController extends Controller
             return response()->json([
                 'success' => true,
                 'data'    => [
-                    'id'                  => $user->id,
-                    'name'                => $user->name,
-                    'email'               => $user->email,
-                    'role'                => $user->role,
-                    'password_changed_at' => $user->password_changed_at,
-                    'etudiant'            => $user->etudiant,
-                    'formateur'           => $user->formateur,
+                    'id'                       => $user->id,
+                    'name'                     => $user->name,
+                    'username'                 => $user->username,
+                    'contact_email'            => $user->contact_email,
+                    'contact_email_verified_at'=> $user->contact_email_verified_at?->toIso8601String(),
+                    'role'                     => $user->role,
+                    'password_changed_at'      => $user->password_changed_at?->toIso8601String(),
+                    'etudiant'                 => $user->etudiant,
+                    'formateur'                => $user->formateur,
                 ],
             ]);
         } catch (\Exception $e) {

@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { FiX } from 'react-icons/fi';
+import { FiX, FiUploadCloud, FiCheckCircle } from 'react-icons/fi';
 import { formateursApi } from '../../api/formateurs';
 import { scanApi } from '../../api/scan';
 import { useToast } from '../../context/ToastContext';
 import Spinner from '../../components/common/Spinner';
+import FilterSelect from '../../components/common/FilterSelect';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
-import { controlLabel } from '../../utils/helpers';
+import { controlLabel, invalidNoteHint } from '../../utils/helpers';
 
 import '../../css/components.css';
 import '../../css/layout.css';
@@ -19,10 +20,30 @@ const toGrade = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 
+// Step header shared by every card so the wizard reads as one page, with the
+// step number, a title and a short description. Uses existing palette vars.
+const ScanStepHead = ({ n, title, subtitle }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+    <div style={{
+      width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+      background: 'var(--primary-faint)', color: 'var(--primary)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontWeight: 700, fontSize: 16,
+    }}>{n}</div>
+    <div>
+      <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--gray-800)' }}>{title}</h4>
+      {subtitle && <div style={{ fontSize: 13, color: 'var(--gray-500)', marginTop: 2 }}>{subtitle}</div>}
+    </div>
+  </div>
+);
+
 export default function Scanner() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Bumped by the error banner's "Réessayer" to re-run the loader in place,
+  // instead of a full page reload that threw away the whole screen.
+  const [reloadKey, setReloadKey] = useState(0);
   const [filieres, setFilieres] = useState([]);
   const [sequences, setSequences] = useState([]);
   const [sel, setSel] = useState({
@@ -232,6 +253,7 @@ export default function Scanner() {
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     formateursApi.getScanData()
       .then(r => {
         const data = r.data.data;
@@ -281,7 +303,7 @@ export default function Scanner() {
         setError(info.message);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [reloadKey]);
 
   // Preview URLs must be released on unmount. The load effect above closed over
   // the first render's (empty) list, so leaving the page leaked every blob.
@@ -565,7 +587,7 @@ export default function Scanner() {
         <div className="alert alert-danger" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>{error}</span>
-            <button className="btn btn-sm btn-outline" onClick={() => window.location.reload()} disabled={processing}>Réessayer</button>
+            <button className="btn btn-sm btn-outline" onClick={() => setReloadKey(k => k + 1)} disabled={processing}>Réessayer</button>
           </div>
         </div>
       )}
@@ -596,79 +618,110 @@ export default function Scanner() {
 
       {/* Step 1: Select */}
       {step === 1 && (
-        <div className="card card-body" style={{ maxWidth: 800, width: '90vw' }}>
+        <div className="card card-body scanner-card" style={{ maxWidth: 860 }}>
+          <ScanStepHead
+            n={1}
+            title="Sélectionner le contrôle"
+            subtitle="La feuille de notes scannée sera rapprochée uniquement des étudiants du groupe choisi."
+          />
           {filieres.length === 0 && (
             <div className="alert alert-warning" style={{ marginBottom: 16 }}>
-              <strong>Aucune filière trouvée.</strong> Veuillez contacter l'administrateur.
+              <span><strong>Aucune filière trouvée.</strong> Veuillez contacter l'administrateur.</span>
             </div>
           )}
-          <div className="filter-bar" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-            <select className="form-select" value={sel.filiere_id} onChange={e => setSel(p => ({ ...p, filiere_id: e.target.value, sequence_id: '', controle_id: '' }))}>
-              <option value="">Filière</option>
-              {filieres.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-            </select>
-            <select className="form-select" value={sel.sequence_id} onChange={e => setSel(p => ({ ...p, sequence_id: e.target.value, controle_id: '' }))} disabled={!sel.filiere_id}>
-              <option value="">Séquence</option>
-              {filteredSequences.map(s => <option key={s.id} value={s.id}>{s.unite?.nom} — {s.nom}</option>)}
-            </select>
-            <select className="form-select" value={sel.controle_id} onChange={e => setSel(p => ({ ...p, controle_id: e.target.value, groupe_id: '' }))} disabled={!sel.sequence_id}>
-              <option value="">Contrôle</option>
-              {filteredControles.map(c => <option key={c.id} value={c.id}>{controlLabel(c)}</option>)}
-            </select>
-            <select
-              className="form-select"
-              value={sel.groupe_id}
-              onChange={e => setSel(p => ({ ...p, groupe_id: e.target.value }))}
-              disabled={!sel.controle_id || filteredGroupes.length === 0}
-            >
-              <option value="">
-                {filteredGroupes.length === 0
-                  ? 'Groupe'
-                  : requiresGroupChoice ? 'Groupe — choisir' : 'Groupe'}
-              </option>
-              {filteredGroupes.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
-            </select>
+          <div className="smart-filter" style={{ marginBottom: 18 }}>
+            <div className="sf-row">
+              <FilterSelect
+                label="Filière"
+                value={sel.filiere_id}
+                options={filieres.map(f => ({ id: f.id, label: f.nom }))}
+                onChange={id => setSel(p => ({ ...p, filiere_id: id, sequence_id: '', controle_id: '', groupe_id: '' }))}
+                placeholder="Choisir une filière"
+                allLabel="Choisir une filière"
+                disabled={filieres.length === 0}
+              />
+              <FilterSelect
+                label="Séquence"
+                value={sel.sequence_id}
+                options={filteredSequences.map(s => ({ id: s.id, label: `${s.unite?.nom} — ${s.nom}` }))}
+                onChange={id => setSel(p => ({ ...p, sequence_id: id, controle_id: '', groupe_id: '' }))}
+                placeholder="Choisir une séquence"
+                allLabel="Choisir une séquence"
+                disabled={!sel.filiere_id}
+              />
+              <FilterSelect
+                label="Contrôle"
+                value={sel.controle_id}
+                options={filteredControles.map(c => ({ id: c.id, label: controlLabel(c) }))}
+                onChange={id => setSel(p => ({ ...p, controle_id: id, groupe_id: '' }))}
+                placeholder="Choisir un contrôle"
+                allLabel="Choisir un contrôle"
+                disabled={!sel.sequence_id}
+              />
+              <FilterSelect
+                label="Groupe"
+                value={sel.groupe_id}
+                options={filteredGroupes.map(g => ({ id: g.id, label: g.nom }))}
+                onChange={id => setSel(p => ({ ...p, groupe_id: id }))}
+                placeholder={requiresGroupChoice ? 'Groupe — choisir' : 'Choisir le groupe'}
+                allLabel={requiresGroupChoice ? 'Groupe — choisir' : 'Choisir le groupe'}
+                disabled={!sel.controle_id || filteredGroupes.length === 0}
+              />
+            </div>
           </div>
 
           {sel.controle_id && filteredGroupes.length === 1 && (
-            <div className="alert alert-info" style={{ marginTop: 16 }}>
-              Les notes ne seront rapprochées que des étudiants du groupe{' '}
-              <strong>{filteredGroupes[0].nom}</strong>. Tout nom introuvable dans ce groupe
-              reste marqué « Introuvable ».
+            <div className="alert alert-info" style={{ marginTop: 0, marginBottom: 16 }}>
+              <span>
+                Les notes ne seront rapprochées que des étudiants du groupe{' '}
+                <strong>{filteredGroupes[0].nom}</strong>. Tout nom introuvable dans ce groupe
+                reste marqué « Introuvable ».
+              </span>
             </div>
           )}
           {sel.controle_id && requiresGroupChoice && !sel.groupe_id && (
-            <div className="alert alert-warning" style={{ marginTop: 16 }}>
-              <strong>Choisissez le groupe</strong> de cette feuille de notes : le rapprochement
-              des noms se fait uniquement à l'intérieur du groupe choisi.
+            <div className="alert alert-warning" style={{ marginTop: 0, marginBottom: 16 }}>
+              <span>
+                <strong>Choisissez le groupe</strong> de cette feuille de notes : le rapprochement
+                des noms se fait uniquement à l'intérieur du groupe choisi.
+              </span>
             </div>
           )}
 
           {sel.controle_id && selectionVerrouillee && (
-            <div className="alert alert-danger" style={{ marginTop: 16 }}>
-              <strong>Période terminée.</strong> Les notes et/ou bulletins ont déjà été publiés pour ce groupe.
-              Vous ne pouvez plus saisir ou modifier des notes. Contactez l'administrateur si nécessaire.
+            <div className="alert alert-danger" style={{ marginTop: 0, marginBottom: 16 }}>
+              <span>
+                <strong>Période terminée.</strong> Les notes et/ou bulletins ont déjà été publiés pour ce groupe.
+                Vous ne pouvez plus saisir ou modifier des notes. Contactez l'administrateur si nécessaire.
+              </span>
             </div>
           )}
 
-          <button
-            className="btn btn-primary"
-            style={{ marginTop: 16 }}
-            disabled={processing || !sel.controle_id
-              || (requiresGroupChoice && !sel.groupe_id)
-              || selectionVerrouillee}
-            onClick={() => setStep(2)}
-          >
-            Suivant →
-          </button>
+          <div className="scanner-btn-row" style={{ marginTop: 8 }}>
+            <button
+              className="btn btn-primary"
+              disabled={processing || !sel.controle_id
+                || (requiresGroupChoice && !sel.groupe_id)
+                || selectionVerrouillee}
+              onClick={() => setStep(2)}
+            >
+              Suivant →
+            </button>
+          </div>
         </div>
       )}
 
       {/* Step 2: Upload */}
       {step === 2 && (
-        <div className="card card-body" style={{ maxWidth: 1000, width: '90vw' }}>
+        <div className="card card-body scanner-card" style={{ maxWidth: 1000 }}>
+          <ScanStepHead
+            n={2}
+            title="Déposer les feuilles de notes"
+            subtitle="Cliquez ou glissez les PDF à lire, puis lancez la reconnaissance."
+          />
           <div className="upload-zone">
             <input type="file" accept=".pdf" multiple onChange={handleFiles} disabled={processing} />
+            <div className="upload-zone-icon"><FiUploadCloud size={40} aria-hidden="true" /></div>
             <div className="upload-zone-text">
               <strong>Cliquer ou glisser</strong> les fichiers PDF de notes
             </div>
@@ -691,7 +744,7 @@ export default function Scanner() {
               </div>
             </div>
           )}
-          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <div className="scanner-btn-row">
             <button className="btn btn-outline" onClick={() => setStep(1)} disabled={processing}>Retour</button>
             <button className="btn btn-primary" disabled={processing || pdfs.length === 0} onClick={handleScan}>
               {scanning ? 'Lecture en cours...' : 'Scanner'}
@@ -702,21 +755,17 @@ export default function Scanner() {
               </button>
             )}
           </div>
-          {scanning && (
-            <div style={{ textAlign: 'center', padding: 20, marginTop: 16 }}>
-              <Spinner />
-              <p style={{ marginTop: 8, color: '#666' }}>Lecture des notes en cours...</p>
-            </div>
-          )}
         </div>
       )}
 
       {/* Step 3: Results */}
       {step === 3 && (
-        <div style={{ maxWidth: 1400, width: '95vw', margin: '0 auto' }}>
-          <div className="alert alert-info" style={{ marginBottom: 16 }}>
-            Vérifiez les résultats avant de confirmer. Seule la note est modifiable.
-          </div>
+        <div style={{ maxWidth: 1400, width: '100%', margin: '0 auto' }}>
+          <ScanStepHead
+            n={3}
+            title="Vérifier les résultats"
+            subtitle="Contrôlez le rapprochement des noms et la note avant de confirmer. Seule la note est modifiable."
+          />
           {results.length === 0 ? (
             <div className="text-center" style={{ padding: 40 }}>
               {allConfirmed ? (
@@ -736,7 +785,7 @@ export default function Scanner() {
                   <p style={{ color: '#999', marginBottom: 24 }}>
                     Verifiez le fichier PDF ou ressayer le scan.
                   </p>
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                  <div className="scanner-btn-row" style={{ justifyContent: 'center' }}>
                     <button className="btn btn-primary" onClick={() => setStep(2)} disabled={processing}>
                       Retour aux fichiers
                     </button>
@@ -744,20 +793,14 @@ export default function Scanner() {
                       {scanning ? 'Scan en cours...' : 'Ressayer le scan'}
                     </button>
                   </div>
-                  {scanning && (
-                    <div style={{ textAlign: 'center', padding: 16, marginTop: 12 }}>
-                      <Spinner />
-                      <p style={{ marginTop: 8, color: 'var(--gray-500)', fontSize: 13 }}>Lecture des notes en cours...</p>
-                    </div>
-                  )}
                 </>
               )}
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20 }}>
+            <div className="scanner-results-grid">
               <div>
                 <h5 style={{ marginBottom: 8, fontWeight: 600 }}>Fichiers PDF uploadés</h5>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '70vh', overflowY: 'auto' }}>
+                <div className="scanner-pdf-list">
                   {pdfUrls.map((src, i) => (
                     <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb', background: '#fff' }}>
                       <embed src={src} type="application/pdf" style={{ width: '100%', height: 220, display: 'block' }} />
@@ -857,7 +900,7 @@ onChange={e => {
                             )}
                             {r.note_invalide && !r.est_absent && r.etudiant_id && (
                               <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>
-                                Illisible{ r.raw_note ? ` (« ${r.raw_note} »)` : ''} — saisissez la note
+                                {invalidNoteHint(r.raw_note)}
                               </div>
                             )}
                           </td>
@@ -917,7 +960,7 @@ onChange={e => {
                     </tbody>
                   </table>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div className="scanner-btn-row">
                   <button className="btn btn-outline" onClick={() => setStep(2)} disabled={processing}>← Retour</button>
                   <button className="btn btn-primary" onClick={handleNextFromResults} disabled={processing}>Suivant →</button>
                 </div>
@@ -963,7 +1006,7 @@ onChange={e => {
 
       {/* Step 5: done */}
       {step === 5 && savedSummary && (
-        <div className="card card-body" style={{ maxWidth: 640, width: '90vw', margin: '0 auto', textAlign: 'center' }}>
+        <div className="card card-body scanner-card" style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
           <div style={{
             width: 56, height: 56, borderRadius: '50%', background: 'var(--success)', color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 12px'
@@ -995,24 +1038,29 @@ onChange={e => {
 
       {/* Step 4: Review */}
       {step === 4 && (
-        <div>
+        <div style={{ maxWidth: 860, margin: '0 auto' }}>
+          <ScanStepHead
+            n={4}
+            title="Confirmation finale"
+            subtitle="Cette action est définitive : aucune modification ne sera possible après l'enregistrement."
+          />
           {results.some(r => !r.etudiant_id) && (
             <div className="alert alert-warning" style={{ marginBottom: 16 }}>
-              <strong>Étudiants introuvables :</strong> leur nom ne correspond à aucun étudiant de cette
+              <span><strong>Étudiants introuvables :</strong> leur nom ne correspond à aucun étudiant de cette
               filière/année, donc aucune note ne peut leur être attribuée. Reliez-les par recherche, ou
-              demandez à l'administrateur de les créer, puis relancez le scan.
+              demandez à l'administrateur de les créer, puis relancez le scan.</span>
             </div>
           )}
           {results.some(r => r.already_confirmed) && (
             <div className="alert alert-danger" style={{ marginBottom: 16 }}>
-              <strong>Notes déjà confirmées :</strong> certains étudiants ont déjà une note confirmée.
-              Contactez l'administrateur pour les modifier.
+              <span><strong>Notes déjà confirmées :</strong> certains étudiants ont déjà une note confirmée.
+              Contactez l'administrateur pour les modifier.</span>
             </div>
           )}
           <div className="alert alert-warning" style={{ marginBottom: 16 }}>
-            <strong>Confirmez pour enregistrer les notes</strong> — toute modification sera impossible après.
+            <span><strong>Confirmez pour enregistrer les notes</strong> — toute modification sera impossible après.</span>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="scanner-btn-row">
             <button className="btn btn-outline" onClick={() => setStep(3)} disabled={processing}>← Retour</button>
             <button className="btn btn-primary" style={{ minWidth: 220, justifyContent: 'center' }} disabled={processing || results.some(r => !r.etudiant_id || r.already_confirmed)} onClick={handleConfirm}>
               {savingResults ? (

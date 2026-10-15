@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\UsernameGenerator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -14,7 +15,10 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'username',
         'email',
+        'contact_email',
+        'contact_email_verified_at',
         'password',
         'password_encrypted',
         'password_original_encrypted',
@@ -28,6 +32,35 @@ class User extends Authenticatable
         'password_encrypted',
         'password_original_encrypted',
     ];
+
+    protected $casts = [
+        'contact_email_verified_at' => 'datetime',
+        'password_changed_at'        => 'datetime',
+    ];
+
+    protected static function booted(): void
+    {
+        // Guarantees the mandatory unique username, whichever code path creates the account.
+        static::creating(function (self $user) {
+            if (blank($user->username)) {
+                $user->username = app(UsernameGenerator::class)->forNewUser($user);
+            }
+        });
+    }
+
+    /**
+     * Only a verified contact email may be used to recover the account.
+     */
+    public function hasVerifiedContactEmail(): bool
+    {
+        return filled($this->contact_email)
+            && filled($this->contact_email_verified_at);
+    }
+
+    public function authCodes()
+    {
+        return $this->hasMany(AuthCode::class);
+    }
 
     public function getPasswordPlainAttribute(): ?string
     {

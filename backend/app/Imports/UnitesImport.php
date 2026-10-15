@@ -6,14 +6,12 @@ use App\Models\Filiere;
 use App\Models\Unite;
 use App\Models\Sequence;
 use App\Models\Controle;
-use App\Traits\HasControleType;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Support\Collection;
 
 class UnitesImport implements ToCollection, WithHeadingRow
 {
-    use HasControleType;
     protected $filiere_id;
     public $created = 0;
     public $errors  = [];
@@ -74,7 +72,7 @@ class UnitesImport implements ToCollection, WithHeadingRow
                     'sequence_id' => $sequence->id,
                     'numero'      => $i,
                 ], [
-                    'type'     => $this->getControleType($i, $totalControles),
+                    'nom'      => 'Contrôle ' . $i,
                     'note_max' => 20,
                 ]);
             }

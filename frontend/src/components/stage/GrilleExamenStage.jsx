@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FiPrinter, FiSave } from 'react-icons/fi';
+import { FiSave } from 'react-icons/fi';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { stagesApi } from '../../api/stages';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
 import { useToast } from '../../context/ToastContext';
 import NoteStepper from './NoteStepper';
+import FilterSelect from '../common/FilterSelect';
 
 const LIGNES_EXAMEN = [
   { element: 'Respect des règles d\'hygiène', bareme: 1 },
@@ -18,26 +19,83 @@ const LIGNES_EXAMEN = [
 
 const OBSERVATIONS_OPTIONS = ['', 'Très bien', 'Bien', 'Moyen', 'Insuffisant'];
 
+// One exam grid per service: the stored payload is a { service => grid } map,
+// so each department keeps its own sheet — exactly like the evaluation grid.
+const emptyForm = () => ({
+  lieu: '', pratique_executee: '',
+  lignes: LIGNES_EXAMEN.map(() => ({ note: '', observation: '' })),
+});
+
+// Older sheets stored a single grid (the scoring fields at the top level) with
+// the service inside; normalize both shapes to the keyed map.
+const normalizeMap = (raw) => {
+  if (!raw || typeof raw !== 'object') return {};
+  const isSingle = ['lignes', 'pratique_executee']
+    .some(k => Object.prototype.hasOwnProperty.call(raw, k));
+  if (isSingle) {
+    const svc = typeof raw.service === 'string' ? raw.service.trim() : '';
+    return svc ? { [svc]: raw } : {};
+  }
+  return raw;
+};
+
+// Older sheets stored the place and the department in a single field.
+const migrateGrid = (grid) => {
+  const out = { ...grid };
+  if (out.lieu == null && out.lieu_service != null) out.lieu = out.lieu_service;
+  delete out.lieu_service;
+  return out;
+};
+
 export default function GrilleExamenStage({ etudiant, onDataChange, onSaved }) {
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
-  const [form, setForm] = useState({
-    lieu_service: '', pratique_executee: '',
-    lignes: LIGNES_EXAMEN.map(l => ({ note: '', observation: '' })),
 
-  });
+  const [all, setAll] = useState({});
+  const [service, setService] = useState('');
+  const [form, setForm] = useState(emptyForm);
+  const [services, setServices] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!etudiant?.id || !currentAnnee?.id || loaded) return;
+    if (!etudiant?.id || !currentAnnee?.id) return;
+    let cancelled = false;
+    setLoaded(false);
     stagesApi.load({ etudiant_id: etudiant.id, annee_academique_id: currentAnnee.id, type: 'grille_examen' })
       .then(res => {
-        if (res.data.data) setForm(prev => ({ ...prev, ...res.data.data }));
-        setLoaded(true);
+        if (cancelled) return;
+        const map = normalizeMap(res.data.data);
+        setAll(map);
+        setService(cur => (map[cur] ? cur : (Object.keys(map)[0] ?? '')));
       })
-      .catch(() => setLoaded(true));
+      .catch(() => { if (!cancelled) setAll({}); })
+      .finally(() => { if (!cancelled) setLoaded(true); });
+    return () => { cancelled = true; };
   }, [etudiant?.id, currentAnnee?.id]);
+
+  // "Services" are the Stage unit's own controls, named by the admin — the same
+  // list the evaluation grid offers.
+  useEffect(() => {
+    if (!etudiant?.id) { setServices([]); return; }
+    stagesApi.stageServices(etudiant.id)
+      .then(res => setServices(res.data.data || []))
+      .catch(() => setServices([]));
+  }, [etudiant?.id]);
+
+  // Show the selected service's saved sheet.
+  useEffect(() => {
+    if (!loaded) return;
+    setForm({ ...emptyForm(), ...migrateGrid(all[service] ?? {}) });
+  }, [service, all, loaded]);
+
+  const serviceOptions = useMemo(() => {
+    const opts = services.map(s => ({ id: s.nom, label: s.nom }));
+    if (service && !opts.some(o => o.id === service)) {
+      opts.push({ id: service, label: service });
+    }
+    return opts;
+  }, [services, service]);
 
   const set = (key, value) => {
     const next = { ...form, [key]: value };
@@ -56,16 +114,18 @@ export default function GrilleExamenStage({ etudiant, onDataChange, onSaved }) {
   );
 
   const handleSave = async () => {
-    if (!etudiant?.id || !currentAnnee?.id) return;
+    if (!etudiant?.id || !currentAnnee?.id || !service) return;
     setSaving(true);
     try {
+      const map = { ...all, [service]: form };
       await stagesApi.save({
         etudiant_id: etudiant.id,
         annee_academique_id: currentAnnee.id,
         type: 'grille_examen',
-        data: form,
+        data: map,
       });
-      showSuccess(toast, 'Grille d\'examen enregistrée');
+      setAll(map);
+      showSuccess(toast, `Grille d'examen enregistrée — ${service}`);
       onSaved?.();
     } catch (err) {
       handleApiError(err, toast);
@@ -74,76 +134,23 @@ export default function GrilleExamenStage({ etudiant, onDataChange, onSaved }) {
     }
   };
 
-  const printDocument = () => {
-    const examRows = LIGNES_EXAMEN.map((l, i) => {
-      const n = form.lignes[i]?.note || '—';
-      const obs = form.lignes[i]?.observation || '';
-      return `<tr><td>${l.element}</td><td style="text-align:center">${l.bareme}</td><td style="text-align:center">${n}</td><td>${obs}</td></tr>`;
-    }).join('');
-
-    const w = window.open('', '_blank');
-    w.document.write(`
-      <html><head><title>Grille d'Examen du Stage</title>
-      <style>
-        @page { margin: 15mm; size: A4; }
-        body { font-family: 'Arial', sans-serif; font-size: 12px; }
-        h2 { text-align: center; margin-bottom: 4px; }
-        table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-        th, td { border: 1px solid #000; padding: 3px 5px; text-align: left; font-size: 11px; }
-        th { background: #f0f0f0; font-weight: 600; text-align: center; }
-        .total-row td { font-weight: 700; }
-        .examinators { display: flex; gap: 12px; margin-top: 20px; }
-        .examinator { flex: 1; border: 1px solid #000; padding: 8px; }
-        .cachets { display: flex; gap: 20px; margin-top: 16px; }
-        .cachet-box { flex: 1; }
-        .signature-line { border-top: 1px solid #000; margin-top: 24px; padding-top: 4px; font-size: 11px; }
-        .print-btn { display: block; margin: 20px auto; padding: 10px 24px; font-size: 14px; }
-        @media print { .print-btn { display: none; } }
-      </style></head><body>
-      <button class="print-btn" onclick="window.print()">Imprimer</button>
-      <h2>Grille d'Examen du Stage</h2>
-      <table>
-        <tr><td><strong>Nom et Prénom</strong></td><td>${etudiant?.nom_prenom || ''}</td>
-            <td><strong>N° Inscription</strong></td><td>${etudiant?.numero_inscription || ''}</td></tr>
-        <tr><td><strong>Lieu et Service</strong></td><td>${form.lieu_service}</td>
-            <td><strong>Pratique exécutée</strong></td><td>${form.pratique_executee}</td></tr>
-      </table>
-      <table>
-        <tr><td><strong>Nom et Prénom</strong></td><td>${etudiant?.nom_prenom || ''}</td>
-            <td><strong>Section</strong></td><td>${etudiant?.section || ''}</td></tr>
-        <tr><td><strong>N° Inscription</strong></td><td>${etudiant?.numero_inscription || ''}</td>
-            <td><strong>Filière</strong></td><td>${etudiant?.filiere || ''}</td></tr>
-        <tr><td><strong>Années de Formation</strong></td><td>${etudiant?.niveau_numero || ''}</td>
-            <td><strong>Année Scolaire</strong></td><td>${currentAnnee?.label || ''}</td></tr>
-        <tr><td><strong>Lieu et Service</strong></td><td>${form.lieu_service}</td>
-            <td><strong>Pratique exécutée</strong></td><td>${form.pratique_executee}</td></tr>
-      </table>
-
-      <table>
-        <thead><tr><th>Élément à évaluer</th><th style="width:60px">Barème</th><th style="width:60px">Note</th><th>Observations</th></tr></thead>
-        <tbody>${examRows}
-        <tr class="total-row"><td colspan="2" style="text-align:right">Total</td><td style="text-align:center">${totalNote}/20</td><td></td></tr>
-      </tbody></table>
-
-      <div class="examinators">
-        <div class="examinator"><p><strong>1er Examinateur</strong></p><p>Nom :</p><p>Note attribuée :</p><p>Signature :</p></div>
-        <div class="examinator"><p><strong>2ème Examinateur</strong></p><p>Nom :</p><p>Note attribuée :</p><p>Signature :</p></div>
-      </div>
-
-      <div class="cachets">
-        <div class="cachet-box"><div class="signature-line">Cachet de l'établissement</div></div>
-        <div class="cachet-box"><div class="signature-line">Cachet du service</div></div>
-      </div>
-    `);
-    w.document.close();
-  };
-
   return (
     <div className="card">
       <div className="card-header"><h5 className="mb-0">Grille d'Examen du Stage</h5></div>
       <div className="card-body">
         <div className="data-grid">
-          <div><label className="form-label">Lieu et Service</label><input className="form-input" value={form.lieu_service} onChange={e => set('lieu_service', e.target.value)} /></div>
+          <div><label className="form-label">Lieu</label><input className="form-input" value={form.lieu} onChange={e => set('lieu', e.target.value)} /></div>
+          <div>
+            <FilterSelect
+              label="Service"
+              value={service}
+              options={serviceOptions}
+              onChange={setService}
+              placeholder="Sélectionner un service"
+              allLabel="—"
+              block
+            />
+          </div>
           <div><label className="form-label">Pratique exécutée</label><input className="form-input" value={form.pratique_executee} onChange={e => set('pratique_executee', e.target.value)} /></div>
         </div>
 
@@ -179,8 +186,7 @@ export default function GrilleExamenStage({ etudiant, onDataChange, onSaved }) {
         </div>
 
         <div style={{display:'flex', gap:8, marginTop:16}}>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}><FiSave style={{marginRight:4}}/>{saving ? 'Enregistrement...' : 'Enregistrer'}</button>
-          <button className="btn btn-accent" onClick={printDocument}><FiPrinter style={{marginRight:4}}/>Imprimer / PDF</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving || !service}><FiSave style={{marginRight:4}}/>{saving ? 'Enregistrement...' : 'Enregistrer'}</button>
         </div>
       </div>
     </div>

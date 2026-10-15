@@ -7,7 +7,7 @@ import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { handleApiError } from '../../utils/errorHandler';
 import {
   formatNiveau, controlColumnLabel, controlColumnKey,
-  gradeValueClass, CONTROL_COLUMN_ORDER,
+  gradeValueClass,
 } from '../../utils/helpers';
 import { PasswordChangeModal } from '../../components/etudiant/PasswordChangeModal';
 import '../../css/components.css';
@@ -15,10 +15,7 @@ import '../../css/layout.css';
 import '../../css/mes-notes.css';
 
 function sortColumns(cols) {
-  return [...cols].sort((a, b) => {
-    const byType = CONTROL_COLUMN_ORDER.indexOf(a.type) - CONTROL_COLUMN_ORDER.indexOf(b.type);
-    return byType !== 0 ? byType : (a.numero ?? 0) - (b.numero ?? 0);
-  });
+  return [...cols].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0));
 }
 
 /**
@@ -94,7 +91,7 @@ function UnitSection({ unite, sequences, columns }) {
                   <GradeCell
                     key={col.key}
                     ctrl={(seq.controles || []).find(
-                      c => controlColumnKey(c.type, c.controle_numero) === col.key
+                      c => controlColumnKey(c.controle_numero) === col.key
                     )}
                   />
                 ))}
@@ -139,14 +136,14 @@ function NotesGrid({ notes }) {
   const columns = useMemo(() => {
     const seen = new Map();
     for (const note of notes) {
-      const key = controlColumnKey(note.type, note.controle_numero);
+      const key = controlColumnKey(note.controle_numero);
       if (!seen.has(key)) {
-        seen.set(key, { key, type: note.type, numero: note.controle_numero });
+        seen.set(key, { key, numero: note.controle_numero });
       }
     }
     return sortColumns([...seen.values()]).map(c => ({
       ...c,
-      label: controlColumnLabel(c.type, c.numero),
+      label: controlColumnLabel(c.numero),
     }));
   }, [notes]);
 
@@ -169,15 +166,15 @@ function BulletinUnit({ unite }) {
     const seen = new Map();
     for (const seq of unite.sequences || []) {
       for (const ctrl of seq.controles || []) {
-        const key = controlColumnKey(ctrl.type, ctrl.numero);
+        const key = controlColumnKey(ctrl.numero);
         if (!seen.has(key)) {
-          seen.set(key, { key, type: ctrl.type, numero: ctrl.numero });
+          seen.set(key, { key, numero: ctrl.numero });
         }
       }
     }
     return sortColumns([...seen.values()]).map(c => ({
       ...c,
-      label: controlColumnLabel(c.type, c.numero),
+      label: controlColumnLabel(c.numero),
     }));
   }, [unite.sequences]);
 
@@ -185,7 +182,6 @@ function BulletinUnit({ unite }) {
     nom: seq.nom,
     coefficient: seq.coefficient,
     controles: (seq.controles || []).map(c => ({
-      type: c.type,
       controle_numero: c.numero,
       valeur: c.valeur,
       note_max: c.note_max,

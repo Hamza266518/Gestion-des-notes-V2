@@ -4,7 +4,10 @@ namespace App\Services;
 
 use App\Models\Etudiant;
 use App\Models\Examen;
+use App\Models\Groupe;
+use App\Models\StageNote;
 use App\Models\Unite;
+use App\Support\Curriculum\OfficialCurriculum;
 
 class BulletinService
 {
@@ -13,20 +16,112 @@ class BulletinService
     const WEIGHT_PRATIQUE = 0.3667;
 
     public function __construct(
-        private MoyenneService $moyenneService
+        private MoyenneService $moyenneService,
+        private SoutenanceService $soutenanceService
     ) {}
+
+    /**
+     * Weights of the components of the final mark.
+     *
+     * A programme whose final year ends with a soutenance uses the official
+     * formula 30% MPCC / 20% MPEFCFT / 30% MPEFCFP / 20% NSTI. Every other
+     * programme keeps the historical 36,67 / 26,66 / 36,67 split.
+     *
+     * @return array<string,float> keyed by cc / theorique / pratique (and nsti)
+     */
+    public static function componentWeights(bool $hasSoutenance): array
+    {
+        if ($hasSoutenance) {
+            return [
+                'cc'       => OfficialCurriculum::FINAL_WEIGHTS['MPCC'],
+                'theorique' => OfficialCurriculum::FINAL_WEIGHTS['MPEFCFT'],
+                'pratique' => OfficialCurriculum::FINAL_WEIGHTS['MPEFCFP'],
+                'nsti'     => OfficialCurriculum::FINAL_WEIGHTS['NSTI'],
+            ];
+        }
+
+        return [
+            'cc'       => self::WEIGHT_CC,
+            'theorique' => self::WEIGHT_THEORIQUE,
+            'pratique' => self::WEIGHT_PRATIQUE,
+        ];
+    }
+
+    /**
+     * The group whose curriculum describes `$anneeAcademiqueId`, not necessarily
+     * the group the student is enrolled in today.
+     *
+     * `etudiants.annee_academique_id` means "currently enrolled", and ProgressionController
+     * overwrites it when a student is promoted. The units of a year are keyed by
+     * `filiere_id + numero_annee`, so the academic year a transcript belongs to is
+     * decided by the group, which is stable: a promoted student's old group still
+     * points at the old year.
+     *
+     * Redoublants re-sit the same `numero_annee`, so they are matched by niveau in the
+     * requested year. That is the same curve as any other repeat, and the
+     * (etudiant_id, controle_id) unique index means the newer grade replaces the older
+     * one. Re-sitting a year is therefore not historised at the note level -- inherent to
+     * the current schema, not something this resolution can recover.
+     */
+    private function resolveGroupe(Etudiant $etudiant, int $anneeAcademiqueId): ?Groupe
+    {
+        $groupe = $etudiant->groupe;
+        if (!$groupe) return null;
+
+        if ((int) $groupe->annee_academique_id === $anneeAcademiqueId) {
+            return $groupe;
+        }
+
+        return Groupe::where('annee_academique_id', $anneeAcademiqueId)
+            ->where('niveau_id', $groupe->niveau_id)
+            ->first();
+    }
+
+    /**
+     * A transcript for a year the student was never enrolled in: shaped like a
+     * normal result so callers can read the same keys, with no average.
+     */
+    private function emptyBulletin(Etudiant $etudiant): array
+    {
+        return [
+            'student' => $etudiant,
+            'unites' => [],
+            'moyenne_cc' => null,
+            'moyenne_theorique' => null,
+            'moyenne_pratique' => null,
+            'nsti' => null,
+            'has_soutenance' => false,
+            'weights' => self::componentWeights(false),
+            'moyenne_generale' => null,
+            'decision' => null,
+            'total_coef_cc' => 0,
+            'total_coef_theorique' => 0,
+            'total_coef_pratique' => 0,
+        ];
+    }
 
     public function calculateBulletin(int $etudiantId, int $anneeAcademiqueId, ?int $semestre = null): array
     {
         $etudiant = Etudiant::with('groupe.niveau.filiere')->findOrFail($etudiantId);
-        $filiereId = $etudiant->groupe->niveau->filiere_id;
-        $niveauNumero = $etudiant->groupe->niveau->numero;
 
+        $groupe = $this->resolveGroupe($etudiant, $anneeAcademiqueId);
+        if (!$groupe || !$groupe->niveau) {
+            return $this->emptyBulletin($etudiant);
+        }
+
+        $filiereId = $groupe->niveau->filiere_id;
+        $niveauNumero = $groupe->niveau->numero;
+
+        // No year filter on notes: `notes` has no annee_academique_id column. The
+        // units below already pin the year via numero_annee, and firstWhere()
+        // narrows to this student, so filtering by the student's current enrolment
+        // only erased the grades of anyone who had since been promoted.
         $unites = Unite::where('filiere_id', $filiereId)
             ->where('numero_annee', $niveauNumero)
             ->when($semestre !== null, fn($q) => $q->where('semestre', $semestre))
             ->where('is_active', true)
-            ->with(['sequences.controles.notes' => fn($q) => $q->whereHas('etudiant', fn($q) => $q->where('annee_academique_id', $anneeAcademiqueId))])
+            ->where('nom', '!=', SoutenanceService::UNITE_NOM)
+            ->with('sequences.controles.notes', 'controles.notes')
             ->orderBy('ordre')
             ->get();
 
@@ -51,18 +146,15 @@ class BulletinService
             $examenTheo = $examens->get($unite->id)?->where('type', 'theorique')->avg('valeur');
             $examenPra = $examens->get($unite->id)?->where('type', 'pratique')->avg('valeur');
 
-            $controleTheo = $this->moyenneTypeForUnite($etudiantId, $unite, 'theorique');
-            $uniteTheo = match (true) {
-                $examenTheo !== null && $controleTheo !== null => round(($examenTheo + $controleTheo) / 2, 2),
-                $examenTheo !== null => $examenTheo,
-                default => $controleTheo,
-            };
-            $controlePra = $this->moyenneTypeForUnite($etudiantId, $unite, 'pratique');
-            $unitePra = match (true) {
-                $examenPra !== null && $controlePra !== null => round(($examenPra + $controlePra) / 2, 2),
-                $examenPra !== null => $examenPra,
-                default => $controlePra,
-            };
+            $uniteTheo = $examenTheo;
+            $unitePra = $examenPra;
+
+            // The Stage keeps its practical marks in `stage_notes` (one Examen
+            // grid per service), not in the `examens` table. Its Pratique
+            // component is the average of those per-service Examen marks.
+            if ($unite->nom === 'Stage') {
+                $unitePra = $this->moyenneService->moyenneStageExamen($etudiantId, $unite);
+            }
 
             if ($uniteCC !== null) {
                 $totalWeightedCC += $uniteCC * $uniteCoef;
@@ -85,7 +177,6 @@ class BulletinService
                     $controlesData[] = [
                         'id' => $ctrl->id,
                         'numero' => $ctrl->numero,
-                        'type' => $ctrl->type,
                         'nom' => 'C' . $ctrl->numero,
                         'note_max' => $ctrl->note_max,
                         'valeur' => $note?->valeur,
@@ -97,11 +188,61 @@ class BulletinService
                     'nom' => $seq->nom,
                     'coefficient' => $seq->coefficient,
                     'controles' => $controlesData,
-                    'moyenneSeq' => $this->moyenneService->moyenneSequence($etudiantId, $seq->id, null, $anneeAcademiqueId),
+                    'moyenneSeq' => $this->moyenneService->moyenneSequence($etudiantId, $seq->id, $anneeAcademiqueId),
                 ];
             }
 
-            $moyenneUnite = $this->moyenneService->moyenneUnite($etudiantId, $unite->id, null, $anneeAcademiqueId);
+            // Sequence-free units (the Stage) hold their controls directly on the
+            // unite. Expose them as one display row so the transcript can list the
+            // N controls, exactly as a normal unit lists its sequences' controls.
+            if ($unite->sequences->isEmpty() && $unite->controles->isNotEmpty()) {
+                // A Stage unit carries two marks per service: the Évaluation
+                // note in `notes` and the Examen mark in `stage_notes`. Both
+                // feed the row average, and both are required before it counts.
+                $examMarks = $unite->nom === 'Stage'
+                    ? StageNote::where('etudiant_id', $etudiantId)
+                        ->whereIn('controle_id', $unite->controles->pluck('id'))
+                        ->where('type', StageNote::EXAMEN_TYPE)
+                        ->pluck('valeur', 'controle_id')
+                    : collect();
+
+                $controlesData = [];
+                $entered = [];
+                foreach ($unite->controles as $ctrl) {
+                    $note = $ctrl->notes->firstWhere('etudiant_id', $etudiantId);
+                    if ($note && $note->valeur !== null) {
+                        $entered[] = (float) $note->valeur;
+                    }
+                    if (($examMarks[$ctrl->id] ?? null) !== null) {
+                        $entered[] = (float) $examMarks[$ctrl->id];
+                    }
+                    $controlesData[] = [
+                        'id' => $ctrl->id,
+                        'numero' => $ctrl->numero,
+                        'nom' => $ctrl->nom ?? ('C' . $ctrl->numero),
+                        'note_max' => $ctrl->note_max,
+                        'valeur' => $note?->valeur,
+                        'est_absent' => (bool) ($note?->est_absent ?? false),
+                    ];
+                }
+
+                // The Stage row shows the average of every mark entered so far
+                // (both the Évaluation and the Examen side); it is blank only
+                // until the first mark is written.
+                $sequencesData[] = [
+                    'id' => null,
+                    'nom' => $unite->nom,
+                    'coefficient' => null,
+                    'controles' => $controlesData,
+                    'moyenneSeq' => $entered === []
+                        ? null
+                        : round(array_sum($entered) / count($entered), 2),
+                ];
+            }
+
+            // MPCC and the unit average are now the same figure: sum of every
+            // controle of every sequence, divided by the total configured.
+            $moyenneUnite = $uniteCC;
 
             $unitesData[] = [
                 'id' => $unite->id,
@@ -120,28 +261,47 @@ class BulletinService
         $moyenneTheo = $totalCoefTheo > 0 ? round($totalWeightedTheo / $totalCoefTheo, 2) : null;
         $moyennePra = $totalCoefPra > 0 ? round($totalWeightedPra / $totalCoefPra, 2) : null;
 
+        $hasSoutenance = $semestre === null
+            && $this->soutenanceService->aSoutenance($filiereId, $niveauNumero);
+        $nsti = $hasSoutenance
+            ? $this->soutenanceService->moyenne($etudiantId, $filiereId, $niveauNumero)
+            : null;
+
+        $weights = self::componentWeights($hasSoutenance);
+
         $moyenneGenerale = null;
-        if ($moyenneCC !== null || $moyenneTheo !== null || $moyennePra !== null) {
-            $wCC = self::WEIGHT_CC;
-            $wTheo = self::WEIGHT_THEORIQUE;
-            $wPra = self::WEIGHT_PRATIQUE;
+        if ($moyenneCC !== null || $moyenneTheo !== null || $moyennePra !== null || $nsti !== null) {
+            $components = [
+                'cc'       => $moyenneCC,
+                'theorique' => $moyenneTheo,
+                'pratique' => $moyennePra,
+                'nsti'     => $nsti,
+            ];
 
-            $totalAvailable = 0;
-            if ($moyenneCC !== null) $totalAvailable += $wCC;
-            if ($moyenneTheo !== null) $totalAvailable += $wTheo;
-            if ($moyennePra !== null) $totalAvailable += $wPra;
-
-            if ($totalAvailable > 0 && $totalAvailable < 1) {
-                $scale = 1 / $totalAvailable;
-                if ($moyenneCC !== null) $wCC *= $scale;
-                if ($moyenneTheo !== null) $wTheo *= $scale;
-                if ($moyennePra !== null) $wPra *= $scale;
+            // A component with no mark yet is left out and the remaining
+            // weights are rescaled over their own total, so a student is never
+            // dragged down by a mark that was simply not entered.
+            $totalAvailable = 0.0;
+            foreach ($weights as $key => $weight) {
+                if ($components[$key] !== null) {
+                    $totalAvailable += $weight;
+                }
             }
 
-            $moyenneGenerale = 0;
-            if ($moyenneCC !== null) $moyenneGenerale += $moyenneCC * $wCC;
-            if ($moyenneTheo !== null) $moyenneGenerale += $moyenneTheo * $wTheo;
-            if ($moyennePra !== null) $moyenneGenerale += $moyennePra * $wPra;
+            $applied = $weights;
+            if ($totalAvailable > 0 && abs($totalAvailable - 1) > 0.0001) {
+                $scale = 1 / $totalAvailable;
+                foreach ($applied as $key => $weight) {
+                    $applied[$key] = $components[$key] !== null ? $weight * $scale : 0.0;
+                }
+            }
+
+            $moyenneGenerale = 0.0;
+            foreach ($applied as $key => $weight) {
+                if ($components[$key] !== null) {
+                    $moyenneGenerale += $components[$key] * $weight;
+                }
+            }
             $moyenneGenerale = round($moyenneGenerale, 2);
         }
 
@@ -156,6 +316,9 @@ class BulletinService
             'moyenne_cc' => $moyenneCC,
             'moyenne_theorique' => $moyenneTheo,
             'moyenne_pratique' => $moyennePra,
+            'nsti' => $nsti,
+            'has_soutenance' => $hasSoutenance,
+            'weights' => self::componentWeights($hasSoutenance),
             'moyenne_generale' => $moyenneGenerale,
             'decision' => $decision,
             'total_coef_cc' => $totalCoefCC,
@@ -166,25 +329,31 @@ class BulletinService
 
     private function moyenneTypeForUnite(int $etudiantId, Unite $unite, string $type): ?float
     {
-        $notes = [];
+        // MPCC rule: every controle of the unite counts as a plain "Contrôle",
+        // the sum is divided by the total controles configured, and a missing
+        // note counts as zero. "Théorique" and "Pratique" at unite level come
+        // exclusively from examens now, so those averages only appear as null.
+        if ($type !== 'cc') return null;
 
-        foreach ($unite->sequences as $seq) {
-            $seqAvg = $this->moyenneTypeForSequence($etudiantId, $seq, $type);
-            if ($seqAvg !== null) {
-                $notes[] = $seqAvg;
-            }
+        // A Stage unit carries two marks per service: the Évaluation (the CC
+        // side, in `notes`) and the Examen (the Pratique side, in `stage_notes`,
+        // wired in calculateBulletin). Its CC is the average of the Évaluation
+        // marks entered so far; a service still ungraded does not blank it.
+        if ($unite->nom === 'Stage') {
+            return $this->moyenneService->moyenneStageEvaluation($etudiantId, $unite);
         }
 
-        if (empty($notes)) return null;
-        return round(array_sum($notes) / count($notes), 2);
-    }
-
-    private function moyenneTypeForSequence(int $etudiantId, $sequence, string $type): ?float
-    {
-        $controlesOfType = $sequence->controles->where('type', $type);
         $notes = [];
+        $totalControles = 0;
 
-        foreach ($controlesOfType as $ctrl) {
+        $controles = collect();
+        foreach ($unite->sequences as $seq) {
+            $controles = $controles->merge($seq->controles);
+        }
+        $controles = $controles->merge($unite->controles);
+
+        foreach ($controles as $ctrl) {
+            $totalControles++;
             $note = $ctrl->notes->firstWhere('etudiant_id', $etudiantId);
             if ($note && $note->valeur !== null) {
                 $notes[] = (float) $note->valeur;
@@ -192,7 +361,7 @@ class BulletinService
         }
 
         if (empty($notes)) return null;
-        return round(array_sum($notes) / count($notes), 2);
+        return round(array_sum($notes) / max($totalControles, 1), 2);
     }
 
     public function getMention(?float $moyenne): array

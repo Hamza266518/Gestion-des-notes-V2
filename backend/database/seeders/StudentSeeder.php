@@ -200,11 +200,11 @@ class StudentSeeder extends Seeder
             }
 
             $groupe = $groupes[$groupeName];
-            $email = strtolower(str_replace(' ', '.', $data['nom'])) . '@ifp.ma';
             $numero = $data['cin'];
+            $username = app(\App\Services\UsernameGenerator::class)->reserveFor($data['nom'], 'etudiant');
 
             // Check if user already exists
-            $existingUser = User::where('email', $email)->first();
+            $existingUser = User::where('username', $username)->first();
             if ($existingUser) {
                 $this->command->warn("Student {$data['nom']} already exists, skipping...");
                 continue;
@@ -214,7 +214,7 @@ class StudentSeeder extends Seeder
             $password = $numero . substr($data['cin'], 0, 2);
             $user = User::create([
                 'name' => $data['nom'],
-                'email' => $email,
+                'username' => $username,
                 'password' => Hash::make($password),
                 'password_encrypted' => Crypt::encryptString($password),
                 'password_original_encrypted' => Crypt::encryptString($password),

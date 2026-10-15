@@ -48,6 +48,17 @@ class AnneeAcademiqueController extends Controller
             ], 422);
         }
 
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $startYear = (int) date('Y', strtotime((string) $request->start_date));
+            $endYear   = (int) date('Y', strtotime((string) $request->end_date));
+            if ($startYear !== $first || $endYear !== $second) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Les dates ne correspondent pas au label {$request->label}.",
+                ], 422);
+            }
+        }
+
         // Block creation if there's a non-archived current year
         $currentYear = AnneeAcademique::where('is_current', true)->first();
         if ($currentYear && !$currentYear->is_archived) {
@@ -81,14 +92,93 @@ class AnneeAcademiqueController extends Controller
             ], 422);
         }
 
+        // Only is_current is demoted here. The previous version also set is_archived,
+        // which meant "Définir comme courante" silently archived the outgoing year
+        // without the confirmation the dedicated archive action asks for. Archiving
+        // is its own decision and stays explicit.
         DB::transaction(function () use ($annee) {
-            AnneeAcademique::where('is_current', true)->update(['is_current' => false, 'is_archived' => true]);
+            AnneeAcademique::where('is_current', true)
+                ->where('id', '!=', $annee->id)
+                ->update(['is_current' => false]);
             $annee->update(['is_current' => true]);
         });
 
         return response()->json([
             'success' => true,
             'message' => 'Année courante mise à jour',
+        ]);
+    }
+
+    public function update(Request $request, $id): JsonResponse
+    {
+        $annee = AnneeAcademique::findOrFail($id);
+
+        $rules = [
+            'label' => [
+                'required',
+                'string',
+                'max:255',
+                'unique:annees_academiques,label,' . $annee->id,
+                'regex:/^\d{4}\/\d{4}$/',
+            ],
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+        ];
+        $request->validate($rules);
+
+        $parts = explode('/', $request->label);
+        $first = (int) $parts[0];
+        $second = (int) $parts[1];
+        if ($second !== $first + 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le format doit être année/année+1 (ex: 2025/2026)',
+            ], 422);
+        }
+
+        // Dates that already disagree with the label would leave the warning in
+        // current() describing a period the label contradicts.
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $startYear = (int) date('Y', strtotime((string) $request->start_date));
+            $endYear   = (int) date('Y', strtotime((string) $request->end_date));
+            if ($startYear !== $first || $endYear !== $second) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Les dates ne correspondent pas au label {$request->label}.",
+                ], 422);
+            }
+        }
+
+        $annee->update([
+            'label'      => $request->label,
+            'start_date' => $request->start_date,
+            'end_date'   => $request->end_date,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $annee,
+            'message' => 'Année académique mise à jour',
+        ]);
+    }
+
+    public function unarchive($id): JsonResponse
+    {
+        $annee = AnneeAcademique::findOrFail($id);
+
+        if (!$annee->is_archived) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette année n\'est pas archivée.',
+            ], 422);
+        }
+
+        $annee->update(['is_archived' => false]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $annee,
+            'message' => 'Année désarchivée',
         ]);
     }
 
@@ -119,7 +209,11 @@ class AnneeAcademiqueController extends Controller
 
         $warning = null;
         if ($annee && $annee->end_date) {
-            $daysLeft = now()->diffInDays($annee->end_date);
+            // Cast to int: Carbon 3 returns a float, so interpolating it directly
+            // produced "se termine dans 4.9999997 jour(s)". Signed, so a year whose
+            // end_date has passed lands in the "terminée" branch rather than a huge
+            // positive count.
+            $daysLeft = (int) now()->diffInDays($annee->end_date);
             if ($daysLeft <= 30) {
                 if ($daysLeft > 0) {
                     $warning = [

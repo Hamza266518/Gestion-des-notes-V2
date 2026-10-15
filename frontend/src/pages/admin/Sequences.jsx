@@ -7,7 +7,11 @@ import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Modal from '../../components/common/Modal';
 import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
+import FilterBar from '../../components/common/FilterBar';
+import FilterSelect from '../../components/common/FilterSelect';
 import { formatNiveau } from '../../utils/helpers';
+import { FiEdit2, FiTrash2 } from 'react-icons/fi';
+import usePersistedState from '../../hooks/usePersistedState';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -20,14 +24,19 @@ export default function Sequences() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [selFiliere, setSelFiliere] = useState('');
-  const [selNiveau, setSelNiveau] = useState('');
-  const [selUnite, setSelUnite] = useState('');
-  const [filters, setFilters] = useState({ groupe_id: '', filiere_id: '', niveau_id: '' });
+  const [saved, setSaved] = usePersistedState('sequences', { filiere_id: '', niveau_id: '', groupe_id: '', selUnite: '' });
+  const [filters, setFilters] = useState(() => ({ filiere_id: saved.filiere_id, niveau_id: saved.niveau_id, groupe_id: saved.groupe_id }));
+  const [selUnite, setSelUnite] = useState(() => saved.selUnite);
+
+  useEffect(() => {
+    setSaved({ filiere_id: filters.filiere_id, niveau_id: filters.niveau_id, groupe_id: filters.groupe_id, selUnite });
+  }, [filters, selUnite, setSaved]);
   const [form, setForm] = useState({
     unite_id: '', nom: '', coefficient: '', nombre_controles: 2
   });
   const [deleteId, setDeleteId] = useState(null);
+  const [editSeq, setEditSeq] = useState(null);
+  const [editForm, setEditForm] = useState({ nom: '', nombre_controles: 2 });
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
 
@@ -55,32 +64,55 @@ export default function Sequences() {
   }, []);
 
   useEffect(() => {
-    if (selFiliere) {
-      adminApi.getNiveaux(selFiliere).then(r => setNiveaux(r.data.data));
-    } else {
+    const filiereId = filters.filiere_id;
+    if (!filiereId) {
       setNiveaux([]);
+      setFilters(p => ({ ...p, niveau_id: '', groupe_id: '' }));
+      setSelUnite('');
+      setUnites([]);
+      return;
     }
-    setSelNiveau('');
-    setSelUnite('');
-    setUnites([]);
-    setFilters(p => ({ ...p, niveau_id: '', groupe_id: '' }));
-  }, [selFiliere]);
+    adminApi.getNiveaux(filiereId).then(r => {
+      const niveauxData = r.data.data || [];
+      setNiveaux(niveauxData);
+      setFilters(p => {
+        if (p.niveau_id && !niveauxData.some(n => String(n.id) === String(p.niveau_id))) {
+          return { ...p, niveau_id: '', groupe_id: '' };
+        }
+        return p;
+      });
+    }).catch(() => setNiveaux([]));
+  }, [filters.filiere_id]);
 
   useEffect(() => {
-    if (selNiveau) {
-      const params = { niveau_id: selNiveau };
-      if (currentAnnee?.id) {
-        params.annee_academique_id = currentAnnee.id;
-      }
-      adminApi.getGroupes(params).then(r => setGroupes(r.data.data));
-      unitesApi.getUnites({ niveau_id: selNiveau }).then(r => setUnites(r.data.data));
-    } else {
+    const niveauId = filters.niveau_id;
+    if (!niveauId) {
       setGroupes([]);
       setUnites([]);
+      setSelUnite('');
+      setFilters(p => ({ ...p, groupe_id: '' }));
+      return;
     }
-    setSelUnite('');
-    setFilters(p => ({ ...p, groupe_id: '' }));
-  }, [selNiveau, currentAnnee]);
+    const params = { niveau_id: niveauId };
+    if (currentAnnee?.id) {
+      params.annee_academique_id = currentAnnee.id;
+    }
+    adminApi.getGroupes(params).then(r => {
+      const groupesData = r.data.data || [];
+      setGroupes(groupesData);
+      setFilters(p => {
+        if (p.groupe_id && !groupesData.some(g => String(g.id) === String(p.groupe_id))) {
+          return { ...p, groupe_id: '' };
+        }
+        return p;
+      });
+    }).catch(() => setGroupes([]));
+    unitesApi.getUnites({ niveau_id: niveauId }).then(r => {
+      const unitesData = r.data.data || [];
+      setUnites(unitesData);
+      setSelUnite(cur => (unitesData.some(u => String(u.id) === String(cur)) ? cur : ''));
+    }).catch(() => setUnites([]));
+  }, [filters.niveau_id, currentAnnee]);
 
   const handleCreate = async () => {
     setSaving(true);
@@ -105,6 +137,30 @@ export default function Sequences() {
 
   const handleDelete = (id) => {
     setDeleteId(id);
+  };
+
+  const openEdit = (s) => {
+    setEditSeq(s);
+    setEditForm({ nom: s.nom, nombre_controles: s.nombre_controles });
+  };
+
+  const handleUpdate = async () => {
+    setSaving(true);
+    try {
+      await sequencesApi.updateSequence(editSeq.id, {
+        nom: editForm.nom,
+        nombre_controles: Number(editForm.nombre_controles),
+        // Mirrors the control count, same derivation as on creation.
+        coefficient: Number(editForm.nombre_controles),
+      });
+      toast.success('Séquence mise à jour');
+      setEditSeq(null);
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.message ?? 'Erreur');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const confirmDelete = async () => {
@@ -132,61 +188,100 @@ export default function Sequences() {
     <div className="page">
       <div className="page-header">
         <h2 className="page-title">Séquences</h2>
-        <button
-          className="btn btn-primary"
-          onClick={() => setOpen(true)}
-          disabled={!selUnite}
-        >
-          + Nouvelle séquence
-        </button>
       </div>
 
-      <div className="filter-bar">
-        <select
-          className="form-select"
+      <FilterBar
+        value={{ filiere_id: filters.filiere_id, niveau_id: filters.niveau_id, groupe_id: filters.groupe_id, unite_id: selUnite }}
+        onChange={(next) => {
+          setFilters({ filiere_id: next.filiere_id ?? '', niveau_id: next.niveau_id ?? '', groupe_id: next.groupe_id ?? '' });
+        }}
+        placeholder="Filtrer…"
+        debounceMs={0}
+        showSearch={false}
+        onClear={() => {
+          setFilters({ filiere_id: '', niveau_id: '', groupe_id: '' });
+          setSelUnite('');
+        }}
+        actions={(
+          <button
+            className="btn btn-primary"
+            onClick={() => setOpen(true)}
+            disabled={!selUnite}
+          >
+            + Nouvelle séquence
+          </button>
+        )}
+        chips={[
+          filters.filiere_id && {
+            key: 'filiere',
+            label: `Filière: ${filieres.find(f => String(f.id) === String(filters.filiere_id))?.nom ?? ''}`,
+            onRemove: () => {
+              setFilters(p => ({ ...p, filiere_id: '', niveau_id: '', groupe_id: '' }));
+              setSelUnite('');
+            },
+          },
+          filters.niveau_id && {
+            key: 'niveau',
+            label: `Niveau: ${formatNiveau(niveaux.find(n => String(n.id) === String(filters.niveau_id))?.numero)}`,
+            onRemove: () => {
+              setFilters(p => ({ ...p, niveau_id: '', groupe_id: '' }));
+              setSelUnite('');
+            },
+          },
+          filters.groupe_id && {
+            key: 'groupe',
+            label: `Groupe: ${groupes.find(g => String(g.id) === String(filters.groupe_id))?.nom ?? ''}`,
+            onRemove: () => setFilters(p => ({ ...p, groupe_id: '' })),
+          },
+          selUnite && {
+            key: 'unite',
+            label: `Unité: ${unites.find(u => String(u.id) === String(selUnite))?.nom ?? ''}`,
+            onRemove: () => setSelUnite(''),
+          },
+        ].filter(Boolean)}
+      >
+        <FilterSelect
+          label="Filière"
           value={filters.filiere_id}
-          onChange={e => {
-            setFilters(p => ({ ...p, filiere_id: e.target.value, niveau_id: '', groupe_id: '' }));
-            setSelFiliere(e.target.value);
-            setSelNiveau('');
+          options={filieres.map(f => ({ id: f.id, label: f.nom }))}
+          onChange={(v) => {
+            setFilters(p => ({ ...p, filiere_id: v, niveau_id: '', groupe_id: '' }));
             setSelUnite('');
           }}
-        >
-          <option value="">Toutes les filières</option>
-          {filieres.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-        </select>
-        <select
-          className="form-select"
+          placeholder="Toutes les filières"
+          allLabel="Toutes les filières"
+        />
+        <FilterSelect
+          label="Niveau"
           value={filters.niveau_id}
-          onChange={e => {
-            setFilters(p => ({ ...p, niveau_id: e.target.value, groupe_id: '' }));
-            setSelNiveau(e.target.value);
+          options={niveaux.map(n => ({ id: n.id, label: formatNiveau(n.numero) }))}
+          onChange={(v) => {
+            setFilters(p => ({ ...p, niveau_id: v, groupe_id: '' }));
             setSelUnite('');
           }}
           disabled={!filters.filiere_id}
-        >
-          <option value="">Tous les niveaux</option>
-          {niveaux.map(n => <option key={n.id} value={n.id}>{formatNiveau(n.numero)}</option>)}
-        </select>
-        <select
-          className="form-select"
+          placeholder="Tous les niveaux"
+          allLabel="Tous les niveaux"
+        />
+        <FilterSelect
+          label="Groupe"
           value={filters.groupe_id}
-          onChange={e => setFilters(p => ({ ...p, groupe_id: e.target.value }))}
+          options={groupes.map(g => ({ id: g.id, label: g.nom }))}
+          onChange={(v) => setFilters(p => ({ ...p, groupe_id: v }))}
           disabled={!filters.niveau_id}
-        >
-          <option value="">Tous les groupes</option>
-          {groupes.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
-        </select>
-        <select
-          className="form-select"
+          placeholder="Tous les groupes"
+          allLabel="Tous les groupes"
+        />
+        <FilterSelect
+          label="Unité"
           value={selUnite}
-          onChange={e => setSelUnite(e.target.value)}
+          options={unites.map(u => ({ id: u.id, label: u.nom }))}
+          onChange={setSelUnite}
           disabled={!filters.niveau_id}
-        >
-          <option value="">Sélectionner une unité</option>
-          {unites.map(u => <option key={u.id} value={u.id}>{u.nom}</option>)}
-        </select>
-      </div>
+          placeholder="Sélectionner une unité"
+          allLabel="Sélectionner une unité"
+        />
+      </FilterBar>
 
       {!selUnite ? (
         <div className="card card-body" style={{ textAlign: 'center', color: 'var(--gray-400)' }}>
@@ -221,6 +316,13 @@ export default function Sequences() {
                   <td style={{ display: 'flex', gap: 8 }}>
                     <button
                       className="btn btn-sm btn-outline"
+                      onClick={() => openEdit(s)}
+                      title="Modifier"
+                    >
+                      <FiEdit2 size={14} /> Modifier
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline"
                       onClick={() => handleToggle(s.id)}
                     >
                       {s.is_active ? 'Désactiver' : 'Activer'}
@@ -228,8 +330,11 @@ export default function Sequences() {
                     <button
                       className="btn btn-sm btn-danger"
                       onClick={() => handleDelete(s.id)}
+                      title="Supprimer"
+                      aria-label="Supprimer"
+                      style={{ padding: '5px 9px' }}
                     >
-                      Supprimer
+                      <FiTrash2 size={14} />
                     </button>
                   </td>
                 </tr>
@@ -269,6 +374,37 @@ export default function Sequences() {
             {saving ? 'Création...' : 'Créer'}
           </button>
         </div>
+        </Modal>
+
+        <Modal open={editSeq !== null} onClose={() => setEditSeq(null)} title="Modifier la Séquence">
+          <div className="form-group">
+            <label className="form-label">Nom de la séquence</label>
+            <input
+              className="form-input"
+              value={editForm.nom}
+              onChange={e => setEditForm(p => ({ ...p, nom: e.target.value }))}
+            />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">Nombre de contrôles</label>
+              <select
+                className="form-select"
+                value={editForm.nombre_controles}
+                onChange={e => setEditForm(p => ({ ...p, nombre_controles: e.target.value }))}
+              >
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+              </select>
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button className="btn btn-outline" onClick={() => setEditSeq(null)}>Annuler</button>
+            <button className="btn btn-primary" onClick={handleUpdate} disabled={saving || !editForm.nom.trim()}>
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+          </div>
         </Modal>
 
         <Modal open={deleteId !== null} onClose={() => setDeleteId(null)} title="Confirmer la suppression">

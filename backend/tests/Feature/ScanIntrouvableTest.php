@@ -100,6 +100,7 @@ class ScanIntrouvableTest extends TestCase
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
             app(\App\Services\PublicationLockService::class),
+            app(\App\Services\ScanEtudiantMatcher::class),
         );
         $ref = new \ReflectionMethod($controller, 'perimetrePourControle');
         $ref->setAccessible(true);
@@ -127,13 +128,7 @@ class ScanIntrouvableTest extends TestCase
 
     public function test_a_name_outside_the_perimeter_is_not_matched(): void
     {
-        $controller = new \App\Http\Controllers\Formateur\ScanController(
-            app(\App\Services\GeminiService::class),
-            app(\App\Services\NoteParserService::class),
-            app(\App\Services\PublicationLockService::class),
-        );
-        $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
-        $m->setAccessible(true);
+        $matcher = app(\App\Services\ScanEtudiantMatcher::class);
 
         // A real student, but searched in a perimeter that excludes them.
         $etudiant = Etudiant::whereNotNull('groupe_id')
@@ -144,20 +139,14 @@ class ScanIntrouvableTest extends TestCase
         }
 
         $emptyPerimetre = collect();
-        $found = $m->invoke($controller, $etudiant->nom_prenom, $emptyPerimetre, $this->annee->id, null);
+        $found = $matcher->match($emptyPerimetre, $this->annee->id, $etudiant->nom_prenom, null);
 
         $this->assertNull($found, 'An empty perimeter must match nobody.');
     }
 
     public function test_a_known_name_inside_the_perimeter_is_matched(): void
     {
-        $controller = new \App\Http\Controllers\Formateur\ScanController(
-            app(\App\Services\GeminiService::class),
-            app(\App\Services\NoteParserService::class),
-            app(\App\Services\PublicationLockService::class),
-        );
-        $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
-        $m->setAccessible(true);
+        $matcher = app(\App\Services\ScanEtudiantMatcher::class);
 
         // Pick a student whose name is unique inside its own perimeter, since
         // a name shared by two students is deliberately left unresolved.
@@ -177,7 +166,7 @@ class ScanIntrouvableTest extends TestCase
         }
 
         $groupeIds = collect([$etudiant->groupe_id]);
-        $found = $m->invoke($controller, $etudiant->nom_prenom, $groupeIds, $this->annee->id, null);
+        $found = $matcher->match($groupeIds, $this->annee->id, $etudiant->nom_prenom, null);
 
         $this->assertNotNull($found, 'A student inside the perimeter must still be matched.');
         $this->assertSame($etudiant->id, $found->id);
@@ -185,31 +174,19 @@ class ScanIntrouvableTest extends TestCase
 
     public function test_an_unknown_name_matches_nobody(): void
     {
-        $controller = new \App\Http\Controllers\Formateur\ScanController(
-            app(\App\Services\GeminiService::class),
-            app(\App\Services\NoteParserService::class),
-            app(\App\Services\PublicationLockService::class),
-        );
-        $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
-        $m->setAccessible(true);
+        $matcher = app(\App\Services\ScanEtudiantMatcher::class);
 
         $groupeIds = Groupe::where('annee_academique_id', $this->annee->id)->pluck('id');
         $ghost = 'ZZINTROUVABLEFANTOME' . bin2hex(random_bytes(4));
 
-        $found = $m->invoke($controller, $ghost, $groupeIds, $this->annee->id, null);
+        $found = $matcher->match($groupeIds, $this->annee->id, $ghost);
 
         $this->assertNull($found);
     }
 
     public function test_the_registration_number_wins_over_the_name(): void
     {
-        $controller = new \App\Http\Controllers\Formateur\ScanController(
-            app(\App\Services\GeminiService::class),
-            app(\App\Services\NoteParserService::class),
-            app(\App\Services\PublicationLockService::class),
-        );
-        $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
-        $m->setAccessible(true);
+        $matcher = app(\App\Services\ScanEtudiantMatcher::class);
 
         $groupe = Groupe::where('annee_academique_id', $this->annee->id)->first();
         if (!$groupe) {
@@ -224,7 +201,7 @@ class ScanIntrouvableTest extends TestCase
         );
 
         // The name is unreadable, but the sheet's N identifies the student.
-        $found = $m->invoke($controller, '', collect([$groupe->id]), $this->annee->id, $numero);
+        $found = $matcher->match(collect([$groupe->id]), $this->annee->id, '', $numero);
 
         $this->assertNotNull($found, 'A readable N must be enough to match.');
         $this->assertSame($etudiant->id, $found->id);
@@ -232,13 +209,7 @@ class ScanIntrouvableTest extends TestCase
 
     public function test_the_registration_number_is_bounded_by_the_group(): void
     {
-        $controller = new \App\Http\Controllers\Formateur\ScanController(
-            app(\App\Services\GeminiService::class),
-            app(\App\Services\NoteParserService::class),
-            app(\App\Services\PublicationLockService::class),
-        );
-        $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
-        $m->setAccessible(true);
+        $matcher = app(\App\Services\ScanEtudiantMatcher::class);
 
         $groupe = Groupe::where('annee_academique_id', $this->annee->id)->first();
         if (!$groupe) {
@@ -256,19 +227,13 @@ class ScanIntrouvableTest extends TestCase
             $this->markTestSkipped('Need a second group fixture.');
         }
 
-        $trouve = $m->invoke($controller, '', collect([$autre->id]), $this->annee->id, $numero);
+        $trouve = $matcher->match(collect([$autre->id]), $this->annee->id, '', $numero);
         $this->assertNull($trouve, 'A correct N from another group must not match.');
     }
 
     public function test_a_wrong_number_falls_back_to_the_name(): void
     {
-        $controller = new \App\Http\Controllers\Formateur\ScanController(
-            app(\App\Services\GeminiService::class),
-            app(\App\Services\NoteParserService::class),
-            app(\App\Services\PublicationLockService::class),
-        );
-        $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
-        $m->setAccessible(true);
+        $matcher = app(\App\Services\ScanEtudiantMatcher::class);
 
         $groupe = Groupe::where('annee_academique_id', $this->annee->id)->first();
         if (!$groupe) {
@@ -279,7 +244,7 @@ class ScanIntrouvableTest extends TestCase
         $etudiant = $this->creerEtudiant($groupe, $nom, 'VRAI' . bin2hex(random_bytes(4)));
 
         // Gemini misread the number; the name is still correct.
-        $trouve = $m->invoke($controller, $nom, collect([$groupe->id]), $this->annee->id, 'FAUX' . bin2hex(random_bytes(4)));
+        $trouve = $matcher->match(collect([$groupe->id]), $this->annee->id, $nom, 'FAUX' . bin2hex(random_bytes(4)));
 
         $this->assertNotNull($trouve, 'A wrong N must not prevent a name match.');
         $this->assertSame($etudiant->id, $trouve->id);
@@ -287,13 +252,7 @@ class ScanIntrouvableTest extends TestCase
 
     public function test_an_ambiguous_name_is_left_unresolved(): void
     {
-        $controller = new \App\Http\Controllers\Formateur\ScanController(
-            app(\App\Services\GeminiService::class),
-            app(\App\Services\NoteParserService::class),
-            app(\App\Services\PublicationLockService::class),
-        );
-        $m = new \ReflectionMethod($controller, 'matchEtudiantDansPerimetre');
-        $m->setAccessible(true);
+        $matcher = app(\App\Services\ScanEtudiantMatcher::class);
 
         // Two students sharing the same name, both inside the perimeter.
         $groupe = Groupe::where('annee_academique_id', $this->annee->id)->first();
@@ -323,7 +282,7 @@ class ScanIntrouvableTest extends TestCase
             $this->createdEtudiants[] = $e->id;
         }
 
-        $found = $m->invoke($controller, $sharedName, collect([$groupe->id]), $this->annee->id, null);
+        $found = $matcher->match(collect([$groupe->id]), $this->annee->id, $sharedName, null);
 
         $this->assertNull($found, 'Two equally-good candidates must not be guessed between.');
     }

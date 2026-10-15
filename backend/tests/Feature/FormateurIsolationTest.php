@@ -94,6 +94,7 @@ class FormateurIsolationTest extends TestCase
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
             app(\App\Services\PublicationLockService::class),
+            app(\App\Services\ScanEtudiantMatcher::class),
         );
     }
 
@@ -177,17 +178,16 @@ class FormateurIsolationTest extends TestCase
         ]);
         $this->cacheIds[] = $cache->id;
 
-        $m = new \ReflectionMethod($this->controller(), 'matchEtudiantDansPerimetre');
-        $m->setAccessible(true);
+        $matcher = app(\App\Services\ScanEtudiantMatcher::class);
         $groupes = collect([$groupe->id]);
 
         // The owner still benefits from the cache.
-        $pourA = $m->invoke($this->controller(), $nomScanne, $groupes, $this->annee->id, null, $formateurA->id);
+        $pourA = $matcher->match($groupes, $this->annee->id, $nomScanne, null, $formateurA->id);
         $this->assertNotNull($pourA, 'The instructor who scanned the name keeps the shortcut.');
         $this->assertSame($eleve->id, $pourA->id);
 
         // Another instructor must not inherit it.
-        $pourB = $m->invoke($this->controller(), $nomScanne, $groupes, $this->annee->id, null, $formateurB->id);
+        $pourB = $matcher->match($groupes, $this->annee->id, $nomScanne, null, $formateurB->id);
         $this->assertNull(
             $pourB,
             'A cached name must never resolve to another instructor\'s student.'

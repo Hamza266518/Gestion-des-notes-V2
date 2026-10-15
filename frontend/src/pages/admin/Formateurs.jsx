@@ -7,6 +7,7 @@ import { useToast } from '../../context/ToastContext';
 import Modal from '../../components/common/Modal';
 import Spinner from '../../components/common/Spinner';
 import Badge from '../../components/common/Badge';
+import FilterBar from '../../components/common/FilterBar';
 import { handleApiError, showSuccess, getFieldErrors } from '../../utils/errorHandler';
 import '../../css/components.css';
 import '../../css/layout.css';
@@ -29,7 +30,7 @@ export default function Formateurs() {
   const [scanResults, setScanResults] = useState([]);
   const [extracting, setExtracting] = useState(false);
   const [scanSaving, setScanSaving] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: '', email: '', password: '' });
+  const [createForm, setCreateForm] = useState({ name: '', password: '' });
   const [bulkImages, setBulkImages] = useState([]);
   const [bulkResults, setBulkResults] = useState([]);
   const [bulkExtracting, setBulkExtracting] = useState(false);
@@ -97,7 +98,6 @@ export default function Formateurs() {
   const handleCreate = async () => {
     const errors = {};
     if (!createForm.name) errors.name = 'Le nom est requis';
-    if (!createForm.email) errors.email = "L'email est requis";
     if (!createForm.password) errors.password = 'Le mot de passe est requis';
 
     if (Object.keys(errors).length > 0) {
@@ -113,7 +113,7 @@ export default function Formateurs() {
       await formateursApi.createFormateur(createForm);
       showSuccess(toast, 'Formateur créé');
       setOpenCreate(false);
-      setCreateForm({ name: '', email: '', password: '' });
+      setCreateForm({ name: '', password: '' });
       load();
     } catch (error) {
       const fieldErrors = getFieldErrors(error);
@@ -147,7 +147,7 @@ export default function Formateurs() {
   };
 
   const handleCopyCredentials = async (formateur) => {
-    const text = `Email: ${formateur.user?.email}\nMot de passe: ${formateur.user?.password_plain || '(non disponible)'}`;
+    const text = `Identifiant: ${formateur.user?.username}\nMot de passe: ${formateur.user?.password_plain || '(non disponible)'}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopiedId(formateur.id);
@@ -334,7 +334,7 @@ export default function Formateurs() {
         try {
           await formateursApi.createFormateur({
             name: f.name,
-            email: f.email || `${f.name.toLowerCase().replace(/\s+/g, '.')}@ifp.ma`,
+            username: f.username,
             password: bulkPassword,
           });
           savedCount++;
@@ -369,16 +369,21 @@ export default function Formateurs() {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-outline" onClick={() => { setOpenBulkScan(true); setBulkResults([]); setBulkImages([]); }}>
-            Scanner
-          </button>
-          <button className="btn btn-primary" onClick={() => { setOpenCreate(true); setFormErrors({}); }}>
-            + Nouveau formateur
-          </button>
-        </div>
-      </div>
+      <FilterBar
+        showSearch={false}
+        value={{}}
+        onChange={() => {}}
+        actions={(
+          <>
+            <button className="btn btn-outline" onClick={() => { setOpenBulkScan(true); setBulkResults([]); setBulkImages([]); }}>
+              Scanner
+            </button>
+            <button className="btn btn-primary" onClick={() => { setOpenCreate(true); setFormErrors({}); }}>
+              + Nouveau formateur
+            </button>
+          </>
+        )}
+      />
 
       {error && (
         <div className="alert alert-danger" style={{ marginBottom: 16 }}>
@@ -411,7 +416,7 @@ export default function Formateurs() {
               <tr>
                 <th>#</th>
                 <th>Nom</th>
-                <th>Email</th>
+                <th>Identifiant</th>
                 <th>Mot de passe</th>
                 <th>Séquences assignées</th>
                 <th>Actions</th>
@@ -422,7 +427,7 @@ export default function Formateurs() {
                 <tr key={f.id}>
                   <td>{i + 1}</td>
                   <td><strong>{f.user?.name}</strong></td>
-                  <td>{f.user?.email ?? '—'}</td>
+                  <td>{f.user?.username ?? '—'}</td>
                   <td>
                     <span style={{ fontFamily: 'monospace', fontSize: '13px' }}>
                       {f.user?.password_plain || '—'}
@@ -434,7 +439,7 @@ export default function Formateurs() {
                       <button
                         className="btn btn-sm btn-outline"
                         onClick={() => handleCopyCredentials(f)}
-                        title="Copier email et mot de passe"
+                        title="Copier identifiant:mot_de_passe"
                       >
                         {copiedId === f.id ? 'Copié!' : 'Copier'}
                       </button>
@@ -475,19 +480,6 @@ export default function Formateurs() {
           />
           {formErrors.name && (
             <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.name}</div>
-          )}
-        </div>
-        <div className="form-group">
-          <label className="form-label">Email *</label>
-          <input
-            type="email"
-            className={`form-input ${formErrors.email ? 'border-red-500' : ''}`}
-            value={createForm.email}
-            onChange={e => setCreateForm(p => ({ ...p, email: e.target.value }))}
-            style={formErrors.email ? { borderColor: '#ef4444' } : {}}
-          />
-          {formErrors.email && (
-            <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.email}</div>
           )}
         </div>
         <div className="form-group">
@@ -548,7 +540,7 @@ export default function Formateurs() {
       </Modal>
 
       {/* Manage sequences modal */}
-      <Modal open={openManage} onClose={() => { setOpenManage(false); setScanResults([]); setScanImage(null); }} title={`Gérer séquences - ${selectedFormateur?.user?.name}`} style={{ maxWidth: '95vw', width: '95vw' }}>
+      <Modal open={openManage} onClose={() => { setOpenManage(false); setScanResults([]); setScanImage(null); }} title={`Gérer séquences - ${selectedFormateur?.user?.name}`} style={{ maxWidth: 1000, width: '100%' }}>
         <div style={{ margin: '-20px -24px -24px' }}>
           <div style={{ padding: '16px 24px', display: 'flex', gap: 12, alignItems: 'flex-end', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
             <div style={{ flex: 1 }}>
@@ -634,7 +626,7 @@ export default function Formateurs() {
       </Modal>
 
       {/* Scan sequences for formateur modal */}
-      <Modal open={openScan} onClose={() => { setOpenScan(false); setScanResults([]); setScanImage(null); }} title={`Scanner séquences - ${selectedFormateur?.user?.name}`} style={{ maxWidth: 1000, width: '90vw', maxHeight: '80vh', overflowY: 'auto' }}>
+      <Modal open={openScan} onClose={() => { setOpenScan(false); setScanResults([]); setScanImage(null); }} title={`Scanner séquences - ${selectedFormateur?.user?.name}`} style={{ maxWidth: 720, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 16 }}>
           <div className="form-group">
             <label className="form-label">Document photo (Cahier de Suivi Pédagogique) *</label>
@@ -654,22 +646,12 @@ export default function Formateurs() {
           {extracting ? 'Extraction en cours...' : 'Scanner le document'}
         </button>
 
-        {extracting && (
-          <div style={{ textAlign: 'center', padding: 20, marginBottom: 16 }}>
-            <Spinner />
-            <p style={{ marginTop: 8, color: '#666' }}>Analyse du document en cours...</p>
-          </div>
-        )}
-
         {!extracting && scanResults.length === 0 && scanImage && (
           <div style={{ textAlign: 'center', padding: 32, border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 16 }}>
             <h4 style={{ color: '#666', marginBottom: 8 }}>Aucune séquence détectée</h4>
-            <p style={{ color: '#999', marginBottom: 16, fontSize: 14 }}>
-              Vérifiez l'image ou réessayez le scan.
+            <p style={{ color: '#999', marginBottom: 0, fontSize: 14 }}>
+              Vérifiez l'image ou relancez le scan.
             </p>
-            <button className="btn btn-primary" onClick={handleScan}>
-              Réessayer le scan
-            </button>
           </div>
         )}
 
@@ -708,7 +690,7 @@ export default function Formateurs() {
       </Modal>
 
       {/* Bulk scan formateurs modal */}
-      <Modal open={openBulkScan} onClose={() => { setOpenBulkScan(false); setBulkResults([]); setBulkImages([]); setBulkPassword(''); }} title="Scanner Liste Formateurs" style={{ maxWidth: 1200, width: '90vw', maxHeight: '80vh', overflowY: 'auto' }}>
+      <Modal open={openBulkScan} onClose={() => { setOpenBulkScan(false); setBulkResults([]); setBulkImages([]); setBulkPassword(''); }} title="Scanner Liste Formateurs" style={{ maxWidth: 900, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
         {bulkResults.length === 0 && (
           <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f0f9ff', borderRadius: 8, fontSize: 14 }}>
             Prenez une photo ou un screenshot du document contenant la liste des formateurs.
@@ -733,13 +715,6 @@ export default function Formateurs() {
         >
           {bulkExtracting ? 'Extraction en cours...' : 'Scanner le document'}
         </button>
-
-        {bulkExtracting && (
-          <div style={{ textAlign: 'center', padding: 20, marginBottom: 16 }}>
-            <Spinner />
-            <p style={{ marginTop: 8, color: '#666' }}>Analyse du document en cours...</p>
-          </div>
-        )}
 
         {!bulkExtracting && bulkResults.length === 0 && bulkImages.length > 0 && (
           <div style={{ textAlign: 'center', padding: 32, border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 16 }}>
@@ -768,7 +743,7 @@ export default function Formateurs() {
                 <thead>
                   <tr style={{ backgroundColor: '#f9fafb' }}>
                     <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600 }}>Nom</th>
-                    <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600 }}>Email</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600 }}>Identifiant</th>
                     <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600 }}>Actions</th>
                   </tr>
                 </thead>
@@ -786,9 +761,11 @@ export default function Formateurs() {
                       <td style={{ padding: '10px 14px' }}>
                         <input
                           className="form-input"
-                          value={f.email}
-                          onChange={e => updateBulkResult(i, 'email', e.target.value)}
+                          value={f.username}
+                          onChange={e => updateBulkResult(i, 'username', e.target.value.toLowerCase())}
                           style={{ padding: '6px 10px', fontSize: '14px' }}
+                          autoCapitalize="none"
+                          spellCheck="false"
                         />
                       </td>
                       <td style={{ padding: '10px 14px' }}>

@@ -147,4 +147,26 @@ class NoteValueParserTest extends TestCase
         $this->assertSame(15.0, $this->parser->parseValue(15)['valeur']);
         $this->assertSame(15.5, $this->parser->parseValue(15.5)['valeur']);
     }
+
+    public function test_only_quarter_step_grades_are_accepted(): void
+    {
+        // Accept valid quarter steps
+        foreach ([0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 14.5, 14.25, 14.75, 20.0] as $v) {
+            $res = $this->parser->parseValue($v);
+            $this->assertFalse($res['invalid'], $v . ' should be valid');
+        }
+        // Reject non-quarter steps
+        foreach ([0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 14.7, 14.9, 15.1, 15.3] as $v) {
+            $res = $this->parser->parseValue($v);
+            $this->assertTrue($res['invalid'], $v . ' should be invalid');
+        }
+        // String forms
+        $this->assertFalse($this->parser->parseValue('14.25')['invalid']);
+        $this->assertFalse($this->parser->parseValue('14,25')['invalid']);
+        $this->assertFalse($this->parser->parseValue('14.50')['invalid']);
+        $this->assertFalse($this->parser->parseValue('14.75')['invalid']);
+        $this->assertTrue($this->parser->parseValue('14.7')['invalid']);
+        $this->assertTrue($this->parser->parseValue('14,7')['invalid']);
+        $this->assertTrue($this->parser->parseValue('14.9')['invalid']);
+    }
 }

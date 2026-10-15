@@ -22,6 +22,7 @@ import {
   FiBriefcase
 } from 'react-icons/fi';
 import logoMenu from '../../image/logo-menu.png';
+import { startPrefetch, cancelPrefetch } from '../../api/prefetch';
 import '../../css/sidebar.css';
 
 const adminGroups = [
@@ -54,6 +55,7 @@ const adminGroups = [
       { to: '/admin/saisie-notes', label: 'Saisie des Notes',   icon: FiEdit },
       { to: '/admin/scan-examens', label: 'Scan Examens',       icon: FiCamera },
       { to: '/admin/stages',       label: 'Stages',             icon: FiBriefcase },
+      { to: '/admin/soutenance',   label: 'Soutenance',         icon: FiAward },
     ],
   },
   {
@@ -91,6 +93,8 @@ function SidebarGroup({ group, collapsed, mobileOpen, onCloseMobile }) {
               to={item.to}
               className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
               onClick={mobileOpen ? onCloseMobile : undefined}
+              onMouseEnter={() => startPrefetch(item.to)}
+              onMouseLeave={() => cancelPrefetch(item.to)}
               title={item.label}
             >
               <span className="sidebar-link-icon"><Icon size={20} /></span>
@@ -115,6 +119,8 @@ function SidebarGroup({ group, collapsed, mobileOpen, onCloseMobile }) {
             to={item.to}
             className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
             onClick={mobileOpen ? onCloseMobile : undefined}
+            onMouseEnter={() => startPrefetch(item.to)}
+            onMouseLeave={() => cancelPrefetch(item.to)}
           >
             <span className="sidebar-link-icon"><Icon size={20} /></span>
             <span>{item.label}</span>
@@ -171,6 +177,8 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle, onCloseMobile
                   to={link.to}
                   className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
                   onClick={mobileOpen ? onCloseMobile : undefined}
+                  onMouseEnter={() => startPrefetch(link.to)}
+                  onMouseLeave={() => cancelPrefetch(link.to)}
                   title={collapsed ? link.label : undefined}
                 >
                   <span className="sidebar-link-icon"><Icon size={20} /></span>

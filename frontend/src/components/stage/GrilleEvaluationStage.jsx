@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { FiPrinter, FiSave } from 'react-icons/fi';
+import { FiSave } from 'react-icons/fi';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { stagesApi } from '../../api/stages';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
 import { useToast } from '../../context/ToastContext';
 import NoteStepper from './NoteStepper';
+import FilterSelect from '../common/FilterSelect';
 
 const CRITERES_COMPORTEMENT = [
   'Assiduité et ponctualité',
@@ -27,27 +28,78 @@ const CRITERES_APTITUDES = [
   'Respect des procédures',
 ];
 
+// One evaluation grid per service: the stored payload is a { service => grid }
+// map, so each department keeps its own sheet.
+const emptyForm = () => ({
+  duree: '', lieu_stage: '', pratique_executee: '',
+  comportement: Array(CRITERES_COMPORTEMENT.length).fill(0),
+  aptitudes: Array(CRITERES_APTITUDES.length).fill(0),
+  eval_pratique_1: '', eval_pratique_2: '',
+});
+
+// Older sheets stored a single grid (the scoring fields at the top level) with
+// the service inside; normalize both shapes to the keyed map.
+const normalizeMap = (raw) => {
+  if (!raw || typeof raw !== 'object') return {};
+  const isSingle = ['comportement', 'aptitudes', 'eval_pratique_1', 'eval_pratique_2', 'lignes', 'pratique_executee']
+    .some(k => Object.prototype.hasOwnProperty.call(raw, k));
+  if (isSingle) {
+    const svc = typeof raw.service === 'string' ? raw.service.trim() : '';
+    return svc ? { [svc]: raw } : {};
+  }
+  return raw;
+};
+
 export default function GrilleEvaluationStage({ etudiant, onDataChange, onSaved }) {
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
-  const [form, setForm] = useState({
-    duree: '', lieu_stage: '',
-    comportement: Array(CRITERES_COMPORTEMENT.length).fill(0),
-    aptitudes: Array(CRITERES_APTITUDES.length).fill(0),
-    eval_pratique_1: '', eval_pratique_2: '',
-  });
+
+  const [all, setAll] = useState({});
+  const [service, setService] = useState('');
+  const [form, setForm] = useState(emptyForm);
+  const [services, setServices] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!etudiant?.id || !currentAnnee?.id || loaded) return;
+    if (!etudiant?.id || !currentAnnee?.id) return;
+    let cancelled = false;
+    setLoaded(false);
     stagesApi.load({ etudiant_id: etudiant.id, annee_academique_id: currentAnnee.id, type: 'grille_evaluation' })
       .then(res => {
-        if (res.data.data) setForm(prev => ({ ...prev, ...res.data.data }));
-        setLoaded(true);
+        if (cancelled) return;
+        const map = normalizeMap(res.data.data);
+        setAll(map);
+        setService(cur => (map[cur] ? cur : (Object.keys(map)[0] ?? '')));
       })
-      .catch(() => setLoaded(true));
+      .catch(() => { if (!cancelled) setAll({}); })
+      .finally(() => { if (!cancelled) setLoaded(true); });
+    return () => { cancelled = true; };
   }, [etudiant?.id, currentAnnee?.id]);
+
+  // "Services" are the Stage unit's own controls, named by the admin.
+  useEffect(() => {
+    if (!etudiant?.id) { setServices([]); return; }
+    stagesApi.stageServices(etudiant.id)
+      .then(res => setServices(res.data.data || []))
+      .catch(() => setServices([]));
+  }, [etudiant?.id]);
+
+  // Show the selected service's saved sheet.
+  useEffect(() => {
+    if (!loaded) return;
+    setForm({ ...emptyForm(), ...(all[service] ?? {}) });
+  }, [service, all, loaded]);
+
+  // Options for the "Service" combobox, mirroring the Filière select. A value
+  // saved before the list changed is kept so nothing is silently dropped.
+  const serviceOptions = useMemo(() => {
+    const opts = services.map(s => ({ id: s.nom, label: s.nom }));
+    if (service && !opts.some(o => o.id === service)) {
+      opts.push({ id: service, label: service });
+    }
+    return opts;
+  }, [services, service]);
 
   const set = (key, value) => {
     const next = { ...form, [key]: value };
@@ -64,91 +116,24 @@ export default function GrilleEvaluationStage({ etudiant, onDataChange, onSaved 
   const noteGlobale = score2 > 0 ? ((score1 + score2) / 5).toFixed(2) : (score1 / 5).toFixed(2);
 
   const handleSave = async () => {
-    if (!etudiant?.id || !currentAnnee?.id) return;
+    if (!etudiant?.id || !currentAnnee?.id || !service) return;
     setSaving(true);
     try {
+      const map = { ...all, [service]: form };
       await stagesApi.save({
         etudiant_id: etudiant.id,
         annee_academique_id: currentAnnee.id,
         type: 'grille_evaluation',
-        data: form,
+        data: map,
       });
-      showSuccess(toast, 'Grille d\'évaluation enregistrée');
+      setAll(map);
+      showSuccess(toast, `Grille d'évaluation enregistrée — ${service}`);
       onSaved?.();
     } catch (err) {
       handleApiError(err, toast);
     } finally {
       setSaving(false);
     }
-  };
-
-  const printDocument = () => {
-    const w = window.open('', '_blank');
-    w.document.write(`
-      <html><head><title>Grille d'Évaluation du Stage</title>
-      <style>
-        @page { margin: 15mm; size: A4; }
-        body { font-family: 'Arial', sans-serif; font-size: 12px; }
-        h2 { text-align: center; margin-bottom: 4px; }
-        table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-        th, td { border: 1px solid #000; padding: 3px 5px; text-align: left; font-size: 11px; }
-        th { background: #f0f0f0; font-weight: 600; text-align: center; }
-        .score-cell { text-align: center; }
-        .total-row td { font-weight: 600; }
-        .signature-section { margin-top: 20px; }
-        .signature-line { border-top: 1px solid #000; margin-top: 30px; width: 250px; padding-top: 4px; font-size: 11px; }
-        .note-globale { font-size: 16px; font-weight: 700; text-align: center; margin: 12px 0; }
-        .print-btn { display: block; margin: 20px auto; padding: 10px 24px; font-size: 14px; }
-        @media print { .print-btn { display: none; } }
-      </style></head><body>
-      <button class="print-btn" onclick="window.print()">Imprimer</button>
-      <h2>Grille d'Évaluation du Stage</h2>
-      <table>
-        <tr><td><strong>Nom et Prénom</strong></td><td>${etudiant?.nom_prenom || ''}</td>
-            <td><strong>N° Inscription</strong></td><td>${etudiant?.numero_inscription || ''}</td></tr>
-        <tr><td><strong>Filière</strong></td><td>${etudiant?.filiere || ''}</td>
-            <td><strong>Section</strong></td><td>${etudiant?.section || ''}</td></tr>
-        <tr><td><strong>Année Scolaire</strong></td><td>${currentAnnee?.label || ''}</td>
-            <td><strong>Année de Formation</strong></td><td>${etudiant?.niveau_numero || ''}</td></tr>
-        <tr><td><strong>Durée</strong></td><td>${form.duree}</td>
-            <td><strong>Lieu de Stage</strong></td><td>${form.lieu_stage}</td></tr>
-      </table>
-
-      <h4>Grille I — Comportement (Score /20)</h4>
-      <table><thead><tr><th>Critères</th><th>Note (0-4)</th></tr></thead>
-        <tbody>${CRITERES_COMPORTEMENT.map((c, i) =>
-          `<tr><td>${c}</td><td class="score-cell">${form.comportement[i]}/4</td></tr>`
-        ).join('')}
-        <tr class="total-row"><td>Total</td><td class="score-cell">${scoreComportement}/20</td></tr>
-      </tbody></table>
-
-      <h4>Grille II — Aptitudes Professionnelles (Score /40)</h4>
-      <table><thead><tr><th>Critères</th><th>Note (0-4)</th></tr></thead>
-        <tbody>${CRITERES_APTITUDES.map((c, i) =>
-          `<tr><td>${c}</td><td class="score-cell">${form.aptitudes[i]}/4</td></tr>`
-        ).join('')}
-        <tr class="total-row"><td>Total</td><td class="score-cell">${scoreAptitudes}/40</td></tr>
-      </tbody></table>
-
-      <p><strong>Score (1) = I + II = ${scoreComportement} + ${scoreAptitudes} = ${score1}/60</strong></p>
-
-      <h4>Évaluation Pratique</h4>
-      <table><thead><tr><th></th><th>Note /20</th></tr></thead>
-        <tbody>
-          <tr><td>1ère évaluation</td><td class="score-cell">${form.eval_pratique_1 || '—'}/20</td></tr>
-          <tr><td>2ème évaluation</td><td class="score-cell">${form.eval_pratique_2 || '—'}/20</td></tr>
-          <tr class="total-row"><td>Score (2)</td><td class="score-cell">${score2}/40</td></tr>
-      </tbody></table>
-
-      <div class="note-globale">Note Globale = (${score1} + ${score2}) / 5 = ${noteGlobale}/20</div>
-
-      <p><strong>Décision :</strong> Stage valide ☐ / Stage invalide ☐</p>
-      <p><strong>Observation du responsable :</strong></p>
-      <div class="signature-section">
-        <div class="signature-line">Signature et cachet</div>
-      </div>
-    `);
-    w.document.close();
   };
 
   const NoteScale = ({ value, onChange }) => (
@@ -169,6 +154,18 @@ export default function GrilleEvaluationStage({ etudiant, onDataChange, onSaved 
         <div className="data-grid">
           <div><label className="form-label">Durée</label><input className="form-input" value={form.duree} onChange={e => set('duree', e.target.value)} /></div>
           <div><label className="form-label">Lieu du Stage</label><input className="form-input" value={form.lieu_stage} onChange={e => set('lieu_stage', e.target.value)} /></div>
+          <div>
+            <FilterSelect
+              label="Service"
+              value={service}
+              options={serviceOptions}
+              onChange={setService}
+              placeholder="Sélectionner un service"
+              allLabel="—"
+              block
+            />
+          </div>
+          <div><label className="form-label">Pratique exécutée</label><input className="form-input" value={form.pratique_executee} onChange={e => set('pratique_executee', e.target.value)} /></div>
         </div>
 
         <h5 style={{margin:'16px 0 8px'}}>Grille I — Comportement (Score /20)</h5>
@@ -213,8 +210,7 @@ export default function GrilleEvaluationStage({ etudiant, onDataChange, onSaved 
         </div>
 
         <div style={{display:'flex', gap:8, marginTop:16}}>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}><FiSave style={{marginRight:4}}/>{saving ? 'Enregistrement...' : 'Enregistrer'}</button>
-          <button className="btn btn-accent" onClick={printDocument}><FiPrinter style={{marginRight:4}}/>Imprimer / PDF</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving || !service}><FiSave style={{marginRight:4}}/>{saving ? 'Enregistrement...' : 'Enregistrer'}</button>
         </div>
       </div>
     </div>

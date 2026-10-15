@@ -1,0 +1,64 @@
+{
+    "AS|1": [
+        "Médecine",
+        "Chirurgie",
+        "Pédiatrie-crèche",
+        "Maternité",
+        "Réanimation",
+        "Urgences",
+        "Stérilisation",
+        "Stage optionnel"
+    ],
+    "IA|1": [
+        "Médecine",
+        "Chirurgie",
+        "Pédiatrie",
+        "Maternité + maison d'accouchement",
+        "Dispensaire",
+        "Centre de santé"
+    ],
+    "IA|2": [
+        "Médecine",
+        "Chirurgie",
+        "Pédiatrie",
+        "Services urgences",
+        "Réanimation",
+        "Maternité + maison d'accouchement",
+        "Dispensaire",
+        "Centre de santé",
+        "CDST, centre de référence",
+        "Stage rural",
+        "Services de soins hospitaliers / Services de soins de santé de base / Centre de soins dentaires"
+    ],
+    "IP|1": [
+        "Médecine",
+        "Chirurgie",
+        "Pédiatrie",
+        "Réseau des soins de santé de base urbain (dispensaire et centre de santé urbain)"
+    ],
+    "IP|2": [
+        "Médecine",
+        "Chirurgie",
+        "Pédiatrie",
+        "Obstétrique",
+        "Bloc opératoire",
+        "Réseau des soins de santé de base urbain (dispensaire et centre de santé urbain)",
+        "Centre de référence/P. F"
+    ],
+    "IP|3": [
+        "Médecine",
+        "Chirurgie",
+        "Réanimation médicale",
+        "Réanimation chirurgicale",
+        "Pédiatrie",
+        "Urgences",
+        "Gynécologie",
+        "Obstétrique",
+        "Dermatologie",
+        "Ophtalmologie",
+        "Oto-rhino-laryngologie",
+        "Réseau des soins de santé de base urbain (dispensaire et centre de santé urbain)",
+        "Stage rural",
+        "Stage optionnel"
+    ]
+}

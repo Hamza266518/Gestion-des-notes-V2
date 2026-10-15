@@ -8,6 +8,7 @@ use App\Models\Sequence;
 use App\Services\GeminiService;
 use App\Services\NoteParserService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ScanUnitesController extends Controller
@@ -78,30 +79,34 @@ class ScanUnitesController extends Controller
             $created = 0;
             $sequencesCreated = 0;
 
-            foreach ($request->unites as $uniteData) {
-                $coefficient = $uniteData['coefficient'] ?? 1;
-                $unite = Unite::create([
-                    'filiere_id'   => $uniteData['filiere_id'],
-                    'nom'          => $uniteData['nom'],
-                    'coefficient'  => $coefficient,
-                    'numero_annee' => $uniteData['numero_annee'],
-                    'semestre'     => $uniteData['semestre'],
-                    'is_active'    => true,
-                ]);
-                $created++;
-
-                foreach ($uniteData['sequences'] as $idx => $seqData) {
-                    Sequence::create([
-                        'unite_id'         => $unite->id,
-                        'nom'              => $seqData['nom'],
-                        'coefficient'      => $seqData['coefficient'],
-                        'nombre_controles'  => $seqData['nombre_controles'],
-                        'ordre'            => $idx + 1,
-                        'is_active'        => true,
+            // All-or-nothing: a failure on a later unit used to leave earlier
+            // units without their sequences committed.
+            DB::transaction(function () use ($request, &$created, &$sequencesCreated) {
+                foreach ($request->unites as $uniteData) {
+                    $coefficient = $uniteData['coefficient'] ?? 1;
+                    $unite = Unite::create([
+                        'filiere_id'   => $uniteData['filiere_id'],
+                        'nom'          => $uniteData['nom'],
+                        'coefficient'  => $coefficient,
+                        'numero_annee' => $uniteData['numero_annee'],
+                        'semestre'     => $uniteData['semestre'],
+                        'is_active'    => true,
                     ]);
-                    $sequencesCreated++;
+                    $created++;
+
+                    foreach ($uniteData['sequences'] as $idx => $seqData) {
+                        Sequence::create([
+                            'unite_id'         => $unite->id,
+                            'nom'              => $seqData['nom'],
+                            'coefficient'      => $seqData['coefficient'],
+                            'nombre_controles'  => $seqData['nombre_controles'],
+                            'ordre'            => $idx + 1,
+                            'is_active'        => true,
+                        ]);
+                        $sequencesCreated++;
+                    }
                 }
-            }
+            });
 
             return response()->json([
                 'success' => true,

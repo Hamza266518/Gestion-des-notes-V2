@@ -27,6 +27,12 @@ export const AuthProvider = ({ children }) => {
     setIsInitialized(true);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const res = await authApi.me();
+    setUser(res.data.data);
+    return res.data.data;
+  }, []);
+
   useEffect(() => {
     if (!token) {
       setIsInitialized(true);
@@ -51,8 +57,9 @@ export const AuthProvider = ({ children }) => {
     role,
     login,
     logout,
+    refreshUser,
     loading: !isInitialized
-  }), [user, token, role, login, logout, isInitialized]);
+  }), [user, token, role, login, logout, refreshUser, isInitialized]);
 
   return (
     <AuthContext.Provider value={value}>

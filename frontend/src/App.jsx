@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { AnneeAcademiqueProvider } from './context/AnneeAcademiqueContext';
 import { ToastProvider } from './context/ToastContext';
@@ -6,6 +7,20 @@ import PrivateRoute from './components/common/PrivateRoute';
 import AdminLayout from './components/common/AdminLayout';
 import EtudiantLayout from './components/common/EtudiantLayout';
 import FormateurLayout from './components/common/FormateurLayout';
+import BatchProgressNotif from './components/common/BatchProgressNotif';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      retry: 1,
+    },
+    mutations: { retry: 1 },
+  },
+});
 
 import Login from './pages/auth/Login';
 import Dashboard from './pages/admin/Dashboard';
@@ -24,10 +39,11 @@ import Publications from './pages/admin/Publications';
 import Bulletins from './pages/admin/Bulletins';
 import Sequences from './pages/admin/Sequences';
 import Stage from './pages/admin/Stage';
+import Soutenance from './pages/admin/Soutenance';
 
 import MonBulletin from './pages/etudiant/MonBulletin';
 import MonBulletinView from './pages/etudiant/MonBulletinView';
-import { ChangePassword } from './pages/etudiant/ChangePassword';
+import MonCompte from './pages/MonCompte';
 
 import Scanner from './pages/formateur/Scanner';
 import NotesList from './pages/formateur/NotesList';
@@ -35,12 +51,22 @@ import MesNotesList from './pages/formateur/MesNotesList';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AnneeAcademiqueProvider>
-        <ToastProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Navigate to="/login" replace />} />
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AnneeAcademiqueProvider>
+          <ToastProvider>
+            <BatchProgressNotif />
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route
+                path="/mon-compte"
+                element={
+                  <PrivateRoute>
+                    <MonCompte />
+                  </PrivateRoute>
+                }
+              />
 
             <Route
               path="/admin"
@@ -67,6 +93,7 @@ export default function App() {
               <Route path="bulletins" element={<Bulletins />} />
               <Route path="sequences" element={<Sequences />} />
               <Route path="stages" element={<Stage />} />
+              <Route path="soutenance" element={<Soutenance />} />
             </Route>
 
             <Route
@@ -80,7 +107,7 @@ export default function App() {
               <Route index element={<Navigate to="bulletin" replace />} />
               <Route path="bulletin" element={<MonBulletin />} />
               <Route path="mon-bulletin" element={<MonBulletinView />} />
-              <Route path="changer-mot-de-passe" element={<ChangePassword />} />
+              <Route path="changer-mot-de-passe" element={<Navigate to="/mon-compte" replace />} />
             </Route>
 
             <Route
@@ -101,5 +128,6 @@ export default function App() {
         </ToastProvider>
       </AnneeAcademiqueProvider>
     </AuthProvider>
+    </QueryClientProvider>
   );
 }

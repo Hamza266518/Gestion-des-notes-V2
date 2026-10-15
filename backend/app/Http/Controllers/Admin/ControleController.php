@@ -23,15 +23,18 @@ class ControleController extends Controller
 
     public function store(Request $request)
     {
+        // Outside the try on purpose: validate() throws ValidationException,
+        // which extends Exception, so catching it here turned every bad payload
+        // into a 500 instead of a 422 naming the offending field.
+        $request->validate([
+            'sequence_id' => 'required|exists:sequences,id',
+            'numero'      => 'required|integer',
+            'nom'         => 'nullable|string',
+            'note_max'    => 'integer',
+        ]);
+
         try {
-            $request->validate([
-                'sequence_id' => 'required|exists:sequences,id',
-                'numero'      => 'required|integer',
-                'type'        => 'nullable|in:cc,theorique,pratique',
-                'nom'         => 'nullable|string',
-                'note_max'    => 'integer',
-            ]);
-            $controle = Controle::create($request->only(['sequence_id', 'numero', 'type', 'nom', 'note_max']));
+            $controle = Controle::create($request->only(['sequence_id', 'numero', 'nom', 'note_max']));
             return response()->json(['success' => true, 'data' => $controle, 'message' => 'Contrôle créé']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors de la création du contrôle'], 500);

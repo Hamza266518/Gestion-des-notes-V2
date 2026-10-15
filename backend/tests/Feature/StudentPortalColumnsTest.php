@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * The grade numbering restarts for every control type, so a sequence can hold
- * cc:1, theorique:1 and pratique:1 at the same time. numero is therefore not a
- * unique identifier and the portal has to expose controle_id plus type, or the
- * student grid collapses the three grades into a single column.
+ * Controls are plain "Contrôle N" rows and numero is unique within a sequence,
+ * so numero identifies the cell. The portal still exposes controle_id (a stable
+ * key) alongside controle_numero, or two sequences sharing a numero would be
+ * indistinguishable when the student grid unions columns across a unit.
  */
 class StudentPortalColumnsTest extends TestCase
 {
@@ -64,11 +64,11 @@ class StudentPortalColumnsTest extends TestCase
             'nombre_controles' => 4,
         ]);
 
-        // All four share numero 1/2 the way the real curriculum does.
-        $this->ccId   = $this->makeControle('cc', 1);
-        $this->cc2Id  = $this->makeControle('cc', 2);
-        $this->theoId = $this->makeControle('theorique', 1);
-        $this->praId  = $this->makeControle('pratique', 1);
+        // numero is unique within a sequence, so it identifies each cell.
+        $this->ccId   = $this->makeControle(1);
+        $this->cc2Id  = $this->makeControle(2);
+        $this->theoId = $this->makeControle(3);
+        $this->praId  = $this->makeControle(4);
 
         $this->mark(12, $this->ccId);
         $this->mark(14, $this->cc2Id);
@@ -90,12 +90,11 @@ class StudentPortalColumnsTest extends TestCase
         parent::tearDown();
     }
 
-    private function makeControle(string $type, int $numero): int
+    private function makeControle(int $numero): int
     {
         return Controle::create([
             'sequence_id' => $this->sequence->id,
             'numero'      => $numero,
-            'type'        => $type,
             'note_max'    => 20,
         ])->id;
     }
@@ -110,7 +109,7 @@ class StudentPortalColumnsTest extends TestCase
         ]);
     }
 
-    public function test_portal_returns_one_row_per_control_including_type_and_id()
+    public function test_portal_returns_one_row_per_control_including_id_and_numero()
     {
         $rows = $this->portalRows();
 
@@ -120,48 +119,36 @@ class StudentPortalColumnsTest extends TestCase
 
         foreach ($mine as $row) {
             $this->assertArrayHasKey('controle_id', $row);
-            $this->assertArrayHasKey('type', $row);
+            $this->assertArrayHasKey('controle_numero', $row);
             $this->assertArrayHasKey('est_absent', $row);
         }
     }
 
-    public function test_controls_sharing_a_numero_stay_distinguishable()
+    public function test_every_control_has_a_distinct_numero()
     {
         $mine = $this->myRows();
 
-        // cc:1, cc:2, theorique:1, pratique:1 -> four distinct cells.
-        $cells = [];
-        foreach ($mine as $row) {
-            $cells[] = $row['type'] . ':' . $row['controle_numero'];
-        }
+        $numeros = array_map(fn ($r) => $r['controle_numero'], $mine);
+        sort($numeros);
+        $this->assertSame([1, 2, 3, 4], $numeros, 'numero must uniquely identify each control');
 
-        $this->assertCount(4, array_unique($cells), 'Each (type, numero) pair must be its own cell');
-
-        // Order comes from the Sequence relation (orderBy numero), so cc:1,
-        // theorique:1 and pratique:1 all read numero 1 and sort together.
-        sort($cells);
-        $this->assertSame(['cc:1', 'cc:2', 'pratique:1', 'theorique:1'], $cells);
-
-        // cc:1, theorique:1 and pratique:1 all share numero 1, so numero alone
-        // would collapse three different grades into one column.
-        $byNumero = collect($mine)->filter(fn ($r) => $r['controle_numero'] === 1);
-        $this->assertCount(3, $byNumero);
-        $this->assertCount(3, $byNumero->pluck('controle_id')->unique());
+        // Each row still carries its own controle_id.
+        $this->assertCount(4, array_unique(array_map(fn ($r) => $r['controle_id'], $mine)));
     }
 
-    public function test_grade_of_each_type_is_returned_against_the_right_control()
+    public function test_grade_of_each_control_is_returned_against_the_right_control()
     {
         $mine = $this->myRows();
 
         $values = [];
         foreach ($mine as $row) {
-            $values[$row['type'] . ':' . $row['controle_numero']] = $row['valeur'];
+            $values[$row['controle_numero']] = $row['valeur'];
         }
 
-        $this->assertSame(12.0, (float) $values['cc:1']);
-        $this->assertSame(14.0, (float) $values['cc:2']);
-        $this->assertSame(16.0, (float) $values['theorique:1']);
-        $this->assertSame(8.0,  (float) $values['pratique:1']);
+        $this->assertSame(12.0, (float) $values[1]);
+        $this->assertSame(14.0, (float) $values[2]);
+        $this->assertSame(16.0, (float) $values[3]);
+        $this->assertSame(8.0,  (float) $values[4]);
     }
 
     public function test_absent_note_is_flagged_so_it_is_not_shown_as_a_zero()
@@ -188,15 +175,17 @@ class StudentPortalColumnsTest extends TestCase
         $log = DB::getQueryLog();
         DB::disableQueryLog();
 
+        // getRawNotes is the only path that loads this exact projection, so it
+        // isolates its queries from the bulletin's eager-load of the full rows.
         $noteQueries = array_filter(
             $log,
-            fn ($q) => str_contains($q['query'], 'from `notes`')
-                && str_contains($q['query'], '`controle_id` in')
+            fn ($q) => str_contains($q['query'], '`controle_id`, `valeur`, `est_absent` from `notes`')
         );
 
         // One bulk query per published semester, never one per control. With the
         // old per-control lookup this was 4 queries per semester, and it grows
-        // with the size of the curriculum.
+        // with the size of the curriculum. The bulletin path adds a separate
+        // eager-load of the full note rows; only the raw-notes queries are counted.
         $this->assertCount(
             2,
             $noteQueries,

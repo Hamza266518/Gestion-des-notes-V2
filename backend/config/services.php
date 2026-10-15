@@ -39,6 +39,7 @@ return [
         'key_formateur' => env('GEMINI_KEY_FORMATEURS', ''),
         'key_students'  => env('GEMINI_KEY_STUDENTS', ''),
         'key_unites'    => env('GEMINI_KEY_UNITES', ''),
+        'key_trial'     => env('GEMINI_KEY_TRIAL', ''),
         'ca_bundle'     => env('CA_BUNDLE_PATH', ''),
     ],
 

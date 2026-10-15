@@ -4,7 +4,10 @@ import { useToast } from '../../context/ToastContext';
 import handleApiError from '../../utils/errorHandler';
 import ActivityLog from '../../components/common/ActivityLog';
 import Spinner from '../../components/common/Spinner';
-import { FiFilter, FiX, FiSearch, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import FilterBar from '../../components/common/FilterBar';
+import FilterSelect from '../../components/common/FilterSelect';
+import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import usePersistedState from '../../hooks/usePersistedState';
 import '../../css/components.css';
 import '../../css/layout.css';
 
@@ -21,13 +24,12 @@ export default function Journal() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({
+  const [filters, setFilters, resetFilters] = usePersistedState('journal', {
     action_type: '',
     search: '',
     date_from: '',
     date_to: '',
   });
-  const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const toast = useToast();
@@ -72,82 +74,64 @@ export default function Journal() {
     fetchLogs(page);
   }, [page]);
 
-  const activeFilters = Object.entries(filters).filter(([k, v]) => v !== '').length;
-
   return (
     <div className="page">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ marginBottom: 16 }}>
         <h2 className="page-title" style={{ margin: 0 }}>Journal d'activité</h2>
-        <button
-          className={`btn btn-sm ${showFilters ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          <FiFilter size={14} style={{ marginRight: 6 }} />
-          Filtres {activeFilters > 0 && `(${activeFilters})`}
-        </button>
       </div>
 
-      {showFilters && (
-        <div className="card" style={{ marginBottom: 20, padding: '14px 18px' }}>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div>
-              <label style={{ fontSize: 11, color: 'var(--gray-500)', display: 'block', marginBottom: 2 }}>Type d'action</label>
-              <select
-                className="form-select form-select-sm"
-                value={filters.action_type}
-                onChange={e => setFilters(f => ({ ...f, action_type: e.target.value }))}
-                style={{ minWidth: 150 }}
-              >
-                {ACTION_TYPES.map(a => (
-                  <option key={a.value} value={a.value}>{a.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: 'var(--gray-500)', display: 'block', marginBottom: 2 }}>Recherche</label>
-              <div style={{ position: 'relative' }}>
-                <FiSearch size={14} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-400)' }} />
-                <input
-                  type="text"
-                  className="form-input form-input-sm"
-                  placeholder="Admin ou description..."
-                  value={filters.search}
-                  onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-                  style={{ paddingLeft: 28, width: 200 }}
-                />
-                {filters.search && (
-                  <FiX size={14} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: 'var(--gray-400)' }} onClick={() => setFilters(f => ({ ...f, search: '' }))} />
-                )}
-              </div>
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: 'var(--gray-500)', display: 'block', marginBottom: 2 }}>Du</label>
-              <input
-                type="date"
-                className="form-input form-input-sm"
-                value={filters.date_from}
-                onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
-                style={{ width: 150 }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: 'var(--gray-500)', display: 'block', marginBottom: 2 }}>Au</label>
-              <input
-                type="date"
-                className="form-input form-input-sm"
-                value={filters.date_to}
-                onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
-                style={{ width: 150 }}
-              />
-            </div>
-            {activeFilters > 0 && (
-              <button className="btn btn-sm btn-outline" onClick={() => setFilters({ action_type: '', search: '', date_from: '', date_to: '' })}>
-                <FiX size={14} style={{ marginRight: 4 }} /> Réinitialiser
-              </button>
-            )}
-          </div>
+      <FilterBar
+        value={filters}
+        onChange={setFilters}
+        placeholder="Admin ou description..."
+        onClear={resetFilters}
+        chips={[
+          filters.action_type && {
+            key: 'action_type',
+            label: ACTION_TYPES.find(a => a.value === filters.action_type)?.label ?? '',
+            onRemove: () => setFilters(f => ({ ...f, action_type: '' })),
+          },
+          filters.date_from && {
+            key: 'date_from',
+            label: `Du: ${filters.date_from}`,
+            onRemove: () => setFilters(f => ({ ...f, date_from: '' })),
+          },
+          filters.date_to && {
+            key: 'date_to',
+            label: `Au: ${filters.date_to}`,
+            onRemove: () => setFilters(f => ({ ...f, date_to: '' })),
+          },
+        ].filter(Boolean)}
+      >
+        <FilterSelect
+          label="Type"
+          value={filters.action_type}
+          options={ACTION_TYPES.filter(a => a.value !== '').map(a => ({ id: a.value, label: a.label }))}
+          onChange={(v) => setFilters(f => ({ ...f, action_type: v }))}
+          placeholder="Tous les types"
+          allLabel="Tous les types"
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'center' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--gray-400)', lineHeight: 1.2 }}>Du</span>
+          <input
+            type="date"
+            className="form-input form-input-sm"
+            value={filters.date_from}
+            onChange={e => setFilters(f => ({ ...f, date_from: e.target.value }))}
+            style={{ width: 150, border: 'none', background: 'transparent', padding: 0, height: 'auto', fontSize: 13.5 }}
+          />
         </div>
-      )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'center' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--gray-400)', lineHeight: 1.2 }}>Au</span>
+          <input
+            type="date"
+            className="form-input form-input-sm"
+            value={filters.date_to}
+            onChange={e => setFilters(f => ({ ...f, date_to: e.target.value }))}
+            style={{ width: 150, border: 'none', background: 'transparent', padding: 0, height: 'auto', fontSize: 13.5 }}
+          />
+        </div>
+      </FilterBar>
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></div>

@@ -26,6 +26,11 @@ class Unite extends Model
         return $this->hasMany(Sequence::class)->orderBy('ordre');
     }
 
+    public function controles()
+    {
+        return $this->hasMany(Controle::class, 'unite_id')->orderBy('numero');
+    }
+
     public function formateurs()
     {
         return $this->belongsToMany(Formateur::class, 'formateur_unites');

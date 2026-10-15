@@ -7,6 +7,7 @@ use App\Models\Controle;
 use App\Models\Etudiant;
 use App\Models\Groupe;
 use App\Models\Niveau;
+use App\Models\SemestrePublication;
 use App\Models\Unite;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,7 @@ class ScanPerimetreGroupeTest extends TestCase
     private array $createdUsers = [];
     private array $groupesCrees = [];
     private array $createdNotes = [];
+    private array $publicationSnapshots = [];
 
     protected function setUp(): void
     {
@@ -67,7 +69,73 @@ class ScanPerimetreGroupeTest extends TestCase
         Groupe::whereIn('id', $this->groupesCrees)->delete();
         DB::table('formateur_sequences')->where('formateur_id', $this->formateur->id)->delete();
         \App\Models\Formateur::where('user_id', $this->formateurUser->id)->delete();
+
+        $this->restorePublications();
+
         parent::tearDown();
+    }
+
+    /** Remember a group's publication row so the test can reopen it and restore it later. */
+    private function snapPublication(int $groupeId, int $anneeId, string $type): void
+    {
+        $key = $groupeId . ':' . $anneeId . ':' . $type;
+        if (array_key_exists($key, $this->publicationSnapshots)) {
+            return;
+        }
+
+        $row = SemestrePublication::where('groupe_id', $groupeId)
+            ->where('annee_academique_id', $anneeId)
+            ->where('type', $type)
+            ->first();
+
+        $this->publicationSnapshots[$key] = $row ? $row->attributesToArray() : null;
+    }
+
+    /** Drop a group's publications for the year so confirm/exam writes are not lock-refused. */
+    private function neutralise(int $groupeId): void
+    {
+        foreach (['notes_s1', 'notes_s2', 'bulletin'] as $type) {
+            $this->snapPublication($groupeId, $this->annee->id, $type);
+            SemestrePublication::where('groupe_id', $groupeId)
+                ->where('annee_academique_id', $this->annee->id)
+                ->where('type', $type)
+                ->delete();
+        }
+    }
+
+    private function restorePublications(): void
+    {
+        foreach ($this->publicationSnapshots as $key => $row) {
+            [$groupeId, $anneeId, $type] = explode(':', $key);
+            $groupeId = (int) $groupeId;
+            $anneeId = (int) $anneeId;
+
+            if ($row === null) {
+                continue;
+            }
+
+            $query = SemestrePublication::where('groupe_id', $groupeId)
+                ->where('annee_academique_id', $anneeId)
+                ->where('type', $type);
+
+            if ($query->exists()) {
+                $query->update([
+                    'is_published' => $row['is_published'],
+                    'published_at' => $row['published_at'],
+                    'updated_at'   => $row['updated_at'],
+                ]);
+            } else {
+                SemestrePublication::create([
+                    'groupe_id'           => $groupeId,
+                    'annee_academique_id' => $anneeId,
+                    'type'                => $type,
+                    'is_published'        => $row['is_published'],
+                    'published_at'        => $row['published_at'],
+                    'created_at'          => $row['created_at'],
+                    'updated_at'          => $row['updated_at'],
+                ]);
+            }
+        }
     }
 
     /** Assign the scanned sequence to the test formateur so access checks pass. */
@@ -95,6 +163,7 @@ class ScanPerimetreGroupeTest extends TestCase
             app(\App\Services\GeminiService::class),
             app(\App\Services\NoteParserService::class),
             app(\App\Services\PublicationLockService::class),
+            app(\App\Services\ScanEtudiantMatcher::class),
         );
     }
 
@@ -142,6 +211,13 @@ class ScanPerimetreGroupeTest extends TestCase
             $groupes = collect([$existing, $nouveau]);
         }
 
+        // A sibling cohort's publication would make the writes read as
+        // lock-refused rather than perimeter-skips, so the two groups used here
+        // are reopened for the test and restored afterwards.
+        foreach ($groupes as $groupe) {
+            $this->neutralise($groupe->id);
+        }
+
         return [$controle, $niveau, $groupes[0], $groupes[1]];
     }
 
@@ -173,19 +249,18 @@ class ScanPerimetreGroupeTest extends TestCase
     {
         [$controle, , $groupeA, $groupeB] = $this->deuxGroupesMemePerimetre();
 
-        $m = new \ReflectionMethod($this->controller(), 'matchEtudiantDansPerimetre');
-        $m->setAccessible(true);
+        $matcher = app(\App\Services\ScanEtudiantMatcher::class);
 
         // Student in group B only.
         $nomB = 'GRP' . bin2hex(random_bytes(4)) . ' Eleve Beta';
         $this->creerEtudiant($groupeB, $nomB);
 
         // Searching group A alone must not find them.
-        $trouveA = $m->invoke($this->controller(), $nomB, collect([$groupeA->id]), $this->annee->id, null);
+        $trouveA = $matcher->match(collect([$groupeA->id]), $this->annee->id, $nomB, null);
         $this->assertNull($trouveA, 'A student of another group must stay introuvable.');
 
         // Searching group B finds them.
-        $trouveB = $m->invoke($this->controller(), $nomB, collect([$groupeB->id]), $this->annee->id, null);
+        $trouveB = $matcher->match(collect([$groupeB->id]), $this->annee->id, $nomB, null);
         $this->assertNotNull($trouveB);
     }
 
