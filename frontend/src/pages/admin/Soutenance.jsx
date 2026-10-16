@@ -435,7 +435,7 @@ export default function Soutenance() {
             )}
             {selectedProgramme && (
               <p style={{ margin: '8px 0', fontSize: 13, color: '#666' }}>
-                {criteres.length} critère(s) de jury à noter sur 20, séance S{semestre}.
+                {criteres.length} critère(s) de jury à noter sur 20 (soutenance de fin de cursus).
               </p>
             )}
             <button
