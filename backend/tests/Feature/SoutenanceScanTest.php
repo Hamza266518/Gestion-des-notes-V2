@@ -277,6 +277,51 @@ class SoutenanceScanTest extends TestCase
         $this->assertEquals('14.7', $cell['raw']);
     }
 
+    public function test_programmes_lists_only_the_years_that_run_a_soutenance(): void
+    {
+        $response = $this->actingAs($this->admin)->getJson('/api/admin/soutenance/programmes');
+
+        $response->assertOk()->assertJsonPath('success', true);
+
+        $mine = collect($response->json('data'))
+            ->firstWhere('filiere_id', $this->filiere->id);
+
+        $this->assertNotNull($mine, 'A programme with a soutenance must be listed.');
+        $this->assertSame($this->niveau->id, $mine['niveau_id']);
+        $this->assertSame($this->niveau->numero, $mine['niveau_numero']);
+        $this->assertSame($this->unite->id, $mine['unite_id']);
+        $this->assertSame(2, $mine['unite_semestre']);
+        $this->assertCount(count(OfficialCurriculum::NSTI_CRITERIA), $mine['criteres']);
+        $this->assertSame(OfficialCurriculum::NSTI_CRITERIA[0]['nom'], $mine['criteres'][0]['nom']);
+    }
+
+    public function test_programmes_omit_a_filiere_without_a_soutenance(): void
+    {
+        $filiere = Filiere::create([
+            'nom'            => 'NOSOT ' . bin2hex(random_bytes(3)),
+            'code'           => 'NST' . bin2hex(random_bytes(3)),
+            'section'        => 'Section NOSOT',
+            'type_formation' => 'Technicien',
+            'nombre_annees'  => 3,
+        ]);
+        $this->track('filieres', $filiere->id);
+
+        $niveau = Niveau::create([
+            'filiere_id' => $filiere->id,
+            'numero'     => 1,
+        ]);
+        $this->track('niveaux', $niveau->id);
+
+        $response = $this->actingAs($this->admin)->getJson('/api/admin/soutenance/programmes');
+
+        $response->assertOk();
+        $this->assertNotContains(
+            $filiere->id,
+            collect($response->json('data'))->pluck('filiere_id')->all(),
+            'A filière without a soutenance must not be offered as a filter option.'
+        );
+    }
+
     public function test_scan_refuses_a_unit_that_is_not_a_soutenance(): void
     {
         $autre = Unite::create([

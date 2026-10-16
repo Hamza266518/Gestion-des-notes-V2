@@ -118,6 +118,43 @@ class SoutenanceController extends Controller
         ]);
     }
 
+    /**
+     * Every filière/année that actually runs a soutenance, with its criteria.
+     * The page builds its filters from this list, so a year whose notes are
+     * calculated normally can never be picked.
+     */
+    public function programmes()
+    {
+        $unites = Unite::where('nom', SoutenanceService::UNITE_NOM)
+            ->where('is_active', true)
+            ->with(['controles', 'filiere'])
+            ->orderBy('filiere_id')
+            ->orderBy('numero_annee')
+            ->get();
+
+        $programmes = [];
+        foreach ($unites as $unite) {
+            $niveau = Niveau::where('filiere_id', $unite->filiere_id)
+                ->where('numero', $unite->numero_annee)
+                ->first();
+            if (! $niveau) {
+                continue;
+            }
+
+            $programmes[] = [
+                'filiere_id'     => (int) $unite->filiere_id,
+                'filiere_nom'    => (string) ($unite->filiere?->nom ?? ''),
+                'niveau_id'      => (int) $niveau->id,
+                'niveau_numero'  => (int) $niveau->numero,
+                'unite_id'       => (int) $unite->id,
+                'unite_semestre' => (int) ($unite->semestre ?: 2),
+                'criteres'       => $this->criteres($unite),
+            ];
+        }
+
+        return response()->json(['success' => true, 'data' => $programmes]);
+    }
+
     public function scan(Request $request)
     {
         set_time_limit(120);

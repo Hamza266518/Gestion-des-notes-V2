@@ -1,177 +1,159 @@
-import { useState, useEffect, useCallback } from 'react';
-import { FiUploadCloud, FiSave } from 'react-icons/fi';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { FiX } from 'react-icons/fi';
 import { adminApi } from '../../api/admin';
-import { etudiantsApi } from '../../api/etudiants';
-import { notesApi } from '../../api/notes';
 import { soutenanceApi } from '../../api/soutenance';
-import { publicationsApi } from '../../api/publications';
-import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import { useToast } from '../../context/ToastContext';
-import { handleApiError, showSuccess } from '../../utils/errorHandler';
-import { formatNiveau, estSemestrePublique, MESSAGE_SEMESTRE_PUBLIE, invalidNoteHint } from '../../utils/helpers';
+import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Spinner from '../../components/common/Spinner';
-import EmptyState from '../../components/common/EmptyState';
-import FilterBar from '../../components/common/FilterBar';
 import FilterSelect from '../../components/common/FilterSelect';
-import usePersistedState from '../../hooks/usePersistedState';
+import { handleApiError, showSuccess } from '../../utils/errorHandler';
+import { MESSAGE_SEMESTRE_PUBLIE, formatNiveau, invalidNoteHint } from '../../utils/helpers';
 import '../../css/components.css';
 import '../../css/layout.css';
 
-// One cell of the grid, keyed unambiguously so a student and a criterion can
-// never collide.
-const cellKey = (etudiantId, controleId) => `${etudiantId}:${controleId}`;
+const STEPS = ['Sélection', 'PDF', 'Résultats', 'Confirmer'];
 
+/**
+ * Soutenance (NSTI) marks come from the jury sheet only: one row per student,
+ * one grade per criterion. This follows the same four steps as the exam
+ * scanner. The filters are built from the programmes that actually run a
+ * soutenance, so a year whose notes are calculated normally can never be
+ * picked, and no grid appears before a scan.
+ */
 export default function Soutenance() {
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
 
-  const [saved, setSaved] = usePersistedState('soutenance', {
-    filiere_id: '',
-    niveau_id: '',
-    groupe_id: '',
-  });
-  const [filiereId, setFiliereId] = useState(() => saved.filiere_id);
-  const [niveauId, setNiveauId] = useState(() => saved.niveau_id);
-  const [groupeId, setGroupeId] = useState(() => saved.groupe_id);
+  const [step, setStep] = useState(1);
 
-  useEffect(() => {
-    setSaved({ filiere_id: filiereId, niveau_id: niveauId, groupe_id: groupeId });
-  }, [filiereId, niveauId, groupeId, setSaved]);
-
-  const [filieres, setFilieres] = useState([]);
-  const [niveaux, setNiveaux] = useState([]);
+  const [programmes, setProgrammes] = useState([]);
+  const [selFiliere, setSelFiliere] = useState('');
+  const [selAnnee, setSelAnnee] = useState('');
+  const [selGroupe, setSelGroupe] = useState('');
   const [groupes, setGroupes] = useState([]);
 
-  const [status, setStatus] = useState(null);
-  const [loadingStatus, setLoadingStatus] = useState(false);
-
-  const [etudiants, setEtudiants] = useState([]);
-  const [values, setValues] = useState({});
-  const [invalidCells, setInvalidCells] = useState({});
-  const [publications, setPublications] = useState([]);
-  const [loadingData, setLoadingData] = useState(false);
-
   const [pdfs, setPdfs] = useState([]);
+  const [pdfUrls, setPdfUrls] = useState([]);
+  const [results, setResults] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const criteres = status?.criteres ?? [];
-  const unite = status?.unite ?? null;
-  const hasSoutenance = !!status?.has_soutenance;
+  const [searchQueries, setSearchQueries] = useState({});
+  const [searchMatches, setSearchMatches] = useState({});
+  const [searchActiveRowId, setSearchActiveRowId] = useState(null);
+  const [searchDropdownStyle, setSearchDropdownStyle] = useState({});
+  const searchTimers = useRef({});
+  const liveRowIds = useRef(new Set());
+  const rowIdSeq = useRef(0);
+  const newRowId = () => `r${++rowIdSeq.current}`;
+
+  const loading = scanning || saving;
+
+  // Only the filières/années that run a soutenance are offered at all.
+  const filieres = useMemo(() => {
+    const seen = new Map();
+    programmes.forEach(p => {
+      if (!seen.has(p.filiere_id)) seen.set(p.filiere_id, { id: p.filiere_id, nom: p.filiere_nom });
+    });
+    return [...seen.values()];
+  }, [programmes]);
+
+  const annees = useMemo(() => {
+    const nums = programmes
+      .filter(p => String(p.filiere_id) === String(selFiliere))
+      .map(p => Number(p.niveau_numero));
+    return [...new Set(nums)].sort((a, b) => a - b);
+  }, [programmes, selFiliere]);
+
+  const selectedProgramme = useMemo(
+    () => programmes.find(
+      p => String(p.filiere_id) === String(selFiliere) && Number(p.niveau_numero) === Number(selAnnee)
+    ) || null,
+    [programmes, selFiliere, selAnnee]
+  );
+
+  const criteres = selectedProgramme?.criteres ?? [];
+  const uniteId = selectedProgramme?.unite_id ?? '';
+  const semestre = selectedProgramme?.unite_semestre ?? 2;
 
   useEffect(() => {
-    adminApi.getFilieres()
-      .then(res => setFilieres(res.data.data || []))
-      .catch(() => setFilieres([]));
+    soutenanceApi.programmes()
+      .then(res => setProgrammes(res.data?.data || []))
+      .catch(() => setProgrammes([]));
+    return () => { pdfUrls.forEach(u => URL.revokeObjectURL(u)); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Changing the filière resets everything downstream; a filière with a single
+  // soutenance year selects it straight away (that is the usual case).
   useEffect(() => {
-    if (!filiereId) {
-      setNiveaux([]);
-      setNiveauId('');
-      setGroupeId('');
-      return;
-    }
-    adminApi.getNiveaux(filiereId)
-      .then(res => {
-        const data = res.data.data || [];
-        setNiveaux(data);
-        setNiveauId(cur => (data.some(n => String(n.id) === String(cur)) ? cur : ''));
-      })
-      .catch(() => setNiveaux([]));
-  }, [filiereId]);
+    setSelAnnee('');
+    setSelGroupe('');
+    setResults([]);
+    if (!selFiliere) return;
+    const nums = [...new Set(
+      programmes.filter(p => String(p.filiere_id) === String(selFiliere)).map(p => Number(p.niveau_numero))
+    )];
+    if (nums.length === 1) setSelAnnee(String(nums[0]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selFiliere]);
 
-  // The Soutenance unit decides whether this programme is eligible at all, and
-  // it carries the exact criteria to display.
   useEffect(() => {
-    if (!filiereId || !niveauId) {
-      setStatus(null);
-      setGroupes([]);
-      setGroupeId('');
-      return;
-    }
-    setLoadingStatus(true);
-    soutenanceApi.status({ filiere_id: filiereId, niveau_id: niveauId })
-      .then(res => setStatus(res.data?.data || null))
-      .catch(() => setStatus(null))
-      .finally(() => setLoadingStatus(false));
-
-    adminApi.getGroupes({ niveau_id: niveauId, annee_academique_id: currentAnnee?.id })
+    setGroupes([]);
+    setSelGroupe('');
+    if (!selectedProgramme || !currentAnnee?.id) return;
+    adminApi.getGroupes({ niveau_id: selectedProgramme.niveau_id, annee_academique_id: currentAnnee.id })
       .then(res => {
         const data = res.data.data || [];
         setGroupes(data);
-        setGroupeId(cur => (data.some(g => String(g.id) === String(cur)) ? cur : ''));
+        if (data.length === 1) setSelGroupe(String(data[0].id));
       })
       .catch(() => setGroupes([]));
-  }, [filiereId, niveauId, currentAnnee]);
+  }, [selectedProgramme, currentAnnee]);
 
-  const loadData = useCallback(async () => {
-    if (!hasSoutenance || !unite || !groupeId || !currentAnnee?.id) return;
-    setLoadingData(true);
-    try {
-      const [rosterRes, notesRes, pubsRes] = await Promise.all([
-        etudiantsApi.getEtudiants({ groupe_id: groupeId, annee_academique_id: currentAnnee.id }),
-        notesApi.getNotes({ unite_id: unite.id, groupe_id: groupeId }),
-        publicationsApi.getPublications({ groupe_id: groupeId, annee_academique_id: currentAnnee.id }),
-      ]);
-      const roster = rosterRes.data?.data || [];
-      const notes = notesRes.data?.data || [];
-      setEtudiants(roster);
-      setPublications(pubsRes.data?.data || []);
+  useEffect(() => {
+    liveRowIds.current = new Set(results.map(r => r.rowId));
+  }, [results]);
 
-      const next = {};
-      roster.forEach(e => criteres.forEach(c => {
-        const n = notes.find(x => x.etudiant_id === e.id && x.controle_id === c.id);
-        next[cellKey(e.id, c.id)] = n ? (n.est_absent ? 'AB' : String(n.valeur ?? '')) : '';
-      }));
-      setValues(next);
-      setInvalidCells({});
-    } catch (err) {
-      handleApiError(err, toast);
-      setEtudiants([]);
-      setValues({});
-    } finally {
-      setLoadingData(false);
-    }
-  }, [hasSoutenance, unite, groupeId, currentAnnee, criteres, toast]);
+  useEffect(() => {
+    const close = () => setSearchActiveRowId(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  const handleFiles = (e) => {
+    const files = Array.from(e.target.files || []);
+    setPdfs(files);
+    setPdfUrls(prev => { prev.forEach(u => URL.revokeObjectURL(u)); return files.map(f => URL.createObjectURL(f)); });
+  };
 
-  const estVerrouille = estSemestrePublique(publications, {
-    groupeId,
-    anneeId: currentAnnee?.id,
-    semestre: unite?.semestre ?? 2,
-  });
-
-  const setCell = (etudiantId, controleId, text) => {
-    const key = cellKey(etudiantId, controleId);
-    setValues(prev => ({ ...prev, [key]: text }));
-    // A hand correction clears the "misread" flag once the text changes.
-    setInvalidCells(prev => {
-      if (!prev[key]) return prev;
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
+  const removePdf = (i) => {
+    URL.revokeObjectURL(pdfUrls[i]);
+    setPdfs(prev => prev.filter((_, idx) => idx !== i));
+    setPdfUrls(prev => prev.filter((_, idx) => idx !== i));
   };
 
   const handleScan = async () => {
-    if (pdfs.length === 0 || !unite || !groupeId || !currentAnnee?.id) {
-      toast.warning('Sélectionnez un groupe et ajoutez au moins un PDF.');
+    if (pdfs.length === 0 || !uniteId || !selGroupe || !currentAnnee?.id) {
+      toast.warning('Choisissez la liste (groupe) et ajoutez au moins un PDF.');
       return;
     }
-    if (etudiants.length > 0) {
-      const ok = window.confirm('Un nouveau scan remplace les notes affichées, y compris celles saisies à la main. Continuer ?');
+    if (results.length > 0) {
+      const ok = window.confirm(
+        `Un nouveau scan remplace les ${results.length} ligne(s) déjà affichée(s), ` +
+        'y compris les notes corrigées à la main. Continuer ?'
+      );
       if (!ok) return;
     }
+
     setScanning(true);
     try {
       const fd = new FormData();
       pdfs.forEach(p => fd.append('pdfs[]', p));
-      fd.append('unite_id', unite.id);
+      fd.append('unite_id', uniteId);
       fd.append('annee_academique_id', currentAnnee.id);
-      fd.append('filiere_id', filiereId);
-      fd.append('groupe_id', groupeId);
+      fd.append('filiere_id', selFiliere);
+      fd.append('groupe_id', selGroupe);
 
       const res = await soutenanceApi.scan(fd);
       const data = res.data;
@@ -180,68 +162,157 @@ export default function Soutenance() {
         return;
       }
 
-      const resultats = data.data?.resultats || [];
-      if (resultats.length === 0) {
+      const rows = (data.data?.resultats || []).map(r => {
+        const notesBrutes = Array.isArray(r.notes) ? r.notes : [];
+        return {
+          rowId: newRowId(),
+          nom: r.nom_prenom || '',
+          numero_inscription: r.numero_inscription || '',
+          groupe: r.groupe || '',
+          etudiant_id: r.etudiant_id || null,
+          groupe_id: r.groupe_id || null,
+          verrouille: r.verrouille || false,
+          found: r.found || false,
+          // One cell per criterion, in jury order. An absent criterion shows
+          // "AB"; a misread keeps its raw text and stays flagged.
+          notes: criteres.map((c, i) => {
+            const cell = notesBrutes[i] || {};
+            const absent = !!cell.est_absent;
+            const invalid = !!cell.invalid;
+            let valeur = '';
+            if (absent) valeur = 'AB';
+            else if (invalid) valeur = cell.raw ?? '';
+            else if (cell.valeur != null) valeur = String(cell.valeur);
+            return {
+              controle_id: cell.controle_id ?? c.id,
+              valeur,
+              invalid: invalid && !absent,
+              raw: cell.raw ?? null,
+            };
+          }),
+        };
+      });
+
+      if (rows.length === 0) {
         toast.error('Aucun résultat. Vérifiez que les PDF sont lisibles.');
         return;
       }
-
-      const next = { ...values };
-      const flags = { ...invalidCells };
-      let nonReconnu = 0;
-
-      resultats.forEach(r => {
-        if (!r.etudiant_id) { nonReconnu++; return; }
-        (r.notes || []).forEach((cell, i) => {
-          const critere = criteres[i];
-          if (!critere) return;
-          const key = cellKey(r.etudiant_id, critere.id);
-          if (cell.est_absent) {
-            next[key] = 'AB';
-          } else if (cell.invalid) {
-            next[key] = cell.raw ?? '';
-            flags[key] = { invalid: true, raw: cell.raw ?? null };
-          } else {
-            next[key] = cell.valeur != null ? String(cell.valeur) : '';
-          }
-        });
-      });
-
-      setValues(next);
-      setInvalidCells(flags);
-
-      let msg = `${resultats.length} étudiant(s) lu(s)`;
-      if (nonReconnu > 0) msg += `, ${nonReconnu} non reconnu(s) (nom absent de ce groupe)`;
-      showSuccess(toast, msg);
-
-      const flagged = Object.keys(flags).length;
-      if (flagged > 0) {
-        toast.warning(`${flagged} note(s) illisible(s) : corrigez-les avant d'enregistrer.`);
-      }
+      const unrec = rows.filter(r => !r.etudiant_id).length;
+      showSuccess(toast, `${rows.length} étudiant(s) lu(s)${unrec > 0 ? `, ${unrec} non reconnu(s)` : ''}`);
+      setResults(rows);
+      setStep(3);
     } catch (err) {
       handleApiError(err, toast);
+      setResults([]);
     } finally {
       setScanning(false);
     }
   };
 
-  const handleConfirm = async () => {
-    if (!unite || !groupeId || !currentAnnee?.id) return;
-    if (estVerrouille) {
-      toast.warning(MESSAGE_SEMESTRE_PUBLIE);
+  const updateCell = (rowId, index, text) => {
+    setResults(prev => prev.map(r => {
+      if (r.rowId !== rowId) return r;
+      const notes = r.notes.map((c, i) => (i === index ? { ...c, valeur: text, invalid: false } : c));
+      return { ...r, notes };
+    }));
+  };
+
+  const removeResult = (rowId) => {
+    setResults(prev => prev.filter(r => r.rowId !== rowId));
+    setSearchQueries(prev => { const n = { ...prev }; delete n[rowId]; return n; });
+    setSearchMatches(prev => { const n = { ...prev }; delete n[rowId]; return n; });
+    if (searchTimers.current[rowId]) {
+      clearTimeout(searchTimers.current[rowId]);
+      delete searchTimers.current[rowId];
+    }
+  };
+
+  const skipStudent = (row) => {
+    removeResult(row.rowId);
+    setSearchActiveRowId(cur => (cur === row.rowId ? null : cur));
+    toast.info(`« ${row.nom} » ignoré.`);
+  };
+
+  const handleSearchChange = (rowId, value) => {
+    setSearchQueries(prev => ({ ...prev, [rowId]: value }));
+    if (searchTimers.current[rowId]) {
+      clearTimeout(searchTimers.current[rowId]);
+      delete searchTimers.current[rowId];
+    }
+    if (value.length < 2) {
+      setSearchMatches(prev => ({ ...prev, [rowId]: [] }));
       return;
     }
-    const flagged = Object.keys(invalidCells).filter(k => (values[k] ?? '').trim() !== '');
-    if (flagged.length > 0) {
-      toast.warning(`${flagged.length} note(s) illisible(s). Corrigez-les (ou videz la case) avant d'enregistrer.`);
+    searchTimers.current[rowId] = setTimeout(async () => {
+      delete searchTimers.current[rowId];
+      try {
+        // Suggestions stay inside the chosen groupe, so a hand-linked row can
+        // never pull in a student from a sibling cohort.
+        const res = await soutenanceApi.searchEtudiants({
+          search: value,
+          annee_academique_id: currentAnnee?.id,
+          filiere_id: selFiliere,
+          niveau_numero: selectedProgramme?.niveau_numero,
+          semestre,
+          groupe_id: selGroupe || undefined,
+        });
+        if (!liveRowIds.current.has(rowId)) return;
+        setSearchMatches(prev => ({ ...prev, [rowId]: res.data.data || [] }));
+      } catch {
+        setSearchMatches(prev => ({ ...prev, [rowId]: [] }));
+      }
+    }, 300);
+  };
+
+  const selectStudent = (rowId, student) => {
+    setResults(prev => prev.map(r => r.rowId === rowId ? {
+      ...r,
+      etudiant_id: student.id,
+      groupe_id: student.groupe_id ?? r.groupe_id,
+      verrouille: student.verrouille ?? r.verrouille,
+      nom: student.nom_prenom,
+      numero_inscription: student.numero_inscription || '',
+      groupe: student.groupe || '',
+      found: true,
+    } : r));
+    setSearchQueries(prev => { const n = { ...prev }; delete n[rowId]; return n; });
+    setSearchMatches(prev => { const n = { ...prev }; delete n[rowId]; return n; });
+    setSearchActiveRowId(cur => (cur === rowId ? null : cur));
+  };
+
+  const resultatsVerrouilles = results.filter(r => r.etudiant_id && r.verrouille);
+
+  const handleNextFromResults = () => {
+    const unrec = results.filter(r => !r.etudiant_id);
+    if (unrec.length > 0) {
+      toast.warning(`${unrec.length} étudiant(s) introuvable(s) : reliez-les par recherche ou cliquez « Ignorer ».`);
+      return;
+    }
+    const unreadable = results.filter(r => r.notes.some(c => c.invalid && (c.valeur ?? '').trim() !== ''));
+    if (unreadable.length > 0) {
+      toast.warning(`${unreadable.length} ligne(s) avec une note illisible. Corrigez-la (ou videz la case) avant de continuer.`);
+      return;
+    }
+    setStep(4);
+  };
+
+  const handleConfirm = async () => {
+    if (results.length === 0) return;
+    const missing = results.filter(r => !r.etudiant_id);
+    if (missing.length > 0) {
+      toast.warning(`${missing.length} étudiant(s) non reconnu(s). Reliez-les ou ignorez-les avant d'enregistrer.`);
+      return;
+    }
+    if (resultatsVerrouilles.length > 0) {
+      toast.warning(MESSAGE_SEMESTRE_PUBLIE);
       return;
     }
 
     const notes = [];
-    etudiants.forEach(e => criteres.forEach(c => {
-      const text = (values[cellKey(e.id, c.id)] ?? '').trim();
+    results.forEach(r => r.notes.forEach(c => {
+      const text = (c.valeur ?? '').trim();
       if (text === '') return;
-      notes.push({ etudiant_id: e.id, controle_id: c.id, valeur: text });
+      notes.push({ etudiant_id: r.etudiant_id, controle_id: c.controle_id, valeur: text });
     }));
 
     if (notes.length === 0) {
@@ -252,19 +323,24 @@ export default function Soutenance() {
     setSaving(true);
     try {
       const res = await soutenanceApi.confirm({
-        unite_id: unite.id,
-        annee_academique_id: currentAnnee.id,
-        groupe_id: groupeId,
+        unite_id: uniteId,
+        annee_academique_id: currentAnnee?.id,
+        groupe_id: selGroupe,
         notes,
       });
       showSuccess(toast, res.data.message || 'Notes de soutenance enregistrées');
       const skipped = res.data.skipped || [];
       if (skipped.length > 0) {
         const raisons = [...new Set(skipped.map(s => s.raison).filter(Boolean))];
-        toast.warning(`${skipped.length} ligne(s) non enregistrée(s)${raisons.length ? ' — ' + raisons.join(' · ') : ''}`);
+        toast.warning(`${skipped.length} case(s) non enregistrée(s)${raisons.length ? ' — ' + raisons.join(' · ') : ''}`);
       }
+      setStep(1);
       setPdfs([]);
-      loadData();
+      setPdfUrls([]);
+      setResults([]);
+      setSearchQueries({});
+      setSearchMatches({});
+      setSearchActiveRowId(null);
     } catch (err) {
       handleApiError(err, toast);
     } finally {
@@ -272,183 +348,357 @@ export default function Soutenance() {
     }
   };
 
-  const critereLabel = (c) => `${c.numero}. ${c.nom}`;
-
   return (
     <div className="page">
       <div className="page-header">
         <h2 className="page-title">Soutenance</h2>
         <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--gray-500)' }}>
-          Notes du jury (NSTI). Chaque critère est une note sur 20 ; saisissez-les ou scannez la feuille du jury.
+          Notes du jury (NSTI) : scannez la feuille du jury, un étudiant par ligne et une note par critère.
         </p>
       </div>
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-body">
-          <FilterBar
-            showSearch={false}
-            value={{ filiere_id: filiereId, niveau_id: niveauId, groupe_id: groupeId }}
-            onChange={() => {}}
-            onClear={() => { setFiliereId(''); setNiveauId(''); setGroupeId(''); }}
-            chips={[
-              filiereId && {
-                key: 'filiere',
-                label: `Filière: ${filieres.find(f => String(f.id) === String(filiereId))?.nom ?? ''}`,
-                onRemove: () => { setFiliereId(''); setNiveauId(''); setGroupeId(''); },
-              },
-              niveauId && {
-                key: 'niveau',
-                label: `Niveau: ${formatNiveau(niveaux.find(n => String(n.id) === String(niveauId))?.numero)}`,
-                onRemove: () => { setNiveauId(''); setGroupeId(''); },
-              },
-              groupeId && {
-                key: 'groupe',
-                label: `Groupe: ${groupes.find(g => String(g.id) === String(groupeId))?.nom ?? ''}`,
-                onRemove: () => setGroupeId(''),
-              },
-            ].filter(Boolean)}
-          >
-            <FilterSelect
-              label="Filière"
-              value={filiereId}
-              options={filieres.map(f => ({ id: f.id, label: f.nom }))}
-              onChange={(v) => { setFiliereId(v); setNiveauId(''); setGroupeId(''); }}
-              placeholder="Toutes les filières"
-              allLabel="Toutes les filières"
-            />
-            <FilterSelect
-              label="Niveau"
-              value={niveauId}
-              options={niveaux.map(n => ({ id: n.id, label: formatNiveau(n.numero) }))}
-              onChange={(v) => { setNiveauId(v); setGroupeId(''); }}
-              disabled={!filiereId}
-              placeholder="Tous les niveaux"
-              allLabel="Tous les niveaux"
-            />
-            <FilterSelect
-              label="Groupe"
-              value={groupeId}
-              options={groupes.map(g => ({ id: g.id, label: g.nom }))}
-              onChange={setGroupeId}
-              disabled={!niveauId || !hasSoutenance}
-              placeholder="Tous les groupes"
-              allLabel="Tous les groupes"
-            />
-          </FilterBar>
-        </div>
-      </div>
-
-      {loadingStatus && (
-        <div style={{ textAlign: 'center', padding: 40 }}><Spinner /></div>
-      )}
-
-      {!loadingStatus && niveauId && !hasSoutenance && (
-        <EmptyState message="Cette filière / année n'a pas de soutenance : les notes se calculent normalement." />
-      )}
-
-      {hasSoutenance && (
-        <>
-          <div className="card" style={{ marginBottom: 16 }}>
-            <div className="card-body">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <strong style={{ fontSize: 13 }}>Feuille du jury :</strong>
-                <input
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  multiple
-                  onChange={e => setPdfs(Array.from(e.target.files || []))}
-                  disabled={scanning || estVerrouille}
-                />
-                <button
-                  className="btn btn-outline"
-                  onClick={handleScan}
-                  disabled={scanning || pdfs.length === 0 || estVerrouille || !groupeId}
-                >
-                  <FiUploadCloud style={{ marginRight: 6 }} />
-                  {scanning ? 'Lecture en cours...' : 'Scanner'}
-                </button>
-                {pdfs.length > 0 && (
-                  <span style={{ fontSize: 13, color: 'var(--gray-500)' }}>
-                    {pdfs.length} fichier(s) sélectionné(s)
-                  </span>
-                )}
+      <div className="steps" style={{ marginBottom: 28 }}>
+        {STEPS.map((label, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%',
+                background: step > i + 1 ? 'var(--success)' : step === i + 1 ? 'var(--primary)' : 'var(--gray-200)',
+                color: step >= i + 1 ? 'white' : 'var(--gray-500)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 600,
+              }}>
+                {step > i + 1 ? '✓' : i + 1}
               </div>
+              <span style={{ fontSize: 13, color: step === i + 1 ? 'var(--primary)' : 'var(--gray-400)', fontWeight: step === i + 1 ? 500 : 400 }}>
+                {label}
+              </span>
             </div>
           </div>
+        ))}
+      </div>
 
-          {estVerrouille && (
-            <div className="alert alert-warning" style={{ marginBottom: 16 }}>{MESSAGE_SEMESTRE_PUBLIE}</div>
+      {step === 1 && (
+        programmes.length === 0 ? (
+          <div className="card card-body" style={{ maxWidth: 720 }}>
+            <div className="alert alert-info" style={{ margin: 0 }}>
+              Aucune soutenance n'est configurée. Seules les filières de dernière année en ont une.
+            </div>
+          </div>
+        ) : (
+          <div className="card card-body" style={{ maxWidth: 600 }}>
+            <div className="form-group">
+              <FilterSelect
+                block
+                label="Filière"
+                value={selFiliere}
+                options={filieres.map(f => ({ id: f.id, label: f.nom }))}
+                onChange={setSelFiliere}
+                placeholder="Sélectionner"
+                allLabel="Sélectionner"
+              />
+            </div>
+            <div className="form-group">
+              <FilterSelect
+                block
+                label="Année"
+                value={selAnnee}
+                options={annees.map(a => ({ id: a, label: formatNiveau(a) }))}
+                onChange={v => { setSelAnnee(v); setSelGroupe(''); setResults([]); }}
+                disabled={!selFiliere || annees.length === 0}
+                placeholder="Sélectionner"
+                allLabel="Sélectionner"
+              />
+            </div>
+            <div className="form-group">
+              <FilterSelect
+                block
+                label="Liste (groupe)"
+                value={selGroupe}
+                options={groupes.map(g => ({ id: g.id, label: g.nom }))}
+                onChange={setSelGroupe}
+                disabled={!selectedProgramme || groupes.length === 0}
+                placeholder="Sélectionner"
+                allLabel="Sélectionner"
+              />
+            </div>
+            {selectedProgramme && groupes.length === 0 && (
+              <p style={{ margin: '8px 0', fontSize: 13, color: '#b45309' }}>
+                Aucun groupe trouvé pour cette filière/année. Vérifiez l'année académique.
+              </p>
+            )}
+            {selectedProgramme && groupes.length > 1 && !selGroupe && (
+              <div className="alert alert-warning" style={{ padding: '12px 16px', fontSize: 13 }}>
+                <strong>Choisissez la liste (groupe)</strong> de cette feuille : la lecture des noms se fait
+                uniquement à l'intérieur de la liste choisie.
+              </div>
+            )}
+            {selectedProgramme && (
+              <p style={{ margin: '8px 0', fontSize: 13, color: '#666' }}>
+                {criteres.length} critère(s) de jury à noter sur 20, séance S{semestre}.
+              </p>
+            )}
+            <button
+              className="btn btn-primary"
+              disabled={!selectedProgramme || !selGroupe}
+              onClick={() => setStep(2)}
+            >
+              Suivant →
+            </button>
+          </div>
+        )
+      )}
+
+      {step === 2 && (
+        <div className="card card-body" style={{ maxWidth: 720, width: '100%' }}>
+          <div style={{ marginBottom: 16, padding: '14px 18px', borderRadius: 10, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 13, lineHeight: 1.7 }}>
+            <div style={{ fontWeight: 700, color: '#1d4ed8', marginBottom: 6 }}>Important</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, color: '#1e3a5f' }}>
+              <span>1. Uploadez la <strong>feuille du jury</strong> (liste des étudiants + notes des critères)</span>
+              <span>2. Chaque note se lit par quart de point (0,25) ; un critère absent s'écrit « AB »</span>
+            </div>
+          </div>
+          <div style={{ overflowX: 'auto', marginBottom: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <table style={{ fontSize: 13, minWidth: 480, width: '100%' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f9fafb' }}>
+                  <th style={{ padding: '10px 14px', fontWeight: 600, textAlign: 'left' }}>Critère</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 600, textAlign: 'left' }}>Intitulé</th>
+                </tr>
+              </thead>
+              <tbody>
+                {criteres.map(c => (
+                  <tr key={c.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '8px 14px' }}>{c.numero}</td>
+                    <td style={{ padding: '8px 14px' }}>{c.nom}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="alert alert-info" style={{ marginBottom: 16, padding: '12px 16px', fontSize: 13 }}>
+            Les notes ne seront rapprochées que des étudiants du groupe
+            {' '}<strong>{groupes.find(g => String(g.id) === String(selGroupe))?.nom ?? ''}</strong>.
+            Tout nom introuvable dans la liste reste marqué « Introuvable ».
+          </div>
+          <input
+            type="file"
+            accept=".pdf,application/pdf"
+            multiple
+            onChange={handleFiles}
+            disabled={loading}
+          />
+          {pdfUrls.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
+              {pdfUrls.map((u, i) => (
+                <div key={i} style={{ position: 'relative', width: 170 }}>
+                  <iframe src={u} title={`feuille-${i + 1}`} style={{ width: 170, height: 220, border: '1px solid #e5e7eb', borderRadius: 6 }} />
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-danger"
+                    style={{ position: 'absolute', top: 6, right: 6, padding: '4px 6px' }}
+                    onClick={() => !loading && removePdf(i)}
+                    disabled={loading}
+                    title="Retirer"
+                  >
+                    <FiX size={14} />
+                  </button>
+                  <div style={{ fontSize: 12, textAlign: 'center', color: 'var(--gray-500)', marginTop: 4 }}>Page {i + 1}</div>
+                </div>
+              ))}
+            </div>
           )}
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+            <button className="btn btn-outline" onClick={() => setStep(1)} disabled={loading}>← Retour</button>
+            <button className="btn btn-primary" disabled={loading || pdfs.length === 0} onClick={handleScan}>
+              {scanning ? 'Lecture en cours...' : 'Scanner'}
+            </button>
+          </div>
+        </div>
+      )}
 
-          {!groupeId ? (
-            <EmptyState message="Sélectionnez un groupe pour saisir ou scanner ses notes de soutenance." />
-          ) : loadingData ? (
-            <div style={{ textAlign: 'center', padding: 40 }}><Spinner /></div>
-          ) : etudiants.length === 0 ? (
-            <EmptyState message="Aucun étudiant dans ce groupe." />
+      {step === 3 && (
+        <div style={{ maxWidth: 1400, width: '100%', margin: '0 auto' }}>
+          <div className="alert alert-info" style={{ marginBottom: 16 }}>
+            Vérifiez les résultats. Toutes les notes sont modifiables ; « AB » marque un critère absent.
+            Pour un nom non reconnu, tapez-le pour le retrouver dans la liste.
+          </div>
+
+          {results.length === 0 ? (
+            <div className="text-center" style={{ padding: 40 }}>
+              <h4 style={{ color: '#666', marginBottom: 12 }}>Aucune note détectée</h4>
+              <p style={{ color: '#999', marginBottom: 24 }}>Vérifiez les PDFs ou réessayez le scan.</p>
+              <button className="btn btn-primary" onClick={() => setStep(2)} disabled={loading}>Retour aux fichiers</button>
+            </div>
           ) : (
-            <>
-              <div className="table-wrap" style={{ overflowX: 'auto' }}>
-                <table className="table mb-0" style={{ minWidth: criteres.length * 132 + 220 }}>
+            <div>
+              <div style={{ overflowX: 'auto', marginBottom: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                <table style={{ fontSize: 14, minWidth: 220 + criteres.length * 90, width: '100%' }}>
                   <thead>
-                    <tr>
-                      <th style={{ minWidth: 220 }}>Étudiant</th>
+                    <tr style={{ backgroundColor: '#f9fafb' }}>
+                      <th style={{ padding: '12px 16px', fontWeight: 600, minWidth: 200, textAlign: 'left' }}>Nom</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 600, minWidth: 120, textAlign: 'left' }}>N° Inscription</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 600, minWidth: 100, textAlign: 'left' }}>Groupe</th>
                       {criteres.map(c => (
-                        <th key={c.id} style={{ minWidth: 120 }} title={c.nom}>{critereLabel(c)}</th>
+                        <th key={c.id} style={{ padding: '12px 8px', fontWeight: 600, minWidth: 84, textAlign: 'center' }} title={c.nom}>
+                          {c.numero}
+                        </th>
                       ))}
+                      <th style={{ padding: '12px 16px', fontWeight: 600, minWidth: 130, textAlign: 'left' }}>Statut</th>
+                      <th style={{ padding: '12px 16px', fontWeight: 600, minWidth: 90, textAlign: 'left' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {etudiants.map(e => (
-                      <tr key={e.id}>
-                        <td>
-                          <strong>{e.nom_prenom}</strong>
-                          {e.numero_inscription && (
-                            <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>#{e.numero_inscription}</div>
-                          )}
-                        </td>
-                        {criteres.map(c => {
-                          const key = cellKey(e.id, c.id);
-                          const flag = invalidCells[key];
-                          const hint = flag ? invalidNoteHint(flag.raw) : '';
-                          return (
-                            <td key={c.id}>
+                    {results.map(r => {
+                      const isUnmatched = !r.etudiant_id;
+                      const hasInvalid = r.notes.some(c => c.invalid && (c.valeur ?? '').trim() !== '');
+                      return (
+                        <tr key={r.rowId} style={{
+                          borderBottom: '1px solid #e5e7eb',
+                          background: isUnmatched ? '#fff7ed' : hasInvalid ? '#fef2f2' : 'transparent',
+                        }}>
+                          <td style={{ padding: '12px 16px' }}>
+                            {isUnmatched ? (
                               <input
-                                type="text"
                                 className="form-input"
-                                value={values[key] ?? ''}
-                                onChange={ev => setCell(e.id, c.id, ev.target.value)}
-                                placeholder="—"
-                                disabled={estVerrouille}
-                                style={{ width: 96, textAlign: 'center' }}
+                                style={{ width: '100%', padding: '6px 10px', fontSize: 14 }}
+                                value={searchQueries[r.rowId] ?? r.nom}
+                                onChange={e => handleSearchChange(r.rowId, e.target.value)}
+                                placeholder="Rechercher un étudiant..."
+                                disabled={loading}
+                                onClick={e => e.stopPropagation()}
+                                onFocus={e => {
+                                  const rect = e.target.getBoundingClientRect();
+                                  setSearchDropdownStyle({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+                                  setSearchActiveRowId(r.rowId);
+                                }}
                               />
-                              {hint && (
-                                <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4, maxWidth: 120 }}>
-                                  {hint}
-                                </div>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
+                            ) : (
+                              <span style={{ display: 'block' }}>{r.nom}</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>{r.numero_inscription || <span style={{ color: '#999' }}>—</span>}</td>
+                          <td style={{ padding: '12px 16px' }}>{r.groupe}</td>
+                          {criteres.map((c, i) => {
+                            const cell = r.notes[i] || {};
+                            const hint = cell.invalid ? invalidNoteHint(cell.raw) : '';
+                            return (
+                              <td key={c.id} style={{ padding: '12px 8px', textAlign: 'center' }}>
+                                {r.verrouille ? (
+                                  <span style={{ display: 'block', color: '#b91c1c', fontWeight: 600 }} title={MESSAGE_SEMESTRE_PUBLIE}>
+                                    {cell.valeur || '—'}
+                                  </span>
+                                ) : isUnmatched ? (
+                                  <span style={{ display: 'block', color: '#999' }}>{cell.valeur || '—'}</span>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    className="form-input"
+                                    style={{ width: 64, padding: '8px 6px', fontSize: 14, textAlign: 'center' }}
+                                    value={cell.valeur ?? ''}
+                                    placeholder="—"
+                                    disabled={loading}
+                                    onChange={e => updateCell(r.rowId, i, e.target.value)}
+                                  />
+                                )}
+                                {hint && (
+                                  <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>{hint}</div>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td style={{ padding: '12px 16px' }}>
+                            {r.verrouille ? (
+                              <span style={{ color: '#b45309', fontWeight: 600, fontSize: 13 }} title={MESSAGE_SEMESTRE_PUBLIE}>Publié</span>
+                            ) : r.etudiant_id ? (
+                              <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: 13 }}>✓ Reconnu</span>
+                            ) : (
+                              <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 13 }}>✗ Introuvable</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            {isUnmatched ? (
+                              <button className="btn btn-sm btn-danger" onClick={() => skipStudent(r)} disabled={loading}>Ignorer</button>
+                            ) : (
+                              <button className="btn btn-sm btn-danger" onClick={() => removeResult(r.rowId)} disabled={loading}>Retirer</button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
-                <button
-                  className="btn btn-primary"
-                  onClick={handleConfirm}
-                  disabled={saving || estVerrouille || !groupeId}
-                >
-                  <FiSave style={{ marginRight: 6 }} />
-                  {saving ? 'Enregistrement...' : 'Enregistrer les notes'}
-                </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-outline" onClick={() => setStep(2)} disabled={loading}>← Retour</button>
+                <button className="btn btn-primary" onClick={handleNextFromResults} disabled={loading}>Suivant →</button>
               </div>
-            </>
+            </div>
           )}
-        </>
+
+          {searchActiveRowId !== null && searchMatches[searchActiveRowId]?.length > 0 && (
+            <div
+              style={{
+                position: 'fixed',
+                top: searchDropdownStyle.top,
+                left: searchDropdownStyle.left,
+                width: searchDropdownStyle.width,
+                background: '#fff',
+                border: '1px solid #e5e7eb',
+                borderRadius: 6,
+                zIndex: 9999,
+                maxHeight: 200,
+                overflowY: 'auto',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              }}
+            >
+              {searchMatches[searchActiveRowId].map(s => (
+                <div
+                  key={s.id}
+                  style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                  onClick={() => selectStudent(searchActiveRowId, s)}
+                >
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{s.nom_prenom}</div>
+                  <div style={{ fontSize: 12, color: '#777' }}>
+                    {s.numero_inscription || ''}{s.groupe ? ` — ${s.groupe}` : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="card card-body" style={{ maxWidth: 600 }}>
+          <div className="alert alert-warning" style={{ marginBottom: 16 }}>
+            <strong>Confirmez pour enregistrer les notes</strong> — cela écrira les notes de soutenance des{' '}
+            {results.length} étudiant(s) affiché(s) sur les critères du jury.
+          </div>
+          {resultatsVerrouilles.length > 0 && (
+            <div className="alert alert-danger" style={{ marginBottom: 16 }}>
+              {MESSAGE_SEMESTRE_PUBLIE}
+              <ul style={{ margin: '8px 0 0 18px', padding: 0 }}>
+                {resultatsVerrouilles.map(r => (
+                  <li key={r.etudiant_id}>{r.nom} — {r.groupe}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-outline" onClick={() => setStep(3)} disabled={loading}>← Retour</button>
+            <button
+              className="btn btn-primary"
+              style={{ minWidth: 220, justifyContent: 'center' }}
+              disabled={loading || resultatsVerrouilles.length > 0}
+              title={resultatsVerrouilles.length > 0 ? MESSAGE_SEMESTRE_PUBLIE : undefined}
+              onClick={handleConfirm}
+            >
+              {saving ? <><Spinner /> Enregistrement...</> : `Confirmer ${results.length} ligne(s)`}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

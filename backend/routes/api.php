@@ -194,6 +194,7 @@ Route::put('/notes/{id}', [NoteAdminController::class, 'update']);
 
         // Soutenance (NSTI): the jury criteria are Note rows on the Soutenance
         // unit's controls, scanned from the jury sheet.
+        Route::get('/soutenance/programmes', [\App\Http\Controllers\Admin\SoutenanceController::class, 'programmes']);
         Route::get('/soutenance/status', [\App\Http\Controllers\Admin\SoutenanceController::class, 'status']);
         Route::post('/soutenance/scan', [\App\Http\Controllers\Admin\SoutenanceController::class, 'scan']);
         Route::post('/soutenance/confirm', [\App\Http\Controllers\Admin\SoutenanceController::class, 'confirm']);
