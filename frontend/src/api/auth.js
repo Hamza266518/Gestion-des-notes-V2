@@ -12,5 +12,4 @@ export const authApi = {
   verifyEmail: (code) => api.post('/account/email/verify', { code }),
   resendEmailVerification: () => api.post('/account/email/resend'),
   removeEmail: () => api.delete('/account/email'),
-  updateUsername: (username) => api.put('/account/username', { username }),
 };

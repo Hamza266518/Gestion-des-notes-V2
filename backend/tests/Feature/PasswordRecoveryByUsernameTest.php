@@ -235,4 +235,68 @@ class PasswordRecoveryByUsernameTest extends TestCase
             'confirm_password' => 'weak',
         ])->assertStatus(422)->assertJsonValidationErrors('new_password');
     }
+
+    public function test_the_account_can_be_found_by_contact_email(): void
+    {
+        $user = $this->verifiedUser();
+        Mail::fake();
+
+        $this->postJson('/api/auth/password/forgot', [
+            'username' => strtoupper($user->contact_email),
+        ])->assertOk();
+
+        $code = null;
+        Mail::assertSent(VerificationCodeMail::class, function (VerificationCodeMail $mail) use (&$code) {
+            $code = $mail->code;
+            return true;
+        });
+
+        $this->postJson('/api/auth/password/reset', [
+            'username'         => $user->contact_email,
+            'code'             => $code,
+            'new_password'     => self::NEW_PASSWORD,
+            'confirm_password' => self::NEW_PASSWORD,
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->assertTrue(Hash::check(self::NEW_PASSWORD, $user->refresh()->password));
+    }
+
+    public function test_a_valid_code_passes_the_verification_step_without_being_consumed(): void
+    {
+        $user = $this->verifiedUser();
+        $code = $this->requestCode($user);
+
+        $this->postJson('/api/auth/password/verify-code', [
+            'username' => $user->username,
+            'code'     => $code,
+        ])->assertOk()->assertJsonPath('success', true);
+
+        // The middle step must not burn the code: the reset that follows still works.
+        $this->postJson('/api/auth/password/reset', [
+            'username'         => $user->username,
+            'code'             => $code,
+            'new_password'     => self::NEW_PASSWORD,
+            'confirm_password' => self::NEW_PASSWORD,
+        ])->assertOk();
+
+        $this->assertTrue(Hash::check(self::NEW_PASSWORD, $user->refresh()->password));
+    }
+
+    public function test_the_verification_step_hides_whether_the_identifier_exists(): void
+    {
+        $user = $this->verifiedUser();
+        $code = $this->requestCode($user);
+
+        $wrongCode = $this->postJson('/api/auth/password/verify-code', [
+            'username' => $user->username,
+            'code'     => '000000',
+        ])->assertStatus(401);
+
+        $unknownUser = $this->postJson('/api/auth/password/verify-code', [
+            'username' => 'does.not.exist',
+            'code'     => $code,
+        ])->assertStatus(401);
+
+        $this->assertSame($wrongCode->json('message'), $unknownUser->json('message'));
+    }
 }

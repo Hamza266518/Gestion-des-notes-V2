@@ -35,9 +35,12 @@ Route::get('/health', [HealthController::class, 'check']);
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
 Route::get('/annee-academique/current', [AnneeAcademiqueController::class, 'current']);
 
-// Password recovery (unauthenticated, every role): username -> code sent to the verified contact email
+// Password recovery (unauthenticated, every role): username or email -> code sent to the
+// verified contact email, then the code is checked, then the new password is set.
 Route::post('/auth/password/forgot', [PasswordRecoveryController::class, 'sendCode'])
     ->middleware('throttle:6,1');
+Route::post('/auth/password/verify-code', [PasswordRecoveryController::class, 'verifyCode'])
+    ->middleware('throttle:8,1');
 Route::post('/auth/password/reset', [PasswordRecoveryController::class, 'reset'])
     ->middleware('throttle:5,1');
 
@@ -51,7 +54,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Mon compte (every role)
     Route::get('/account', [AccountController::class, 'show']);
-    Route::put('/account/username', [AccountController::class, 'changeUsername']);
     Route::put('/account/email', [AccountController::class, 'updateEmail'])->middleware('throttle:6,1');
     Route::post('/account/email/verify', [AccountController::class, 'verifyEmail'])->middleware('throttle:8,1');
     Route::post('/account/email/resend', [AccountController::class, 'resendEmailVerification'])->middleware('throttle:3,1');

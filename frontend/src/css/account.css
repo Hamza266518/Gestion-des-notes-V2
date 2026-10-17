@@ -1,0 +1,119 @@
+/* Mon compte — settings dialog: a list of sections, the chosen section's form beside it. */
+.acct { display: flex; align-items: stretch; min-height: 440px; }
+
+.acct-nav {
+  flex: 0 0 216px;
+  padding: 14px 10px;
+  background: var(--gray-50);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.acct-nav-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 10px 12px;
+  border: none; background: transparent;
+  border-radius: var(--border-radius);
+  font-family: inherit; font-size: 13.5px; font-weight: 500;
+  color: var(--gray-600); text-align: left; cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.acct-nav-item:hover { background: var(--gray-100); color: var(--gray-800); }
+.acct-nav-item.active { background: var(--white); color: var(--primary); font-weight: 600; box-shadow: var(--shadow-xs); }
+
+.acct-panel { flex: 1 1 auto; min-width: 0; padding: 22px 26px 26px; }
+.acct-empty { padding: 48px 0; text-align: center; color: var(--gray-500); font-size: 13.5px; }
+
+.acct-title { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: var(--gray-800); }
+.acct-sub { margin: 0 0 20px; font-size: 12.5px; line-height: 1.55; color: var(--gray-500); }
+
+/* Profile header */
+.acct-identity { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.acct-avatar {
+  flex: 0 0 auto; width: 48px; height: 48px; border-radius: 50%;
+  background: var(--primary-faint); color: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 700;
+}
+.acct-identity-name { font-size: 14.5px; font-weight: 600; color: var(--gray-800); }
+.acct-identity-role { font-size: 12.5px; color: var(--gray-500); }
+
+/* Inline messages, flat (no bordered alert boxes) */
+.acct-msg {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 10px 12px; margin-bottom: 16px;
+  border-radius: var(--border-radius);
+  font-size: 12.5px; line-height: 1.5;
+}
+.acct-msg--ok { background: var(--success-light); color: var(--success); }
+.acct-msg--err { background: var(--danger-light); color: var(--danger); }
+.acct-msg-line { display: block; }
+
+.acct-hint { margin: 6px 0 0; font-size: 11.5px; color: var(--gray-400); }
+
+/* Current email + verification badge */
+.acct-status { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.acct-status-value { font-size: 12.5px; color: var(--gray-600); word-break: break-all; }
+.acct-badge {
+  flex: 0 0 auto; padding: 2px 9px; border-radius: 999px;
+  background: var(--gray-100); color: var(--gray-600);
+  font-size: 11px; font-weight: 600;
+}
+.acct-badge--ok { background: var(--accent-faint); color: var(--accent-dark); }
+
+.acct-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+
+/* Inline "are you sure?" row, replaces the native confirm() popup */
+.acct-confirm {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 14px; padding: 10px 12px;
+  background: var(--danger-light); border-radius: var(--border-radius);
+  font-size: 12.5px; color: var(--gray-700);
+}
+.acct-confirm span { flex: 1 1 auto; }
+
+/* Email verification block */
+.acct-block { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--gray-100); }
+.acct-code { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.acct-code .form-input { max-width: 140px; letter-spacing: 6px; font-weight: 600; }
+
+.acct-link {
+  margin-top: 12px; padding: 0; border: none; background: none;
+  color: var(--primary); font-family: inherit; font-size: 12.5px; font-weight: 600;
+  cursor: pointer;
+}
+.acct-link:disabled { color: var(--gray-400); cursor: default; }
+.acct-link:not(:disabled):hover { text-decoration: underline; }
+
+/* Password field with its show/hide button */
+.acct-field { position: relative; }
+.acct-field .form-input { padding-right: 38px; }
+.acct-eye {
+  position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0;
+  border: none; background: none; color: var(--gray-500); cursor: pointer;
+}
+.acct-eye:hover { color: var(--gray-800); }
+
+.acct-strength { margin-top: 6px; font-size: 11.5px; font-weight: 600; color: var(--warning); }
+.acct-strength[data-level="3"], .acct-strength[data-level="4"] { color: var(--success); }
+
+.acct-reqs { margin: 10px 0 0; padding: 0; list-style: none; }
+.acct-reqs li { font-size: 11.5px; color: var(--gray-400); line-height: 1.7; }
+.acct-reqs li::before { content: '○'; margin-right: 7px; }
+.acct-reqs li.ok { color: var(--success); }
+.acct-reqs li.ok::before { content: '●'; }
+
+@media (max-width: 640px) {
+  .acct { flex-direction: column; min-height: 0; }
+  .acct-nav {
+    flex: none; flex-direction: row; gap: 4px;
+    padding: 10px 12px; overflow-x: auto;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  .acct-nav-item { width: auto; white-space: nowrap; padding: 8px 12px; }
+  .acct-nav-item.active { box-shadow: none; background: var(--primary-faint); }
+  .acct-panel { padding: 18px 18px 22px; }
+}

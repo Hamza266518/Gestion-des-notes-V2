@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { AnneeAcademiqueProvider } from './context/AnneeAcademiqueContext';
 import { ToastProvider } from './context/ToastContext';
+import { AccountModalProvider, useAccountModal } from './context/AccountModalContext';
 import PrivateRoute from './components/common/PrivateRoute';
 import AdminLayout from './components/common/AdminLayout';
 import EtudiantLayout from './components/common/EtudiantLayout';
@@ -49,12 +51,26 @@ import Scanner from './pages/formateur/Scanner';
 import NotesList from './pages/formateur/NotesList';
 import MesNotesList from './pages/formateur/MesNotesList';
 
+const homePath = { admin: '/admin/journal', formateur: '/formateur/scanner', etudiant: '/etudiant/bulletin' };
+
+// Legacy/deep link for /mon-compte: open the overlay, then return the user to
+// their home page so the current page is never replaced by an empty background.
+function MonCompteEntry() {
+  const { openAccount } = useAccountModal();
+  const { role } = useAuth();
+
+  useEffect(() => { openAccount(); }, [openAccount]);
+
+  return <Navigate to={homePath[role] ?? '/login'} replace />;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <AnneeAcademiqueProvider>
           <ToastProvider>
+            <AccountModalProvider>
             <BatchProgressNotif />
             <Routes>
               <Route path="/login" element={<Login />} />
@@ -63,7 +79,7 @@ export default function App() {
                 path="/mon-compte"
                 element={
                   <PrivateRoute>
-                    <MonCompte />
+                    <MonCompteEntry />
                   </PrivateRoute>
                 }
               />
@@ -125,6 +141,8 @@ export default function App() {
             </Route>
 
           </Routes>
+          <MonCompte />
+          </AccountModalProvider>
         </ToastProvider>
       </AnneeAcademiqueProvider>
     </AuthProvider>

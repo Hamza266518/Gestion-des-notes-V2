@@ -133,6 +133,61 @@ class UsernameLoginTest extends TestCase
         $this->assertNull($response->json('data.contact_email_verified_at'));
     }
 
+    public function test_repeated_wrong_passwords_lock_the_identifier_temporarily(): void
+    {
+        $user = $this->makeUser();
+
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
+            $this->postJson('/api/auth/login', [
+                'username' => $user->username,
+                'password' => 'wrong-password',
+            ])->assertStatus(401);
+        }
+
+        // The sixth request is refused before the password is checked, so even the right
+        // password cannot slip through once the limit is reached.
+        $response = $this->postJson('/api/auth/login', [
+            'username' => $user->username,
+            'password' => 'secret1234',
+        ]);
+
+        $response->assertStatus(429)->assertJsonPath('success', false);
+        $this->assertStringContainsString('Trop de tentatives', $response->json('message'));
+    }
+
+    public function test_a_successful_login_clears_the_failed_attempt_counter(): void
+    {
+        $user = $this->makeUser();
+
+        for ($attempt = 1; $attempt <= 4; $attempt++) {
+            $this->postJson('/api/auth/login', [
+                'username' => $user->username,
+                'password' => 'wrong-password',
+            ])->assertStatus(401);
+        }
+
+        $this->postJson('/api/auth/login', [
+            'username' => $user->username,
+            'password' => 'secret1234',
+        ])->assertOk();
+
+        // Counter cleared: a fresh wrong password yields a plain 401, not a lockout.
+        $this->postJson('/api/auth/login', [
+            'username' => $user->username,
+            'password' => 'still-wrong',
+        ])->assertStatus(401);
+    }
+
+    public function test_the_username_cannot_be_changed_through_eloquent(): void
+    {
+        $user = $this->makeUser();
+
+        $user->update(['username' => 'renamed.user']);
+        $user->forceFill(['username' => 'renamed.again'])->save();
+
+        $this->assertSame('login.tester', $user->fresh()->username);
+    }
+
     public function test_the_schema_makes_username_mandatory_and_email_optional(): void
     {
         $columns = collect(Schema::getColumns('users'))->keyBy('name');

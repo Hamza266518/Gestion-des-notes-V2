@@ -1,6 +1,6 @@
 import '../../css/components.css';
 
-export default function Modal({ open, onClose, title, children, style }) {
+export default function Modal({ open, onClose, title, children, style, bodyClassName }) {
   if (!open) return null;
   return (
     <div className="custom-modal-overlay" onClick={onClose}>
@@ -9,7 +9,7 @@ export default function Modal({ open, onClose, title, children, style }) {
           <span className="custom-modal-title">{title}</span>
           <button className="custom-modal-close" onClick={onClose}>✕</button>
         </div>
-        <div className="custom-modal-body">
+        <div className={`custom-modal-body${bodyClassName ? ` ${bodyClassName}` : ''}`}>
           {children}
         </div>
       </div>

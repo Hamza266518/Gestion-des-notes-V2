@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\AuthCode;
 use App\Models\User;
 use App\Services\AuthCodeService;
-use App\Services\UsernameGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
@@ -62,14 +61,17 @@ class AccountController extends Controller
             'contact_email_verified_at' => null,
         ])->save();
 
-        $sent = $this->authCodes->issue($user, AuthCode::PURPOSE_EMAIL_VERIFICATION, $request->ip()) !== null;
+        $status = $this->authCodes->issue($user, AuthCode::PURPOSE_EMAIL_VERIFICATION, $request->ip());
 
         return response()->json([
-            'success' => true,
-            'data'    => $this->accountPayload($user->refresh()),
-            'message' => $sent
-                ? 'Adresse email enregistrée. Un code de vérification vient d\'être envoyé.'
-                : 'Adresse email enregistrée. Un code a déjà été envoyé récemment, veuillez patienter avant de réessayer.',
+            'success'   => true,
+            'data'      => $this->accountPayload($user->refresh()),
+            'code_sent' => $status === AuthCodeService::STATUS_SENT,
+            'message'   => match ($status) {
+                AuthCodeService::STATUS_SENT     => 'Adresse email enregistrée. Un code de vérification vient d\'être envoyé.',
+                AuthCodeService::STATUS_COOLDOWN => 'Adresse email enregistrée. Un code a déjà été envoyé récemment, veuillez patienter avant de réessayer.',
+                default                          => 'Adresse email enregistrée, mais l\'envoi du code a échoué. Vérifiez l\'adresse puis réessayez.',
+            },
         ]);
     }
 
@@ -115,13 +117,16 @@ class AccountController extends Controller
             ], 422);
         }
 
-        $sent = $this->authCodes->issue($user, AuthCode::PURPOSE_EMAIL_VERIFICATION, $request->ip()) !== null;
+        $status = $this->authCodes->issue($user, AuthCode::PURPOSE_EMAIL_VERIFICATION, $request->ip());
 
         return response()->json([
-            'success' => true,
-            'message' => $sent
-                ? 'Un nouveau code vient d\'être envoyé'
-                : 'Un code a déjà été envoyé récemment, veuillez patienter avant de réessayer.',
+            'success'   => true,
+            'code_sent' => $status === AuthCodeService::STATUS_SENT,
+            'message'   => match ($status) {
+                AuthCodeService::STATUS_SENT     => 'Un nouveau code vient d\'être envoyé',
+                AuthCodeService::STATUS_COOLDOWN => 'Un code a déjà été envoyé récemment, veuillez patienter avant de réessayer.',
+                default                          => 'L\'envoi du code a échoué. Veuillez réessayer dans un instant.',
+            },
         ]);
     }
 
@@ -140,39 +145,6 @@ class AccountController extends Controller
             'success' => true,
             'data'    => $this->accountPayload($user->refresh()),
             'message' => 'Adresse email supprimée',
-        ]);
-    }
-
-    public function changeUsername(Request $request)
-    {
-        $user = $request->user();
-        $generator = app(UsernameGenerator::class);
-
-        $request->validate([
-            'username' => [
-                'required',
-                'string',
-                'max:60',
-                'regex:/^[a-z0-9]+(?:\.[a-z0-9]+)*$/',
-                Rule::unique('users', 'username')->ignore($user->id),
-            ],
-        ]);
-
-        $username = mb_strtolower(trim($request->username));
-
-        if (!$generator->isValidFormat($username)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'L\'identifiant ne peut contenir que des lettres, chiffres et points',
-            ], 422);
-        }
-
-        $user->forceFill(['username' => $username])->save();
-
-        return response()->json([
-            'success' => true,
-            'data'    => $this->accountPayload($user->refresh()),
-            'message' => 'Identifiant mis à jour',
         ]);
     }
 

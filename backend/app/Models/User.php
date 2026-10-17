@@ -46,6 +46,15 @@ class User extends Authenticatable
                 $user->username = app(UsernameGenerator::class)->forNewUser($user);
             }
         });
+
+        // The login identifier is assigned once and stays put: it may only be changed
+        // directly in the database, never through the application (mass assignment,
+        // account API, admin forms).
+        static::updating(function (self $user) {
+            if ($user->isDirty('username')) {
+                $user->username = $user->getOriginal('username');
+            }
+        });
     }
 
     /**

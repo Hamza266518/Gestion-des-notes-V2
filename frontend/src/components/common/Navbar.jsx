@@ -1,6 +1,6 @@
 import { useAuth } from '../../context/AuthContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
-import { Link } from 'react-router-dom';
+import { useAccountModal } from '../../context/AccountModalContext';
 import { FiMenu, FiUser } from 'react-icons/fi';
 import '../../css/navbar.css';
 
@@ -13,6 +13,7 @@ const roleLabels = {
 export default function Navbar({ title, onToggleSidebar }) {
   const { user, role } = useAuth();
   const { currentAnnee } = useAnneeAcademique();
+  const { openAccount } = useAccountModal();
 
   return (
     <div className="navbar">
@@ -22,9 +23,9 @@ export default function Navbar({ title, onToggleSidebar }) {
       <span className="navbar-title">{title}</span>
       <div className="navbar-right">
         {currentAnnee && <span className="navbar-year">{currentAnnee.label}</span>}
-        <Link to="/mon-compte" className="navbar-account">
+        <button type="button" className="navbar-account" onClick={openAccount}>
           <FiUser size={14} /> Mon compte
-        </Link>
+        </button>
         <span className="navbar-user">{user?.name}</span>
         <span className="navbar-role">{roleLabels[role] ?? role}</span>
       </div>

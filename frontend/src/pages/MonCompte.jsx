@@ -1,29 +1,35 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth';
 import { passwordApi } from '../api/password';
 import { useAuth } from '../context/AuthContext';
+import { useAccountModal } from '../context/AccountModalContext';
 import { validatePassword, getPasswordRequirements, getPasswordStrength } from '../utils/passwordValidator';
 import Modal from '../components/common/Modal';
 import {
-  FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiCheckCircle,
-  FiRefreshCw, FiTrash2, FiShield,
+  FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiCheckCircle, FiTrash2,
 } from 'react-icons/fi';
 import '../css/components.css';
 import '../css/layout.css';
+import '../css/account.css';
 
 const roleLabels = { admin: 'Administrateur', formateur: 'Formateur', etudiant: 'Étudiant' };
-const homePath = { admin: '/admin/journal', formateur: '/formateur/scanner', etudiant: '/etudiant/bulletin' };
+
+const SECTIONS = [
+  { id: 'profil', label: 'Profil', icon: FiUser },
+  { id: 'identifiant', label: 'Identifiant', icon: FiUser },
+  { id: 'email', label: 'Adresse email', icon: FiMail },
+  { id: 'motdepasse', label: 'Mot de passe', icon: FiLock },
+];
 
 export const accountQueryKey = ['account'];
 
 export function MonCompte() {
-  const navigate = useNavigate();
-  const { role, refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
+  const { open, closeAccount } = useAccountModal();
   const queryClient = useQueryClient();
 
-  const [open, setOpen] = useState(true);
+  const [section, setSection] = useState('profil');
   const [account, setAccount] = useState(null);
   const [email, setEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -33,10 +39,7 @@ export function MonCompte() {
   const [emailError, setEmailError] = useState('');
   const [emailSuccess, setEmailSuccess] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
-  const [username, setUsername] = useState('');
-  const [usernameError, setUsernameError] = useState('');
-  const [usernameSuccess, setUsernameSuccess] = useState('');
-  const [usernameLoading, setUsernameLoading] = useState(false);
+  const [confirmRemoveEmail, setConfirmRemoveEmail] = useState(false);
   const [pwForm, setPwForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
   const [showPw, setShowPw] = useState({ old: false, next: false });
   const [pwErrors, setPwErrors] = useState([]);
@@ -49,35 +52,44 @@ export function MonCompte() {
     queryFn: async () => (await authApi.account()).data.data,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
+    // The overlay is always mounted; only fetch the account once it is opened.
+    enabled: open,
   });
 
-  const handleClose = () => { setOpen(false); navigate(homePath[role] ?? '/login'); };
-  const applyAccount = useCallback((d) => {
-    setAccount(d);
-    setEmail(d.contact_email ?? '');
-    setUsername(d.username ?? '');
-    queryClient.setQueryData(accountQueryKey, d);
+  const handleClose = () => closeAccount();
+  const applyAccount = useCallback((data) => {
+    setAccount(data);
+    setEmail(data.contact_email || '');
+    queryClient.setQueryData(accountQueryKey, data);
   }, [queryClient]);
 
-  useEffect(() => {
-    if (accountQuery.data) applyAccount(accountQuery.data);
-  }, [accountQuery.data, applyAccount]);
+  useEffect(() => { if (accountQuery.data) applyAccount(accountQuery.data); }, [accountQuery.data, applyAccount]);
 
   useEffect(() => {
-    if (accountQuery.isError) setEmailError('Impossible de charger votre compte.');
-  }, [accountQuery.isError]);
+    if (!open) {
+      setSection('profil');
+      setConfirmRemoveEmail(false);
+    }
+  }, [open]);
 
+  // Keep the resend button disabled while the cooldown counts down.
   useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setTimeout(() => setResendCooldown(c => c - 1), 1000);
-    return () => clearTimeout(t);
+    if (resendCooldown <= 0) return undefined;
+    const timer = setTimeout(() => setResendCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  const canEditUsername = role === 'admin';
   const emailVerified = Boolean(account?.contact_email_verified_at);
   const requirements = getPasswordRequirements();
   const strength = getPasswordStrength(pwForm.newPassword);
   const loading = accountQuery.isLoading && !account;
+  const initials = (account?.name || '?')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase();
 
   const handleSaveEmail = async (e) => {
     e.preventDefault(); setEmailError(''); setEmailSuccess('');
@@ -85,126 +97,339 @@ export function MonCompte() {
     setEmailLoading(true);
     try {
       const res = await authApi.updateEmail(email.trim(), currentPassword);
-      applyAccount(res.data.data); await refreshUser(); setCurrentPassword(''); setEmailSuccess(res.data.message);
+      applyAccount(res.data.data); await refreshUser(); setCurrentPassword('');
+      if (res.data.code_sent === false) setEmailError(res.data.message); else setEmailSuccess(res.data.message);
     } catch (err) {
       const data = err.response?.data;
-      setEmailError(data?.errors?.email?.[0] || data?.message || "Erreur lors de l'enregistrement");
-    } finally { setEmailLoading(false); }
+      setEmailError(data?.errors?.email?.[0] || data?.message || 'Erreur lors de la mise à jour');
+    } finally {
+      setEmailLoading(false);
+    }
   };
 
   const handleVerify = async (e) => {
     e.preventDefault(); setEmailError(''); setEmailSuccess('');
-    if (!/^\d{6}$/.test(code.trim())) { setEmailError('Le code est composé de 6 chiffres'); return; }
     setCodeLoading(true);
     try {
-      const res = await authApi.verifyEmail(code.trim());
-      applyAccount(res.data.data); await refreshUser(); setCode(''); setEmailSuccess(res.data.message);
-    } catch (err) { setEmailError(err.response?.data?.message || 'Code invalide ou expiré'); }
-    finally { setCodeLoading(false); }
+      const res = await authApi.verifyEmail(code);
+      applyAccount(res.data.data);
+      await refreshUser();
+      setCode('');
+      setEmailSuccess(res.data.message);
+    } catch (err) {
+      const data = err.response?.data;
+      setEmailError(data?.errors?.code?.[0] || data?.message || 'Code invalide ou expiré');
+    } finally {
+      setCodeLoading(false);
+    }
   };
 
   const handleResend = async () => {
-    setEmailError(''); setEmailSuccess('');
-    try { const res = await authApi.resendEmailVerification(); setEmailSuccess(res.data.message); setResendCooldown(60); }
-    catch (err) { setEmailError(err.response?.data?.message || 'Impossible de renvoyer le code'); }
+    setEmailError('');
+    setEmailSuccess('');
+    setCodeLoading(true);
+    try {
+      const res = await authApi.resendEmailVerification();
+      if (res.data.code_sent === false) setEmailError(res.data.message);
+      else { setEmailSuccess(res.data.message); setResendCooldown(60); }
+    } catch (err) {
+      const data = err.response?.data;
+      setEmailError(data?.message || "Impossible d'envoyer le code");
+    } finally {
+      setCodeLoading(false);
+    }
   };
 
   const handleRemoveEmail = async () => {
-    setEmailError(''); setEmailSuccess('');
-    if (!window.confirm('Supprimer votre adresse email ?')) return;
+    setConfirmRemoveEmail(false);
+    setEmailError('');
+    setEmailSuccess('');
     setEmailLoading(true);
-    try { const res = await authApi.removeEmail(); applyAccount(res.data.data); await refreshUser(); setCode(''); setEmailSuccess(res.data.message); }
-    catch (err) { setEmailError(err.response?.data?.message || 'Erreur lors de la suppression'); }
-    finally { setEmailLoading(false); }
-  };
-
-  const handleSaveUsername = async (e) => {
-    e.preventDefault(); setUsernameError(''); setUsernameSuccess('');
-    const v = username.trim().toLowerCase();
-    if (!/^[a-z0-9]+(?:\.[a-z0-9]+)*$/.test(v)) { setUsernameError("Format invalide"); return; }
-    setUsernameLoading(true);
-    try { const res = await authApi.updateUsername(v); applyAccount(res.data.data); await refreshUser(); setUsernameSuccess(res.data.message); }
-    catch (err) { const d=err.response?.data; setUsernameError(d?.errors?.username?.[0]||d?.message||'Erreur'); }
-    finally { setUsernameLoading(false); }
+    try {
+      const res = await authApi.removeEmail();
+      applyAccount(res.data.data);
+      setCode('');
+      setEmailSuccess(res.data.message);
+    } catch (err) {
+      const data = err.response?.data;
+      setEmailError(data?.message || "Impossible de supprimer l'adresse email");
+    } finally {
+      setEmailLoading(false);
+    }
   };
 
   const handleChangePassword = async (e) => {
-    e.preventDefault(); setPwErrors([]); setPwError(''); setPwSuccess('');
-    if (!pwForm.oldPassword) { setPwErrors(["L'ancien mot de passe est requis"]); return; }
-    const val = validatePassword(pwForm.newPassword);
-    if (!val.isValid) { setPwErrors(val.errors); return; }
+    e.preventDefault();
+    setPwErrors([]);
+    setPwError('');
+    setPwSuccess('');
+    if (!pwForm.oldPassword) { setPwErrors(['Le mot de passe actuel est requis']); return; }
+    const validation = validatePassword(pwForm.newPassword);
+    if (!validation.isValid) { setPwErrors(validation.errors); return; }
     if (pwForm.newPassword !== pwForm.confirmPassword) { setPwErrors(['Les mots de passe ne correspondent pas']); return; }
     if (pwForm.oldPassword === pwForm.newPassword) { setPwErrors(['Le nouveau mot de passe doit être différent']); return; }
     setPwLoading(true);
-    try { const res = await passwordApi.changePassword(pwForm.oldPassword,pwForm.newPassword,pwForm.confirmPassword); setPwSuccess(res.data.message||'Modifié'); setPwForm({oldPassword:'',newPassword:'',confirmPassword:''}); }
-    catch (err) { const d=err.response?.data; if(d?.errors) setPwErrors(Object.values(d.errors).flat()); else setPwError(d?.message||'Erreur'); }
-    finally { setPwLoading(false); }
+    try {
+      const res = await passwordApi.changePassword(pwForm.oldPassword, pwForm.newPassword, pwForm.confirmPassword);
+      setPwSuccess(res.data.message || 'Mot de passe modifié.');
+      setPwForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      setShowPw({ old: false, next: false });
+    } catch (err) {
+      const data = err.response?.data;
+      if (data?.errors) setPwErrors(Object.values(data.errors).flat());
+      else setPwError(data?.message || 'Impossible de modifier le mot de passe');
+    } finally {
+      setPwLoading(false);
+    }
   };
 
-  if (loading) {
-    return <Modal open onClose={handleClose} title="Mon compte"><div style={{ padding:24, textAlign:'center' }}>Chargement...</div></Modal>;
-  }
-
   return (
-    <Modal open={open} onClose={handleClose} title="Mon compte">
-      <div style={{ display:'flex', flexDirection:'column', gap:16, maxHeight:'80vh', overflowY:'auto', padding:4 }}>
-        <div className="card"><div className="card-body">
-          <h3 style={{ margin:'0 0 12px', fontSize:14, fontWeight:600 }}>Identité</h3>
-          <div className="form-group"><label className="form-label">Nom complet</label><input className="form-input" value={account?.name??''} disabled /></div>
-          <div className="form-group" style={{ marginBottom:0 }}><label className="form-label">Rôle</label><input className="form-input" value={roleLabels[account?.role]??account?.role??''} disabled /></div>
-        </div></div>
+    <Modal
+      open={open}
+      onClose={handleClose}
+      title="Mon compte"
+      style={{ maxWidth: 780 }}
+      bodyClassName="custom-modal-body--flush"
+    >
+      <div className="acct">
+        <nav className="acct-nav" aria-label="Sections du compte">
+          {SECTIONS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              className={`acct-nav-item${section === id ? ' active' : ''}`}
+              onClick={() => setSection(id)}
+            >
+              <Icon size={16} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
 
-        <div className="card"><div className="card-body">
-          <h3 style={{ margin:'0 0 6px', fontSize:14, fontWeight:600 }}>Identifiant de connexion</h3>
-          <p style={{ margin:'0 0 12px', color:'var(--gray-500)', fontSize:12 }}>{canEditUsername ? "Identifiant modifiable (admin uniquement)." : "Identifiant généré automatiquement."}</p>
-          {usernameError && <div className="alert alert-error" style={{ marginBottom:10 }}>{usernameError}</div>}
-          {usernameSuccess && <div className="alert alert-success" style={{ marginBottom:10 }}><FiCheckCircle size={14}/> {usernameSuccess}</div>}
-          <form onSubmit={handleSaveUsername}>
-            <div className="form-group" style={{ marginBottom: canEditUsername?12:0 }}><label className="form-label">Identifiant</label>
-              <div style={{ position:'relative' }}><FiUser size={16} style={{ position:'absolute',left:10,top:10,color:'var(--gray-400)' }}/><input className="form-input" style={{ paddingLeft:34 }} value={username} onChange={e=>setUsername(e.target.value.toLowerCase())} disabled={!canEditUsername||usernameLoading} spellCheck={false} /></div>
-            </div>
-            {canEditUsername && <button type="submit" className="btn btn-primary btn-sm" disabled={usernameLoading||!username.trim()}>{usernameLoading?'Enregistrement...':'Enregistrer'}</button>}
-          </form>
-        </div></div>
+        <div className="acct-panel">
+          {loading ? (
+            <div className="acct-empty">Chargement…</div>
+          ) : (
+            <>
+              {section === 'profil' && (
+                <>
+                  <h3 className="acct-title">Profil</h3>
+                  <p className="acct-sub">Vos informations personnelles, gérées par l'administration.</p>
+                  <div className="acct-identity">
+                    <div className="acct-avatar">{initials}</div>
+                    <div>
+                      <div className="acct-identity-name">{account?.name || '—'}</div>
+                      <div className="acct-identity-role">{roleLabels[account?.role] || account?.role || '—'}</div>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Nom complet</label>
+                    <input className="form-input" value={account?.name || ''} disabled />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Rôle</label>
+                    <input className="form-input" value={roleLabels[account?.role] || account?.role || ''} disabled />
+                  </div>
+                </>
+              )}
 
-        <div className="card"><div className="card-body">
-          <h3 style={{ margin:'0 0 6px', fontSize:14, fontWeight:600 }}>Adresse email de contact</h3>
-          <p style={{ margin:'0 0 12px', color:'var(--gray-500)', fontSize:12 }}>Permet la récupération du mot de passe (avec code vérifié).</p>
-          {emailError && <div className="alert alert-error" style={{ marginBottom:10 }}>{emailError}</div>}
-          {emailSuccess && <div className="alert alert-success" style={{ marginBottom:10 }}><FiCheckCircle size={14}/> {emailSuccess}</div>}
-          {account?.contact_email && <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:10,marginBottom:12,background:'var(--gray-50)',border:'1px solid var(--gray-200)',borderRadius:8 }}>
-            <div style={{ display:'flex',alignItems:'center',gap:8 }}><FiMail size={14}/><span style={{ fontSize:13 }}>{account.contact_email}</span></div>
-            <span style={{ fontSize:11,padding:'2px 8px',borderRadius:20,background:emailVerified?'var(--primary-faint)':'var(--gray-200)',color:emailVerified?'var(--primary)':'var(--gray-600)' }}>{emailVerified?'Vérifiée':'Non vérifiée'}</span>
-          </div>}
-          <form onSubmit={handleSaveEmail}>
-            <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="vous@exemple.com" /></div>
-            {emailVerified && <div className="form-group"><label className="form-label">Mot de passe actuel (confirmation)</label><input type="password" className="form-input" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} /></div>}
-            <div style={{ display:'flex',gap:8,flexWrap:'wrap' }}><button type="submit" className="btn btn-primary btn-sm" disabled={emailLoading}>{emailLoading ? (account?.contact_email ? 'Mettre à jour' : 'Enregistrer et envoyer le code') : (account?.contact_email ? 'Mettre à jour' : 'Enregistrer et envoyer le code')}</button>{account?.contact_email && <button type="button" className="btn btn-ghost btn-sm" onClick={handleRemoveEmail} disabled={emailLoading}><FiTrash2 size={14}/> Supprimer</button>}</div>
-          </form>
-          {account?.contact_email && !emailVerified && <div style={{ marginTop:12,paddingTop:12,borderTop:'1px solid var(--gray-100)' }}>
-            <label className="form-label">Code de vérification</label>
-            <div style={{ display:'flex',gap:8,alignItems:'center',flexWrap:'wrap' }}><input className="form-input" style={{ maxWidth:120,letterSpacing:4 }} value={code} onChange={e=>setCode(e.target.value)} maxLength={6} inputMode="numeric" /><button type="button" className="btn btn-primary btn-sm" onClick={handleVerify} disabled={codeLoading||code.length!==6}>{codeLoading?'Vérif...':'Vérifier'}</button><button type="button" className="btn btn-ghost btn-sm" onClick={handleResend} disabled={resendCooldown>0}><FiRefreshCw size={14}/> {resendCooldown>0?`(${resendCooldown}s)`:''} Renvoyer</button></div>
-          </div>}
-        </div></div>
+              {section === 'identifiant' && (
+                <>
+                  <h3 className="acct-title">Identifiant de connexion</h3>
+                  <p className="acct-sub">
+                    Votre identifiant est généré une seule fois et ne peut pas être modifié.
+                    Contactez l'administration si vous en avez besoin.
+                  </p>
+                  <div className="form-group">
+                    <label className="form-label">Identifiant</label>
+                    <input className="form-input" value={account?.username || ''} disabled readOnly />
+                  </div>
+                </>
+              )}
 
-        <div className="card"><div className="card-body">
-          <h3 style={{ margin:'0 0 6px', fontSize:14, fontWeight:600, display:'flex',alignItems:'center',gap:6 }}><FiShield size={14}/> Mot de passe</h3>
-          <p style={{ margin:'0 0 12px', color:'var(--gray-500)', fontSize:12 }}>Modifiez votre mot de passe en toute sécurité.</p>
-          {pwSuccess && <div className="alert alert-success" style={{ marginBottom:10 }}><FiCheckCircle size={14}/> {pwSuccess}</div>}
-          {pwError && <div className="alert alert-error" style={{ marginBottom:10 }}>{pwError}</div>}
-          {pwErrors.length>0 && <div className="alert alert-error" style={{ marginBottom:10 }}>{pwErrors.map((e,i)=><div key={i}>• {e}</div>)}</div>}
-          <form onSubmit={handleChangePassword}>
-            <div className="form-group"><label className="form-label">Mot de passe actuel</label>
-              <div style={{ position:'relative' }}><input type={showPw.old?'text':'password'} className="form-input" style={{ paddingRight:36 }} value={pwForm.oldPassword} onChange={e=>setPwForm(p=>({...p,oldPassword:e.target.value}))} /><button type="button" style={{ position:'absolute',right:6,top:6,background:'none',border:'none',cursor:'pointer' }} onClick={()=>setShowPw(p=>({...p,old:!p.old}))}>{showPw.old?<FiEyeOff size={16}/>:<FiEye size={16}/>}</button></div>
-            </div>
-            <div className="form-group"><label className="form-label">Nouveau mot de passe</label>
-              <div style={{ position:'relative' }}><input type={showPw.next?'text':'password'} className="form-input" style={{ paddingRight:36 }} value={pwForm.newPassword} onChange={e=>setPwForm(p=>({...p,newPassword:e.target.value}))} /><button type="button" style={{ position:'absolute',right:6,top:6,background:'none',border:'none',cursor:'pointer' }} onClick={()=>setShowPw(p=>({...p,next:!p.next}))}>{showPw.next?<FiEyeOff size={16}/>:<FiEye size={16}/>}</button></div>
-              {pwForm.newPassword && strength.level>0 && <div style={{ marginTop:6,fontSize:11,color:strength.level>=3?'var(--success)':'var(--warning)' }}>{strength.label}</div>}
-            </div>
-            <div className="form-group"><label className="form-label">Confirmer le mot de passe</label><input type={showPw.next?'text':'password'} className="form-input" value={pwForm.confirmPassword} onChange={e=>setPwForm(p=>({...p,confirmPassword:e.target.value}))} /></div>
-            <button type="submit" className="btn btn-primary btn-sm" disabled={pwLoading||!pwForm.oldPassword||!pwForm.newPassword||!pwForm.confirmPassword}>{pwLoading?'Traitement...':'Changer le mot de passe'}</button>
-          </form>
-        </div></div>
+              {section === 'email' && (
+                <>
+                  <h3 className="acct-title">Adresse email</h3>
+                  <p className="acct-sub">
+                    Elle sert à la récupération du mot de passe. Un code de vérification y est envoyé.
+                  </p>
+                  {emailError && <div className="acct-msg acct-msg--err">{emailError}</div>}
+                  {emailSuccess && (
+                    <div className="acct-msg acct-msg--ok"><FiCheckCircle size={15} /><span>{emailSuccess}</span></div>
+                  )}
+                  <form onSubmit={handleSaveEmail}>
+                    <div className="form-group">
+                      <label className="form-label">Email</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="vous@exemple.com"
+                        autoComplete="email"
+                      />
+                      {account?.contact_email && (
+                        <div className="acct-status">
+                          <span className={emailVerified ? 'acct-badge acct-badge--ok' : 'acct-badge'}>
+                            {emailVerified ? 'Vérifiée' : 'Non vérifiée'}
+                          </span>
+                          <span className="acct-status-value">{account.contact_email}</span>
+                        </div>
+                      )}
+                    </div>
+                    {emailVerified && (
+                      <div className="form-group">
+                        <label className="form-label">Mot de passe actuel (confirmation)</label>
+                        <input
+                          type="password"
+                          className="form-input"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          autoComplete="current-password"
+                        />
+                      </div>
+                    )}
+                    <div className="acct-actions">
+                      <button type="submit" className="btn btn-primary" disabled={emailLoading}>
+                        {account?.contact_email ? 'Mettre à jour' : 'Enregistrer et envoyer le code'}
+                      </button>
+                      {account?.contact_email && !confirmRemoveEmail && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => setConfirmRemoveEmail(true)}
+                          disabled={emailLoading}
+                        >
+                          <FiTrash2 size={14} /> Supprimer
+                        </button>
+                      )}
+                    </div>
+                    {confirmRemoveEmail && (
+                      <div className="acct-confirm">
+                        <span>Supprimer cette adresse email ?</span>
+                        <button type="button" className="btn btn-danger btn-sm" onClick={handleRemoveEmail} disabled={emailLoading}>
+                          Supprimer
+                        </button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmRemoveEmail(false)} disabled={emailLoading}>
+                          Annuler
+                        </button>
+                      </div>
+                    )}
+                  </form>
+
+                  {account?.contact_email && !emailVerified && (
+                    <div className="acct-block">
+                      <label className="form-label">Code de vérification</label>
+                      <div className="acct-code">
+                        <input
+                          className="form-input"
+                          value={code}
+                          onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                          maxLength={6}
+                          inputMode="numeric"
+                          placeholder="000000"
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={handleVerify}
+                          disabled={codeLoading || code.length !== 6}
+                        >
+                          {codeLoading ? 'Vérification…' : 'Vérifier'}
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        className="acct-link"
+                        onClick={handleResend}
+                        disabled={codeLoading || resendCooldown > 0}
+                      >
+                        {resendCooldown > 0 ? `Renvoyer le code (${resendCooldown}s)` : 'Renvoyer le code'}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {section === 'motdepasse' && (
+                <>
+                  <h3 className="acct-title">Mot de passe</h3>
+                  <p className="acct-sub">Choisissez un mot de passe long et unique.</p>
+                  {pwSuccess && (
+                    <div className="acct-msg acct-msg--ok"><FiCheckCircle size={15} /><span>{pwSuccess}</span></div>
+                  )}
+                  {pwError && <div className="acct-msg acct-msg--err">{pwError}</div>}
+                  {pwErrors.length > 0 && (
+                    <div className="acct-msg acct-msg--err">
+                      <span>{pwErrors.map((error) => <span key={error} className="acct-msg-line">{error}</span>)}</span>
+                    </div>
+                  )}
+                  <form onSubmit={handleChangePassword}>
+                    <div className="form-group">
+                      <label className="form-label">Mot de passe actuel</label>
+                      <div className="acct-field">
+                        <input
+                          type={showPw.old ? 'text' : 'password'}
+                          className="form-input"
+                          value={pwForm.oldPassword}
+                          onChange={(e) => setPwForm((p) => ({ ...p, oldPassword: e.target.value }))}
+                          autoComplete="current-password"
+                        />
+                        <button type="button" className="acct-eye" onClick={() => setShowPw((p) => ({ ...p, old: !p.old }))} aria-label="Afficher ou masquer">
+                          {showPw.old ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Nouveau mot de passe</label>
+                      <div className="acct-field">
+                        <input
+                          type={showPw.next ? 'text' : 'password'}
+                          className="form-input"
+                          value={pwForm.newPassword}
+                          onChange={(e) => setPwForm((p) => ({ ...p, newPassword: e.target.value }))}
+                          autoComplete="new-password"
+                        />
+                        <button type="button" className="acct-eye" onClick={() => setShowPw((p) => ({ ...p, next: !p.next }))} aria-label="Afficher ou masquer">
+                          {showPw.next ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                        </button>
+                      </div>
+                      {pwForm.newPassword && strength.level > 0 && (
+                        <div className="acct-strength" data-level={strength.level}>{strength.label}</div>
+                      )}
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Confirmer le nouveau mot de passe</label>
+                      <input
+                        type={showPw.next ? 'text' : 'password'}
+                        className="form-input"
+                        value={pwForm.confirmPassword}
+                        onChange={(e) => setPwForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+                        autoComplete="new-password"
+                      />
+                    </div>
+                    <ul className="acct-reqs">
+                      {requirements.map(({ text, check }) => (
+                        <li key={text} className={check(pwForm.newPassword) ? 'ok' : ''}>
+                          {text}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="acct-actions">
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={pwLoading || !pwForm.oldPassword || !pwForm.newPassword || !pwForm.confirmPassword}
+                      >
+                        {pwLoading ? 'Enregistrement…' : 'Changer le mot de passe'}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </Modal>
   );

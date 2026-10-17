@@ -7,9 +7,17 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /** Wrong passwords allowed for one identifier + IP before a short lockout. */
+    private const MAX_LOGIN_ATTEMPTS = 5;
+
+    /** Lockout duration, in seconds, once the attempts above are used up. */
+    private const LOGIN_LOCKOUT_SECONDS = 300;
+
     public function login(Request $request)
     {
         try {
@@ -18,14 +26,45 @@ class AuthController extends Controller
                 'password' => 'required',
             ]);
 
-            $user = User::where('username', mb_strtolower(trim($request->username)))->first();
+            $username = mb_strtolower(trim($request->username));
+
+            // Throttled per identifier + IP: a single address cannot grind through
+            // passwords, and an attacker cannot lock an account out for everyone else.
+            $throttleKey = 'login:' . sha1($username . '|' . $request->ip());
+
+            if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_LOGIN_ATTEMPTS)) {
+                $seconds = RateLimiter::availableIn($throttleKey);
+
+                Log::warning('Connexion bloquée par limitation', [
+                    'username' => $username,
+                    'ip'       => $request->ip(),
+                    'seconds'  => $seconds,
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "Trop de tentatives de connexion. Réessayez dans {$seconds} seconde(s).",
+                ], 429);
+            }
+
+            $user = User::where('username', $username)->first();
 
             if (!$user || !Hash::check($request->password, $user->password)) {
+                RateLimiter::hit($throttleKey, self::LOGIN_LOCKOUT_SECONDS);
+
+                // The password is never logged: identifier and IP are enough to spot abuse.
+                Log::warning('Échec de connexion', [
+                    'username' => $username,
+                    'ip'       => $request->ip(),
+                ]);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Identifiant ou mot de passe incorrect',
                 ], 401);
             }
+
+            RateLimiter::clear($throttleKey);
 
             $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -40,7 +79,7 @@ class AuthController extends Controller
                     'contact_email_verified_at'=> $user->contact_email_verified_at?->toIso8601String(),
                 ],
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {
             Log::error('Erreur connexion: ' . $e->getMessage());

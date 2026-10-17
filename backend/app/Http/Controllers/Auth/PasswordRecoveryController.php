@@ -12,10 +12,11 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Password recovery for every role: username -> code sent to the verified contact email.
+ * Password recovery for every role: username (or contact email) -> code sent to the
+ * verified contact email, then verified, then the new password.
  *
- * Both endpoints answer identically whatever the reason for the failure, so that the
- * API never discloses whether a username exists or has a usable email address.
+ * Every endpoint answers identically whatever the reason for the failure, so that
+ * the API never discloses whether an account exists or has a usable email address.
  */
 class PasswordRecoveryController extends Controller
 {
@@ -29,10 +30,10 @@ class PasswordRecoveryController extends Controller
     public function sendCode(Request $request)
     {
         $request->validate([
-            'username' => ['required', 'string', 'max:60'],
+            'username' => ['required', 'string', 'max:190'],
         ]);
 
-        $user = User::where('username', $this->normalize($request->username))->first();
+        $user = $this->findUser($request->username);
 
         if ($user && $user->hasVerifiedContactEmail()) {
             $this->authCodes->issue($user, AuthCode::PURPOSE_PASSWORD_RESET, $request->ip());
@@ -44,10 +45,40 @@ class PasswordRecoveryController extends Controller
         ]);
     }
 
+    /**
+     * Step 2: confirm the code before the new password is asked for. The code is
+     * only checked here; reset() still consumes it, so this adds no way in.
+     */
+    public function verifyCode(Request $request)
+    {
+        $request->validate([
+            'username' => ['required', 'string', 'max:190'],
+            'code'     => ['required', 'string'],
+        ]);
+
+        $user = $this->findUser($request->username);
+
+        $isValid = $user
+            && $user->hasVerifiedContactEmail()
+            && $this->authCodes->check($user, AuthCode::PURPOSE_PASSWORD_RESET, $request->code);
+
+        if (!$isValid) {
+            return response()->json([
+                'success' => false,
+                'message' => self::GENERIC_FAILURE,
+            ], 401);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Code vérifié. Choisissez maintenant votre nouveau mot de passe.',
+        ]);
+    }
+
     public function reset(Request $request)
     {
         $request->validate([
-            'username'         => ['required', 'string', 'max:60'],
+            'username'         => ['required', 'string', 'max:190'],
             'code'             => ['required', 'string'],
             'new_password'     => ['required', 'string', 'min:10', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&\-_.+])/u'],
             'confirm_password' => ['required', 'same:new_password'],
@@ -55,7 +86,7 @@ class PasswordRecoveryController extends Controller
             'new_password.regex' => 'Le mot de passe doit contenir au moins 10 caractères avec des majuscules, minuscules, chiffres et symboles',
         ]);
 
-        $user = User::where('username', $this->normalize($request->username))->first();
+        $user = $this->findUser($request->username);
 
         $isValid = $user
             && $user->hasVerifiedContactEmail()
@@ -87,8 +118,23 @@ class PasswordRecoveryController extends Controller
         ]);
     }
 
-    private function normalize(string $username): string
+    /**
+     * Resolve the account from what the user typed: a username, or the contact
+     * email itself. Emails are stored lower-cased, and the comparison is
+     * case-insensitive on the column so an old mixed-case row still resolves.
+     */
+    private function findUser(string $identifier): ?User
     {
-        return mb_strtolower(trim($username));
+        $identifier = mb_strtolower(trim($identifier));
+
+        if ($identifier === '') {
+            return null;
+        }
+
+        if (str_contains($identifier, '@')) {
+            return User::whereRaw('LOWER(contact_email) = ?', [$identifier])->first();
+        }
+
+        return User::where('username', $identifier)->first();
     }
 }

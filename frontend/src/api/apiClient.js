@@ -99,6 +99,7 @@ api.interceptors.response.use(
         '/auth/login',
         '/auth/me',
         '/auth/password/forgot',
+        '/auth/password/verify-code',
         '/auth/password/reset',
         '/annee-academique/current',
       ];

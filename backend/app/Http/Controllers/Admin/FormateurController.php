@@ -42,15 +42,17 @@ class FormateurController extends Controller
         try {
             $request->validate([
                 'name'     => 'required|string',
-                'username' => 'nullable|string|max:60|regex:/^[a-z0-9]+(?:\.[a-z0-9]+)*$|unique:users,username',
+                'username' => 'nullable|string|max:60|regex:/^[a-z0-9]+(?:\.[a-z0-9]+)*$/',
                 'password' => 'required|string|min:6',
             ]);
 
             $generator = app(UsernameGenerator::class);
 
             // Left empty, the identifier is generated from the name (e.g. "m.alami").
+            // The identifier is assigned once. A chosen one that is already taken is
+            // disambiguated (sara, sara2, sara3, ...) instead of failing the creation.
             $username = filled($request->username)
-                ? mb_strtolower(trim($request->username))
+                ? $generator->reserve(mb_strtolower(trim($request->username)))
                 : $generator->reserveFor($request->name, 'formateur');
 
             $user = User::create([

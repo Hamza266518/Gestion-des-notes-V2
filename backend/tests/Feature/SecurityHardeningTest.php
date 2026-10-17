@@ -20,6 +20,7 @@ class SecurityHardeningTest extends TestCase
     public function test_password_recovery_endpoints_are_rate_limited(): void
     {
         $this->assertContains('throttle:6,1', $this->middlewareFor('POST', 'auth/password/forgot'));
+        $this->assertContains('throttle:8,1', $this->middlewareFor('POST', 'auth/password/verify-code'));
         $this->assertContains('throttle:5,1', $this->middlewareFor('POST', 'auth/password/reset'));
     }
 
@@ -29,6 +30,19 @@ class SecurityHardeningTest extends TestCase
         $this->assertContains('throttle:6,1', $this->middlewareFor('PUT', 'account/email'));
         $this->assertContains('throttle:8,1', $this->middlewareFor('POST', 'account/email/verify'));
         $this->assertContains('throttle:5,1', $this->middlewareFor('POST', 'account/password'));
+    }
+
+    public function test_the_login_identifier_cannot_be_changed_through_the_account_api(): void
+    {
+        $route = collect(Route::getRoutes()->getRoutes())
+            ->first(fn ($r) => str_ends_with($r->uri(), 'account/username'));
+
+        $this->assertNull($route, "L'identifiant de connexion doit rester immuable côté application");
+    }
+
+    public function test_the_login_endpoint_is_rate_limited(): void
+    {
+        $this->assertContains('throttle:6,1', $this->middlewareFor('POST', 'auth/login'));
     }
 
     public function test_legacy_forgot_password_routes_are_gone(): void

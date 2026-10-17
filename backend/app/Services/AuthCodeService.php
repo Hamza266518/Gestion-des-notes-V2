@@ -14,15 +14,21 @@ class AuthCodeService
     public const MAX_ATTEMPTS = 5;
     public const RESEND_COOLDOWN_SECONDS = 60;
 
+    public const STATUS_SENT         = 'sent';
+    public const STATUS_COOLDOWN     = 'cooldown';
+    public const STATUS_NO_RECIPIENT = 'no_recipient';
+    public const STATUS_FAILED       = 'failed';
+
     private const CODE_LENGTH = 6;
 
     /**
-     * Issue a fresh code, invalidating any live code for the same purpose.
+     * Issue and mail a code.
      *
-     * Returns null when the resend cooldown is still running, or when the email
-     * could not be delivered (in which case nothing is left usable behind).
+     * Returns a STATUS_* constant. A cooldown and a failed send both used to
+     * come back as null, so the account screen told the user to "wait" even
+     * when nothing had been sent. Callers can now tell the two apart.
      */
-    public function issue(User $user, string $purpose, ?string $ip = null): ?string
+    public function issue(User $user, string $purpose, ?string $ip = null): string
     {
         if (!in_array($purpose, [AuthCode::PURPOSE_EMAIL_VERIFICATION, AuthCode::PURPOSE_PASSWORD_RESET], true)) {
             throw new \InvalidArgumentException("Purpose de code inconnue: {$purpose}");
@@ -31,7 +37,7 @@ class AuthCodeService
         $recipient = trim((string) $user->contact_email);
 
         if ($recipient === '') {
-            return null;
+            return self::STATUS_NO_RECIPIENT;
         }
 
         $isCoolingDown = AuthCode::where('user_id', $user->id)
@@ -40,7 +46,7 @@ class AuthCodeService
             ->exists();
 
         if ($isCoolingDown) {
-            return null;
+            return self::STATUS_COOLDOWN;
         }
 
         AuthCode::where('user_id', $user->id)
@@ -71,10 +77,10 @@ class AuthCodeService
                 'error'   => $e->getMessage(),
             ]);
 
-            return null;
+            return self::STATUS_FAILED;
         }
 
-        return $code;
+        return self::STATUS_SENT;
     }
 
     /**
@@ -82,12 +88,33 @@ class AuthCodeService
      */
     public function verify(User $user, string $purpose, string $plainCode): bool
     {
-        $plainCode = trim($plainCode);
+        $record = $this->usableRecord($user, $purpose);
 
-        if ($plainCode === '') {
+        if (!$record || !$this->codeMatches($record, $plainCode)) {
             return false;
         }
 
+        $record->update(['consumed_at' => now()]);
+
+        return true;
+    }
+
+    /**
+     * Validate a code without consuming it, so a multi-step flow can confirm the
+     * email before asking for the new password (the reset still consumes it).
+     * A wrong code counts an attempt exactly like verify(), so guessing is
+     * throttled the same way in both paths.
+     */
+    public function check(User $user, string $purpose, string $plainCode): bool
+    {
+        $record = $this->usableRecord($user, $purpose);
+
+        return $record !== null && $this->codeMatches($record, $plainCode);
+    }
+
+    /** The latest unconsumed, unexpired, non-exhausted code, or null. */
+    private function usableRecord(User $user, string $purpose): ?AuthCode
+    {
         $record = AuthCode::where('user_id', $user->id)
             ->where('purpose', $purpose)
             ->whereNull('consumed_at')
@@ -95,12 +122,23 @@ class AuthCodeService
             ->first();
 
         if (!$record) {
-            return false;
+            return null;
         }
 
         if ($record->expires_at->isPast() || $record->attempts >= $record->max_attempts) {
             $record->update(['consumed_at' => now()]);
 
+            return null;
+        }
+
+        return $record;
+    }
+
+    private function codeMatches(AuthCode $record, string $plainCode): bool
+    {
+        $plainCode = trim($plainCode);
+
+        if ($plainCode === '') {
             return false;
         }
 
@@ -114,8 +152,6 @@ class AuthCodeService
 
             return false;
         }
-
-        $record->update(['consumed_at' => now()]);
 
         return true;
     }
