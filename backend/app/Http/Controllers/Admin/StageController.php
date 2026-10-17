@@ -34,7 +34,12 @@ class StageController extends Controller
                   ->orWhere('cin', 'like', "%{$search}%")
                   ->orWhere('numero_inscription', 'like', "%{$search}%");
             })
-            ->when($currentAnneeId, fn($q) => $q->where('annee_academique_id', $currentAnneeId))
+            ->when(
+                $currentAnneeId,
+                fn($q) => $q->where('annee_academique_id', $currentAnneeId),
+                // Fail closed when no year is current rather than searching all years.
+                fn($q) => $q->whereRaw('0 = 1')
+            )
             ->limit(20)
             ->get()
             ->map(fn($e) => [

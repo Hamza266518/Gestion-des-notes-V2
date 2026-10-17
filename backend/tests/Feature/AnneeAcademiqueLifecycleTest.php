@@ -254,4 +254,21 @@ class AnneeAcademiqueLifecycleTest extends TestCase
             'A rejected update must leave the row untouched'
         );
     }
+
+    public function test_missing_current_year_fails_closed_on_the_student_list(): void
+    {
+        // The window between archiving a year and switching to the next one has
+        // no row holding is_current. The list must resolve to nothing rather
+        // than falling back to every year's students.
+        AnneeAcademique::where('is_current', true)->update(['is_current' => false]);
+
+        $res = $this->asAdmin()->getJson('/api/admin/etudiants');
+
+        $res->assertOk();
+        $this->assertSame(
+            [],
+            $res->json('data'),
+            'No current year must yield an empty list, never all years'
+        );
+    }
 }

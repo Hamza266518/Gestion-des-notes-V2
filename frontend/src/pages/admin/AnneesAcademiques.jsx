@@ -87,27 +87,29 @@ export default function AnneesAcademiques() {
   const handleSetCurrent = async (newYearId) => {
     setCheckingRedoublants(true);
     try {
-      if (!currentAnnee) {
-        // No current year — find most recent archived year with groups to transition from
-        const fromYear = [...annees]
+      // The year we transition FROM: the live one when there is one, otherwise
+      // the most recent archived year that still holds groups. The redoublant
+      // check below runs for both. Previously the archived-year path skipped it,
+      // so those redoublants were never moved or dropped and silently stayed
+      // behind in the old year.
+      const fromYear = currentAnnee
+        || [...annees]
           .filter(a => a.is_archived && (a.groupes_count || 0) > 0)
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-        if (fromYear) {
-          await runTransition(fromYear.id, newYearId);
-        } else {
-          await adminApi.setCurrentAnnee(newYearId);
-          toast.success('Année courante mise à jour');
-        }
+
+      if (!fromYear) {
+        await adminApi.setCurrentAnnee(newYearId);
+        toast.success('Année courante mise à jour');
         refreshAnnees();
         return;
       }
 
       // Check for redoublants from the previous year
-      const res = await adminApi.checkRedoublants({ from_annee_id: currentAnnee.id });
+      const res = await adminApi.checkRedoublants({ from_annee_id: fromYear.id });
       const redoublants = res.data.data || [];
 
       if (redoublants.length === 0) {
-        await runTransition(currentAnnee.id, newYearId);
+        await runTransition(fromYear.id, newYearId);
         refreshAnnees();
         return;
       }
@@ -116,7 +118,7 @@ export default function AnneesAcademiques() {
       const initialChecks = {};
       redoublants.forEach(s => { initialChecks[s.id] = true; });
       setRedoublantChecks(initialChecks);
-      setRedoublantModal({ newYearId, fromAnneeId: currentAnnee.id, students: redoublants });
+      setRedoublantModal({ newYearId, fromAnneeId: fromYear.id, students: redoublants });
       setCheckingRedoublants(false);
     } catch (e) {
       const msg = e.response?.data?.message || e.message || 'Erreur lors de la vérification des redoublants';
@@ -179,9 +181,17 @@ export default function AnneesAcademiques() {
   };
 
   const transitionToNewYear = async (fromId, toId, { confirmIds = [], dropIds = [], groupeIds = {} } = {}) => {
-    await adminApi.copyGroups({ from_annee_id: fromId, to_annee_id: toId });
+    const copyRes = await adminApi.copyGroups({ from_annee_id: fromId, to_annee_id: toId });
+    // copyGroups errors are not fatal on their own: a group that could not be
+    // built only matters when a student actually needs it, and that surfaces
+    // below as a placement error. Keep them visible but let the placement
+    // errors decide whether the year may switch.
+    if ((copyRes.data?.errors || []).length > 0) {
+      console.warn('copyGroups errors:', copyRes.data.errors);
+    }
 
     const ambiguous = [];
+    const placementErrors = [];
 
     if (confirmIds.length > 0) {
       const res = await adminApi.confirmRedoublants({
@@ -190,6 +200,7 @@ export default function AnneesAcademiques() {
         groupe_ids: groupeIds,
       });
       (res.data?.ambiguous || []).forEach(a => ambiguous.push({ ...a, kind: 'redoublant' }));
+      placementErrors.push(...(res.data?.errors || []));
     }
 
     if (dropIds.length > 0)
@@ -201,8 +212,9 @@ export default function AnneesAcademiques() {
       groupe_ids: groupeIds,
     });
     (promoteRes.data?.ambiguous || []).forEach(a => ambiguous.push({ ...a, kind: 'admis' }));
+    placementErrors.push(...(promoteRes.data?.errors || []));
 
-    return { promoteRes, ambiguous };
+    return { promoteRes, ambiguous, placementErrors };
   };
 
   /**
@@ -214,11 +226,22 @@ export default function AnneesAcademiques() {
    * named a destination for each of them.
    */
   const runTransition = async (fromId, toId, options = {}) => {
-    const { promoteRes, ambiguous } = await transitionToNewYear(fromId, toId, options);
+    const { promoteRes, ambiguous, placementErrors } = await transitionToNewYear(fromId, toId, options);
 
     if (ambiguous.length > 0) {
       setAmbiguousModal({ fromAnneeId: fromId, toAnneeId: toId, entries: ambiguous });
       setGroupChoices({});
+      return false;
+    }
+
+    if (placementErrors.length > 0) {
+      // A student with no destination group would be left behind in the old
+      // year while the new one became current. Refuse to switch and let the
+      // admin create the missing group first, instead of silently dropping them.
+      toast.error(
+        `Transition interrompue : ${placementErrors.length} étudiant(s) sans destination. ${placementErrors[0]}`
+      );
+      console.error('Transition placement errors:', placementErrors);
       return false;
     }
 
@@ -348,7 +371,7 @@ export default function AnneesAcademiques() {
         <div className="alert alert-warning" style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>{warning.message}</span>
-            {warning.can_archive && (
+            {warning.can_archive && currentAnnee && (
               <button className="btn btn-sm btn-warning" onClick={() => handleArchive(currentAnnee.id)}>
                 Archiver maintenant
               </button>

@@ -58,7 +58,13 @@ class NoteAdminController extends Controller
                     })->pluck('id')
                 ))
                 ->when($request->groupe_id, fn($q) => $q->whereHas('etudiant', fn($q) => $q->where('groupe_id', $request->groupe_id)))
-                ->when($anneeId, fn($q) => $q->whereHas('etudiant', fn($q) => $q->where('annee_academique_id', $anneeId)))
+                ->when(
+                    $anneeId,
+                    fn($q) => $q->whereHas('etudiant', fn($q) => $q->where('annee_academique_id', $anneeId)),
+                    // No explicit year and no current year: return nothing rather
+                    // than mixing every year's grades.
+                    fn($q) => $q->whereRaw('0 = 1')
+                )
                 ->get();
             return response()->json(['success' => true, 'data' => $notes]);
         } catch (\Exception $e) {

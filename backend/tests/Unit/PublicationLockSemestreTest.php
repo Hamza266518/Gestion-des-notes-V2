@@ -2,6 +2,8 @@
 
 namespace Tests\Unit;
 
+use App\Models\AnneeAcademique;
+use App\Models\Controle;
 use App\Services\PublicationLockService;
 use Tests\TestCase;
 
@@ -46,5 +48,35 @@ class PublicationLockSemestreTest extends TestCase
 
         $this->assertContains('bulletin', $locks->typesPour(1));
         $this->assertContains('bulletin', $locks->typesPour(2));
+    }
+
+    /**
+     * Every lock is scoped to the current year, so a missing current year means
+     * the scope cannot be resolved. Answering "unlocked" there reopened every
+     * published cohort for the window between archiving a year and switching to
+     * the next one. The guard must fail closed instead.
+     */
+    public function test_lock_fails_closed_when_no_year_is_current(): void
+    {
+        $before = AnneeAcademique::where('is_current', true)->value('id');
+        AnneeAcademique::where('is_current', true)->update(['is_current' => false]);
+
+        try {
+            $locks = app(PublicationLockService::class);
+            $controle = new Controle();
+
+            $this->assertTrue(
+                $locks->verrouilleGroupe($controle, 123),
+                'With no current year a group must read as locked, never unlocked'
+            );
+            $this->assertTrue(
+                $locks->verrouilleTout($controle),
+                'With no current year every group must read as locked'
+            );
+        } finally {
+            if ($before !== null) {
+                AnneeAcademique::where('id', $before)->update(['is_current' => true]);
+            }
+        }
     }
 }

@@ -61,6 +61,12 @@ class EtudiantController extends Controller
         }
         if ($anneeId) {
             $query->where('annee_academique_id', $anneeId);
+        } else {
+            // An explicit year wins, otherwise the current one is implied. With
+            // no current year (the window between archiving the old year and
+            // switching to the new one) the old code applied no filter at all
+            // and listed every year's students. Fail closed instead.
+            $query->whereRaw('0 = 1');
         }
 
         if ($request->filled('groupe_id')) {

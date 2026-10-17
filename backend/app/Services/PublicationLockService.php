@@ -37,6 +37,26 @@ class PublicationLockService
     private array $memoGroupes = [];
 
     /**
+     * Memoised "is there a current year at all?".
+     *
+     * Every lock below is scoped to the current year. When there is none the
+     * year-scoped lookup resolves to "nothing published", which read as
+     * "unlocked" and silently reopened published grades for the whole school
+     * during the window between archiving a year and switching to the next one.
+     * Callers fail closed instead.
+     */
+    private ?bool $memoHasCurrentAnnee = null;
+
+    private function hasCurrentAnnee(): bool
+    {
+        if ($this->memoHasCurrentAnnee === null) {
+            $this->memoHasCurrentAnnee = AnneeAcademique::where('is_current', true)->exists();
+        }
+
+        return $this->memoHasCurrentAnnee;
+    }
+
+    /**
      * Publication types that close a control, given the control's semester.
      */
     public function typesPour(int $semestre): array
@@ -159,6 +179,11 @@ class PublicationLockService
      */
     public function verrouilleGroupe(Controle $controle, $groupeId): bool
     {
+        // Fail closed: with no current year the year-scoped lock cannot be
+        // resolved, and answering "unlocked" reopened published grades for the
+        // whole school. Keep writes blocked until a year is current again.
+        if (!$this->hasCurrentAnnee()) return true;
+
         if ($groupeId === null) return false;
 
         return in_array((int) $groupeId, $this->groupesVerrouilles($controle), true);
@@ -170,6 +195,8 @@ class PublicationLockService
      */
     public function verrouilleTout(Controle $controle): bool
     {
+        if (!$this->hasCurrentAnnee()) return true;
+
         $groupeIds = $this->groupesDuControle($controle);
         if ($groupeIds->isEmpty()) return false;
 
