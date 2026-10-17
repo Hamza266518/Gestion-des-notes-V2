@@ -31,8 +31,8 @@ export const formateursApi = {
     apiClient.get('/formateur/scan-data'),
   getNotes: (params) =>
     apiClient.get('/formateur/notes', { params }),
-  updateNote: (id, valeur) =>
-    apiClient.put(`/formateur/notes/${id}`, { valeur }),
+  updateNote: (id, valeur, estAbsent = false) =>
+    apiClient.put(`/formateur/notes/${id}`, { valeur, est_absent: estAbsent }),
 searchEtudiants: (search, extra) =>
       apiClient.get('/formateur/etudiants', { params: { search, ...(extra || {}) } }),
   getGroupes: (params) =>

@@ -32,7 +32,12 @@ class NoteController extends Controller
             ->when($request->controle_id, fn($q) => $q->where('controle_id', $request->controle_id))
             ->when($request->sequence_id, fn($q) => $q->whereHas('controle', fn($q) => $q->where('sequence_id', $request->sequence_id)))
             ->when($request->groupe_id, fn($q) => $q->whereHas('etudiant', fn($q) => $q->where('groupe_id', $request->groupe_id)))
-            ->when($currentAnneeId, fn($q) => $q->whereHas('etudiant', fn($q) => $q->where('annee_academique_id', $currentAnneeId)))
+            ->when(
+                $currentAnneeId,
+                fn($q) => $q->whereHas('etudiant', fn($q) => $q->where('annee_academique_id', $currentAnneeId)),
+                // No current year: fail closed instead of showing every year's notes.
+                fn($q) => $q->whereRaw('0 = 1')
+            )
             ->get();
 
         // A single level can be partly published, so the lock is resolved per
@@ -226,9 +231,13 @@ class NoteController extends Controller
                 \App\Models\Sequence::whereIn('id', $sequenceIds)->pluck('unite_id')
             )->pluck('filiere_id')->unique();
 
-            $groupeIds = Groupe::whereHas('niveau', fn($q) => $q->whereIn('filiere_id', $filiereIds))
-                ->when($currentAnneeId, fn($q) => $q->where('annee_academique_id', $currentAnneeId))
-                ->pluck('id');
+            // No current year means no group is in scope; an empty set keeps the
+            // search returning nothing instead of every year's groups.
+            $groupeIds = $currentAnneeId
+                ? Groupe::whereHas('niveau', fn($q) => $q->whereIn('filiere_id', $filiereIds))
+                    ->where('annee_academique_id', $currentAnneeId)
+                    ->pluck('id')
+                : collect();
         }
 
         $etudiants = Etudiant::with('groupe.niveau.filiere')

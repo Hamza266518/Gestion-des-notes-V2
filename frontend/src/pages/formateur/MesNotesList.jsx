@@ -10,6 +10,15 @@ import FilterSelect from '../../components/common/FilterSelect';
 import '../../css/components.css';
 import '../../css/layout.css';
 
+// A French locale renders the decimal separator as a comma and Number('12,5')
+// is NaN, so manual entry goes through the same comma-aware parser as the
+// scanner instead of parseFloat, which silently truncates at the comma.
+const toGrade = (v) => {
+  if (v === null || v === undefined || String(v).trim() === '') return null;
+  const n = Number(String(v).replace(',', '.').trim());
+  return Number.isFinite(n) ? n : null;
+};
+
 export default function MesNotesList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -174,6 +183,7 @@ export default function MesNotesList() {
 function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId }) {
   const [editingNote, setEditingNote] = useState(null);
   const [editValue, setEditValue] = useState('');
+  const [editAbsent, setEditAbsent] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notesByControl, setNotesByControl] = useState({});
   const [allEtudiants, setAllEtudiants] = useState([]);
@@ -270,16 +280,24 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
     // Enter triggers a save and the input then unmounts, which fires blur and
     // used to fire a second identical PUT and a duplicate toast.
     if (saveInFlight.current) return;
-    if (editValue === '' || editValue === null) return;
+    // Empty and not marked absent: there is nothing to store, so close the
+    // editor. Returning here used to leave the cell stuck on a blank input.
+    if (!editAbsent && (editValue === '' || editValue === null)) {
+      setEditingNote(null);
+      setEditValue('');
+      setEditAbsent(false);
+      return;
+    }
 
     saveInFlight.current = true;
     setSaving(true);
     try {
       const { formateursApi } = await import('../../api/formateurs');
-      await formateursApi.updateNote(noteId, parseFloat(editValue));
-      showSuccess(toast, 'Note enregistree');
+      await formateursApi.updateNote(noteId, editAbsent ? 0 : toGrade(editValue), editAbsent);
+      showSuccess(toast, editAbsent ? 'Absence enregistree' : 'Note enregistree');
       setEditingNote(null);
       setEditValue('');
+      setEditAbsent(false);
       if (isOpen) {
         const responses = await Promise.all(
           ctrlIds.map(id =>
@@ -413,20 +431,39 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
                             <td key={ctrl?.id} style={{ textAlign: 'center', padding: '6px 8px', verticalAlign: 'middle' }}>
                               {note ? (
                                 editingNote === note.id ? (
-                                  <input
-                                    type="number"
-                                    className="form-input form-input-sm"
-                                    value={editValue}
-                                    min="0"
-                                    max={ctrl?.note_max ?? 20}
-                                    step="0.25"
-                                    style={{ width: 64, textAlign: 'center', padding: '4px 6px', fontSize: 13 }}
-                                    onChange={e => setEditValue(e.target.value)}
-                                    onBlur={() => handleSave(note.id)}
-                                    onKeyDown={e => { if (e.key === 'Enter') handleSave(note.id); }}
-                                    disabled={saving}
-                                    autoFocus
-                                  />
+                                  <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                                    <input
+                                      type="number"
+                                      className="form-input form-input-sm"
+                                      value={editAbsent ? '' : editValue}
+                                      min="0"
+                                      max={ctrl?.note_max ?? 20}
+                                      step="0.25"
+                                      style={{ width: 64, textAlign: 'center', padding: '4px 6px', fontSize: 13 }}
+                                      onChange={e => setEditValue(e.target.value)}
+                                      onBlur={() => handleSave(note.id)}
+                                      onKeyDown={e => { if (e.key === 'Enter') handleSave(note.id); }}
+                                      disabled={saving || editAbsent}
+                                      autoFocus
+                                    />
+                                    <label
+                                      title="Marquer comme absent"
+                                      onMouseDown={e => e.preventDefault()}
+                                      style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--gray-500)', cursor: 'pointer' }}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={editAbsent}
+                                        disabled={saving}
+                                        onChange={e => {
+                                          const next = e.target.checked;
+                                          setEditAbsent(next);
+                                          setEditValue(next ? '' : (note.valeur ?? ''));
+                                        }}
+                                      />
+                                      Abs.
+                                    </label>
+                                  </div>
                                 ) : note.est_absent ? (
                                   <span
                                     style={{ ...noteDisplayStyle(), cursor: (note.is_confirmed || locked) ? 'default' : 'pointer', borderBottom: (note.is_confirmed || locked) ? 'none' : '1px dashed var(--gray-300)' }}
@@ -434,6 +471,7 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
                                       if (note.is_confirmed || locked) return;
                                       setEditingNote(note.id);
                                       setEditValue('');
+                                      setEditAbsent(true);
                                     }}
                                     title={locked ? 'Publié — non modifiable' : (note.is_confirmed ? 'Absent' : 'Cliquer pour corriger')}
                                   >
@@ -449,6 +487,7 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
                                     onClick={() => {
                                       setEditingNote(note.id);
                                       setEditValue(note.valeur ?? '');
+                                      setEditAbsent(false);
                                     }}
                                     title="Cliquer pour modifier"
                                   >

@@ -6,7 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import Spinner from '../../components/common/Spinner';
 import FilterSelect from '../../components/common/FilterSelect';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
-import { controlLabel, invalidNoteHint } from '../../utils/helpers';
+import { controlLabel, invalidNoteHint, formatNiveau } from '../../utils/helpers';
 
 import '../../css/components.css';
 import '../../css/layout.css';
@@ -47,7 +47,7 @@ export default function Scanner() {
   const [filieres, setFilieres] = useState([]);
   const [sequences, setSequences] = useState([]);
   const [sel, setSel] = useState({
-    filiere_id: '', sequence_id: '', controle_id: '', groupe_id: ''
+    filiere_id: '', annee: '', sequence_id: '', controle_id: '', groupe_id: ''
   });
   const [groupesParPerimetre, setGroupesParPerimetre] = useState({});
   // Mirror of `sel` readable inside async callbacks, where the state value
@@ -111,7 +111,7 @@ export default function Scanner() {
       const raw = window.sessionStorage.getItem(SCAN_KEY);
       if (!raw) return;
       const saved = JSON.parse(raw);
-      if (saved?.sel?.controle_id) setSel({ ...saved.sel, groupe_id: saved.sel.groupe_id ?? '' });
+      if (saved?.sel?.controle_id) setSel({ ...saved.sel, annee: saved.sel.annee ?? '', groupe_id: saved.sel.groupe_id ?? '' });
       // step 3 (results) and 4 (summary) are the ones worth restoring; going
       // back to 1/2 is harmless but the user may prefer to pick a control first.
       if (Array.isArray(saved.results) && saved.results.length) {
@@ -284,7 +284,7 @@ export default function Scanner() {
           if (!prev.controle_id) return prev;
           const existe = controleIds.some(id => String(id) === String(prev.controle_id));
           if (existe && !bloque(prev.controle_id, prev.groupe_id)) return prev;
-          return { filiere_id: '', sequence_id: '', controle_id: '', groupe_id: '' };
+          return { filiere_id: '', annee: '', sequence_id: '', controle_id: '', groupe_id: '' };
         });
 
         if (selRef.current?.controle_id) {
@@ -316,8 +316,46 @@ export default function Scanner() {
     pdfUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
   }, []);
 
+  // Distinct levels (numero_annee) a filière offers. The séquence list is scoped
+  // to one of them so the instructor always knows which year they are grading:
+  // an unfiltered list mixes 1ère and 2ème année under the same filière.
+  const anneesDeFiliere = useCallback((filiereId) => {
+    if (!filiereId) return [];
+    const set = new Set(
+      sequences
+        .filter(s => String(s.unite?.filiere_id) === String(filiereId))
+        .map(s => Number(s.unite?.numero_annee))
+        .filter(Boolean)
+    );
+    return [...set].sort((a, b) => a - b);
+  }, [sequences]);
+
+  const anneesFiliere = useMemo(
+    () => anneesDeFiliere(sel.filiere_id),
+    [anneesDeFiliere, sel.filiere_id]
+  );
+
+  // A filière that only offers one year selects it automatically, and a restored
+  // session adopts the year of its already-chosen séquence, so the list is never
+  // empty for a reason the instructor cannot see.
+  useEffect(() => {
+    if (!sel.filiere_id) return;
+    const years = anneesDeFiliere(sel.filiere_id);
+    if (years.length === 1) {
+      if (String(sel.annee) !== String(years[0])) setSel(p => ({ ...p, annee: String(years[0]) }));
+      return;
+    }
+    if (!sel.annee && sel.sequence_id) {
+      const seq = sequences.find(s => String(s.id) === String(sel.sequence_id));
+      const year = Number(seq?.unite?.numero_annee);
+      if (year) setSel(p => ({ ...p, annee: String(year) }));
+    }
+  }, [anneesDeFiliere, sequences, sel.filiere_id, sel.annee, sel.sequence_id]);
+
   const filteredSequences = sel.filiere_id
-    ? sequences.filter(s => s.unite?.filiere_id == sel.filiere_id)
+    ? sequences.filter(s =>
+        String(s.unite?.filiere_id) === String(sel.filiere_id) &&
+        (!sel.annee || String(s.unite?.numero_annee) === String(sel.annee)))
     : sequences;
 
   const filteredControles = sel.sequence_id
@@ -555,7 +593,12 @@ export default function Scanner() {
       try { window.sessionStorage.removeItem(SCAN_KEY); } catch { /* ignore */ }
       setResults([]);
       setPdfs([]);
-      setPdfUrls([]);
+      // Release the previews now the work is stored, like clearScanWork does;
+      // dropping the list without revoking leaked one blob per picked PDF.
+      setPdfUrls(prev => {
+        prev.forEach(url => URL.revokeObjectURL(url));
+        return [];
+      });
       setStep(5);
     } catch (err) {
       const resp = err.response?.data;
@@ -635,19 +678,28 @@ export default function Scanner() {
                 label="Filière"
                 value={sel.filiere_id}
                 options={filieres.map(f => ({ id: f.id, label: f.nom }))}
-                onChange={id => setSel(p => ({ ...p, filiere_id: id, sequence_id: '', controle_id: '', groupe_id: '' }))}
+                onChange={id => setSel(p => ({ ...p, filiere_id: id, annee: '', sequence_id: '', controle_id: '', groupe_id: '' }))}
                 placeholder="Choisir une filière"
                 allLabel="Choisir une filière"
                 disabled={filieres.length === 0}
               />
               <FilterSelect
+                label="Année"
+                value={sel.annee}
+                options={anneesFiliere.map(a => ({ id: a, label: formatNiveau(a) }))}
+                onChange={id => setSel(p => ({ ...p, annee: id, sequence_id: '', controle_id: '', groupe_id: '' }))}
+                placeholder="Choisir une année"
+                allLabel="Choisir une année"
+                disabled={!sel.filiere_id || anneesFiliere.length === 0}
+              />
+              <FilterSelect
                 label="Séquence"
                 value={sel.sequence_id}
-                options={filteredSequences.map(s => ({ id: s.id, label: `${s.unite?.nom} — ${s.nom}` }))}
+                options={filteredSequences.map(s => ({ id: s.id, label: `${formatNiveau(s.unite?.numero_annee)} — ${s.unite?.nom} — ${s.nom}` }))}
                 onChange={id => setSel(p => ({ ...p, sequence_id: id, controle_id: '', groupe_id: '' }))}
                 placeholder="Choisir une séquence"
                 allLabel="Choisir une séquence"
-                disabled={!sel.filiere_id}
+                disabled={!sel.filiere_id || (anneesFiliere.length > 0 && !sel.annee)}
               />
               <FilterSelect
                 label="Contrôle"
