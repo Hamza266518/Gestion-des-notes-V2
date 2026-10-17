@@ -452,12 +452,6 @@ export default function ScanExamens() {
               uniquement à l'intérieur de la liste choisie.
             </div>
           )}
-          {selUnite && groupes.length === 1 && (
-            <div className="alert alert-info" style={{ padding: '12px 16px', fontSize: 13 }}>
-              Les notes ne seront rapprochées que des étudiants du groupe{' '}
-              <strong>{groupes[0].nom}</strong>. Tout nom introuvable dans la liste reste marqué « Introuvable ».
-            </div>
-          )}
           <button className="btn btn-primary" disabled={!selUnite || !selType || !selGroupe} onClick={() => setStep(2)}>
             Suivant →
           </button>

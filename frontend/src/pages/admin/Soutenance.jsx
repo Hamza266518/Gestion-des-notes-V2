@@ -352,9 +352,6 @@ export default function Soutenance() {
     <div className="page">
       <div className="page-header">
         <h2 className="page-title">Soutenance</h2>
-        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--gray-500)' }}>
-          Notes du jury (NSTI) : scannez la feuille du jury, un étudiant par ligne et une note par critère.
-        </p>
       </div>
 
       <div className="steps" style={{ marginBottom: 28 }}>
@@ -458,54 +455,34 @@ export default function Soutenance() {
               <span>2. Chaque note se lit par quart de point (0,25) ; un critère absent s'écrit « AB »</span>
             </div>
           </div>
-          <div style={{ overflowX: 'auto', marginBottom: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <table style={{ fontSize: 13, minWidth: 480, width: '100%' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f9fafb' }}>
-                  <th style={{ padding: '10px 14px', fontWeight: 600, textAlign: 'left' }}>Critère</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 600, textAlign: 'left' }}>Intitulé</th>
-                </tr>
-              </thead>
-              <tbody>
-                {criteres.map(c => (
-                  <tr key={c.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '8px 14px' }}>{c.numero}</td>
-                    <td style={{ padding: '8px 14px' }}>{c.nom}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="upload-zone">
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              multiple
+              onChange={handleFiles}
+              disabled={loading}
+            />
+            <div className="upload-zone-text">
+              <strong>Cliquer ou glisser</strong> les fichiers PDF de la feuille du jury
+            </div>
           </div>
-          <div className="alert alert-info" style={{ marginBottom: 16, padding: '12px 16px', fontSize: 13 }}>
-            Les notes ne seront rapprochées que des étudiants du groupe
-            {' '}<strong>{groupes.find(g => String(g.id) === String(selGroupe))?.nom ?? ''}</strong>.
-            Tout nom introuvable dans la liste reste marqué « Introuvable ».
-          </div>
-          <input
-            type="file"
-            accept=".pdf,application/pdf"
-            multiple
-            onChange={handleFiles}
-            disabled={loading}
-          />
           {pdfUrls.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
-              {pdfUrls.map((u, i) => (
-                <div key={i} style={{ position: 'relative', width: 170 }}>
-                  <iframe src={u} title={`feuille-${i + 1}`} style={{ width: 170, height: 220, border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-danger"
-                    style={{ position: 'absolute', top: 6, right: 6, padding: '4px 6px' }}
-                    onClick={() => !loading && removePdf(i)}
-                    disabled={loading}
-                    title="Retirer"
-                  >
-                    <FiX size={14} />
-                  </button>
-                  <div style={{ fontSize: 12, textAlign: 'center', color: 'var(--gray-500)', marginTop: 4 }}>Page {i + 1}</div>
-                </div>
-              ))}
+            <div style={{ marginTop: 20 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{pdfs.length} fichier(s) PDF sélectionné(s)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+                {pdfUrls.map((src, i) => (
+                  <div key={i} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb', background: '#f9fafb', height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <embed src={src} type="application/pdf" style={{ width: '100%', height: '100%' }} />
+                    <div style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(239,68,68,0.92)', color: '#fff', border: 'none', borderRadius: 6, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', opacity: loading ? 0.5 : 1 }} onClick={() => !loading && removePdf(i)}>
+                      <FiX size={18} />
+                    </div>
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', padding: '4px 8px', fontSize: 12, textAlign: 'center' }}>
+                      Page {i + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>

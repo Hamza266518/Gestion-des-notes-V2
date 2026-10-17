@@ -19,7 +19,8 @@ import {
   FiChevronDown,
   FiX,
   FiClock,
-  FiBriefcase
+  FiBriefcase,
+  FiUsers
 } from 'react-icons/fi';
 import logoMenu from '../../image/logo-menu.png';
 import { startPrefetch, cancelPrefetch } from '../../api/prefetch';
@@ -55,7 +56,7 @@ const adminGroups = [
       { to: '/admin/saisie-notes', label: 'Saisie des Notes',   icon: FiEdit },
       { to: '/admin/scan-examens', label: 'Scan Examens',       icon: FiCamera },
       { to: '/admin/stages',       label: 'Stages',             icon: FiBriefcase },
-      { to: '/admin/soutenance',   label: 'Soutenance',         icon: FiAward },
+      { to: '/admin/soutenance',   label: 'Soutenance',         icon: FiUsers },
     ],
   },
   {

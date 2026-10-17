@@ -29,8 +29,6 @@ $fieldsTechnicien = [
     ['key' => 'nationalite', 'x' => 0.362, 'y' => 0.541, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'numero_inscription', 'x' => 0.268, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'date_inscription', 'x' => 0.487, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'fr'],
-    // Filière stays calibrated per template (the printed label sits differently
-    // on the Technicien artwork).
     ['key' => 'filiere', 'x' => 0.238, 'y' => 0.625, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'promotion', 'x' => 0.488, 'y' => 0.647, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'date_delivrance', 'x' => 0.465, 'y' => 0.698, 'size' => 13, 'bold' => true, 'group' => 'fr'],
@@ -40,7 +38,6 @@ $fieldsTechnicien = [
     ['key' => 'cin_ar', 'x' => 0.802, 'y' => 0.540, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'nationalite_ar', 'x' => 0.656, 'y' => 0.543, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'numero_inscription_ar', 'x' => 0.774, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'ar'],
-    // Filière (arabe) stays calibrated per template.
     ['key' => 'filiere_ar', 'x' => 0.817, 'y' => 0.629, 'size' => 13, 'bold' => true, 'group' => 'ar'],
 ];
 
@@ -74,8 +71,6 @@ $fieldsSpecialisation = [
     ['key' => 'nationalite', 'x' => 0.362, 'y' => 0.541, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'numero_inscription', 'x' => 0.268, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'date_inscription', 'x' => 0.487, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'fr'],
-    // Filière stays calibrated per template (the printed label sits differently
-    // on the Specialisation artwork).
     ['key' => 'filiere', 'x' => 0.292, 'y' => 0.624, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'promotion', 'x' => 0.488, 'y' => 0.647, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'date_delivrance', 'x' => 0.465, 'y' => 0.698, 'size' => 13, 'bold' => true, 'group' => 'fr'],
@@ -85,10 +80,6 @@ $fieldsSpecialisation = [
     ['key' => 'cin_ar', 'x' => 0.802, 'y' => 0.540, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'nationalite_ar', 'x' => 0.656, 'y' => 0.543, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'numero_inscription_ar', 'x' => 0.774, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'ar'],
-    // "ممرض متعدد الاختصاصات" is much longer than the other two filières; it
-    // needs a wider box than the default so it stays on ONE line; its size
-    // now matches the other filières, and the wider box does the fitting.
-    // Its position stays calibrated per template.
     ['key' => 'filiere_ar', 'x' => 0.790, 'y' => 0.626, 'size' => 13, 'bold' => true, 'group' => 'ar', 'width' => 300],
 ];
 
@@ -168,45 +159,45 @@ return [
             'key'   => 'info_ouverture_date',
             'label' => "Date d'autorisation d'ouverture",
             'type'  => 'date',
-            'fr'    => ['x' => 0.440, 'y' => 0.418, 'size' => 10],
-            'ar'    => ['x' => 0.650, 'y' => 0.424, 'size' => 10],
+            'fr'    => ['x' => 0.3557, 'y' => 0.4124, 'size' => 10],
+            'ar'    => ['x' => 0.6517, 'y' => 0.4133, 'size' => 10],
         ],
         [
             'key'   => 'info_ouverture_no',
             'label' => "N° d'autorisation d'ouverture",
             'type'  => 'text',
-            'fr'    => ['x' => 0.352, 'y' => 0.414, 'size' => 10],
+            'fr'    => ['x' => 0.478, 'y' => 0.4146, 'size' => 10],
         ],
         [
             'key'   => 'info_accreditation_no',
             'label' => "N° de décision d'accréditation",
             'type'  => 'text',
-            'fr'    => ['x' => 0.360, 'y' => 0.436, 'size' => 10],
-            'ar'    => ['x' => 0.640, 'y' => 0.442, 'size' => 10],
+            'fr'    => ['x' => 0.3063, 'y' => 0.429, 'size' => 10],
+            'ar'    => ['x' => 0.6354, 'y' => 0.4327, 'size' => 10],
         ],
         [
             'key'   => 'info_sous_no',
             'label' => 'N',
             'type'  => 'text',
-            'fr'    => ['x' => 0.500, 'y' => 0.426, 'size' => 10],
+            'fr'    => ['x' => 0.4961, 'y' => 0.2388, 'size' => 10],
         ],
         [
             'key'   => 'info_accreditation_date',
             'label' => "Date de la décision d'accréditation",
             'type'  => 'date',
-            'fr'    => ['x' => 0.478, 'y' => 0.441, 'size' => 10],
+            'fr'    => ['x' => 0.4667, 'y' => 0.4343, 'size' => 10],
         ],
         [
             'key'   => 'info_pv_date',
             'label' => 'Date du procès-verbal du jury',
             'type'  => 'date',
-            'fr'    => ['x' => 0.478, 'y' => 0.459, 'size' => 10],
+            'fr'    => ['x' => 0.4653, 'y' => 0.4489, 'size' => 10],
         ],
         [
             'key'   => 'info_serie_no',
             'label' => 'N° du diplôme (série)',
             'type'  => 'text',
-            'fr'    => ['x' => 0.503, 'y' => 0.927, 'size' => 10],
+            'fr'    => ['x' => 0.5186, 'y' => 0.9203, 'size' => 10],
         ],
 
         // The establishment's own identity, also the same on every diploma:
@@ -217,25 +208,25 @@ return [
             'key'   => 'institut_fr',
             'label' => "Nom de l'institut (français)",
             'type'  => 'text',
-            'fr'    => ['x' => 0.250, 'y' => 0.175, 'size' => 10],
+            'fr'    => ['x' => 0.2509, 'y' => 0.16, 'size' => 10],
         ],
         [
             'key'   => 'institut_ar',
             'label' => "Nom de l'institut (arabe)",
             'type'  => 'text',
-            'ar'    => ['x' => 0.750, 'y' => 0.175, 'size' => 10],
+            'ar'    => ['x' => 0.7484, 'y' => 0.16, 'size' => 10],
         ],
         [
             'key'   => 'ville_fr',
             'label' => 'Ville (français)',
             'type'  => 'text',
-            'fr'    => ['x' => 0.330, 'y' => 0.710, 'size' => 10],
+            'fr'    => ['x' => 0.3434, 'y' => 0.7054, 'size' => 10],
         ],
         [
             'key'   => 'ville_ar',
             'label' => 'Ville (arabe)',
             'type'  => 'text',
-            'ar'    => ['x' => 0.676, 'y' => 0.700, 'size' => 10],
+            'ar'    => ['x' => 0.6853, 'y' => 0.7105, 'size' => 10],
         ],
     ],
 ];
