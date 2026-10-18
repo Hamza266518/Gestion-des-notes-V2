@@ -4,6 +4,7 @@ import { formateursApi } from '../../api/formateurs';
 import { scanApi } from '../../api/scan';
 import { useToast } from '../../context/ToastContext';
 import Spinner from '../../components/common/Spinner';
+import Modal from '../../components/common/Modal';
 import FilterSelect from '../../components/common/FilterSelect';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
 import { controlLabel, invalidNoteHint, formatNiveau } from '../../utils/helpers';
@@ -59,6 +60,7 @@ export default function Scanner() {
   const [results, setResults] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [savingResults, setSavingResults] = useState(false);
+  const [confirmRescan, setConfirmRescan] = useState(false);
   const [pdfUrls, setPdfUrls] = useState([]);
   const [allConfirmed, setAllConfirmed] = useState(false);
   const [publicationMap, setPublicationMap] = useState({});
@@ -391,7 +393,7 @@ export default function Scanner() {
     setPdfs(files);
   };
 
-  const handleScan = async () => {
+  const handleScan = () => {
     if (pdfs.length === 0) {
       toast.warning('Veuillez sélectionner au moins un fichier PDF');
       return;
@@ -413,13 +415,15 @@ export default function Scanner() {
     // Rescanning used to drop the current table without warning, taking with it
     // every grade typed by hand and every row linked manually.
     if (results.length > 0) {
-      const confirmed = window.confirm(
-        `Un nouveau scan remplace les ${results.length} ligne(s) déjà affichées, ` +
-        `y compris les notes saisies à la main. Continuer ?`
-      );
-      if (!confirmed) return;
+      setConfirmRescan(true);
+      return;
     }
 
+    runScan();
+  };
+
+  const runScan = async () => {
+    setConfirmRescan(false);
     setScanning(true);
     setResults([]);
 
@@ -1125,6 +1129,16 @@ onChange={e => {
         </div>
       )}
 
+      <Modal open={confirmRescan} onClose={() => setConfirmRescan(false)} title="Remplacer les résultats">
+        <p>
+          Un nouveau scan remplace les {results.length} ligne(s) déjà affichées, y compris les notes saisies
+          à la main. Continuer ?
+        </p>
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={() => setConfirmRescan(false)}>Annuler</button>
+          <button className="btn btn-danger" onClick={runScan}>Remplacer</button>
+        </div>
+      </Modal>
     </div>
   );
 }

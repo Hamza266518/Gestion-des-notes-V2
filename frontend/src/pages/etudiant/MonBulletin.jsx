@@ -83,9 +83,9 @@ function UnitSection({ unite, sequences, columns }) {
               <tr key={idx}>
                 <td className="seq-cell">
                   <span className="seq-name">{seq.nom}</span>
-                  {seq.coefficient != null && (
-                    <span className="seq-coef">Coef {seq.coefficient}</span>
-                  )}
+                  {seq.controles?.length ? (
+                    <span className="seq-coef">{seq.controles.length} contrôle(s)</span>
+                  ) : null}
                 </td>
                 {columns.map(col => (
                   <GradeCell
@@ -123,7 +123,6 @@ function NotesGrid({ notes }) {
       if (!unit.sequenceMap.has(note.sequence_nom)) {
         unit.sequenceMap.set(note.sequence_nom, {
           nom: note.sequence_nom,
-          coefficient: note.sequence_coefficient,
           controles: [],
         });
       }
@@ -180,7 +179,6 @@ function BulletinUnit({ unite }) {
 
   const sequences = (unite.sequences || []).map(seq => ({
     nom: seq.nom,
-    coefficient: seq.coefficient,
     controles: (seq.controles || []).map(c => ({
       controle_numero: c.numero,
       valeur: c.valeur,

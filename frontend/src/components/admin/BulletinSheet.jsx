@@ -49,7 +49,7 @@ function SequenceDetail({ unite }) {
         <div key={seq.id} style={{ marginBottom: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 3 }}>
             {seq.nom}
-            {seq.coefficient ? <span style={{ fontWeight: 400, color: '#6b7280' }}> · Coef. {seq.coefficient}</span> : null}
+            {seq.controles?.length ? <span style={{ fontWeight: 400, color: '#6b7280' }}> · {seq.controles.length} contrôle(s)</span> : null}
             <span style={{ fontWeight: 400, color: '#6b7280' }}> · Moyenne séquence : {fg(seq.moyenneSeq)}</span>
           </div>
           {seq.controles?.length ? (

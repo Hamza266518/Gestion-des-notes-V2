@@ -56,11 +56,12 @@ export default function Unites() {
   const [editingSeq, setEditingSeq] = useState(null);
   const [editNombre, setEditNombre] = useState(2);
   const [editNom, setEditNom] = useState('');
+  const [reduceSeq, setReduceSeq] = useState(null);
   const [openEditUnite, setOpenEditUnite] = useState(false);
   const [editingUnite, setEditingUnite] = useState(null);
   const [formEditU, setFormEditU] = useState({ nom: '', numero_annee: '', semestre: '', coefficient: '' });
   const [formU, setFormU] = useState({ filiere_id: '', nom: '', numero_annee: '', semestre: '', coefficient: '' });
-  const [formS, setFormS] = useState({ nom: '', coefficient: '', nombre_controles: 2, formateur_id: '' });
+  const [formS, setFormS] = useState({ nom: '', nombre_controles: 2, formateur_id: '' });
   const [formErrors, setFormErrors] = useState({});
   const [editingCtrl, setEditingCtrl] = useState({});
   const toast = useToast();
@@ -240,7 +241,6 @@ export default function Unites() {
 
     const errors = {};
     if (!formS.nom) errors.nom = 'Le nom est requis';
-    if (!formS.coefficient) errors.coefficient = 'Le coefficient est requis';
     if (!formS.formateur_id) errors.formateur_id = 'Le formateur est requis';
 
     if (Object.keys(errors).length > 0) {
@@ -256,7 +256,7 @@ export default function Unites() {
       await sequencesApi.createSequence({ ...formS, unite_id: selectedUnite.id });
       showSuccess(toast, 'Séquence créée');
       setOpenSeq(false);
-      setFormS({ nom: '', coefficient: '', nombre_controles: 2, formateur_id: '' });
+      setFormS({ nom: '', nombre_controles: 2, formateur_id: '' });
       load();
     } catch (error) {
       const fieldErrors = getFieldErrors(error);
@@ -296,14 +296,32 @@ export default function Unites() {
       toast.error('Le nom est requis');
       return;
     }
+
+    const payload = { nom: editNom.trim(), nombre_controles: newVal };
+
     try {
-      await sequencesApi.updateSequence(editingSeq.id, {
-        nom: editNom.trim(),
-        nombre_controles: newVal,
-        // Mirrors the control count, same derivation as on creation.
-        coefficient: newVal,
-      });
+      await sequencesApi.updateSequence(editingSeq.id, payload);
+    } catch (error) {
+      const res = error.response?.data;
+      if (error.response?.status === 409 && res?.requires_confirmation) {
+        setReduceSeq({ notesCount: res.notes_count, payload });
+        return;
+      }
+      handleApiError(error, toast);
+      return;
+    }
+
+    showSuccess(toast, 'Séquence mise à jour');
+    setOpenEditSeq(false);
+    setEditingSeq(null);
+    load();
+  };
+
+  const confirmReduceSeq = async () => {
+    try {
+      await sequencesApi.updateSequence(editingSeq.id, { ...reduceSeq.payload, force: true });
       showSuccess(toast, 'Séquence mise à jour');
+      setReduceSeq(null);
       setOpenEditSeq(false);
       setEditingSeq(null);
       load();
@@ -934,26 +952,13 @@ export default function Unites() {
             <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.nom}</div>
           )}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-          <div className="form-group">
-            <label className="form-label">Coefficient *</label>
-            <input
-              type="number"
-              className={`form-input ${formErrors.coefficient ? 'border-red-500' : ''}`}
-              value={formS.coefficient ?? ''}
-              onChange={e => setFormS(p => ({ ...p, coefficient: e.target.value }))}
-              style={formErrors.coefficient ? { borderColor: '#ef4444' } : {}}
-            />
-            {formErrors.coefficient && (
-              <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.coefficient}</div>
-            )}
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="form-group">
             <label className="form-label">Nombre de contrôles</label>
             <select className="form-select" value={formS.nombre_controles ?? 2} onChange={e => setFormS(p => ({ ...p, nombre_controles: e.target.value }))}>
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                <option key={n} value={n}>{n}</option>
+              ))}
             </select>
           </div>
           <div className="form-group">
@@ -1115,6 +1120,17 @@ export default function Unites() {
         <div className="modal-footer">
           <button className="btn btn-outline" onClick={() => setDeleteConfirm({ type: null, id: null, nom: '' })}>Annuler</button>
           <button className="btn btn-danger" onClick={confirmDelete}>Supprimer</button>
+        </div>
+      </Modal>
+
+      <Modal open={reduceSeq !== null} onClose={() => setReduceSeq(null)} title="Confirmer la réduction">
+        <p>
+          Réduire le nombre de contrôles supprimera <strong>{reduceSeq?.notesCount}</strong> note(s)
+          déjà saisie(s) sur les contrôles retirés. Cette action est irréversible.
+        </p>
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={() => setReduceSeq(null)}>Annuler</button>
+          <button className="btn btn-danger" onClick={confirmReduceSeq}>Confirmer</button>
         </div>
       </Modal>
     </div>

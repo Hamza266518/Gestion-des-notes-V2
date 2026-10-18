@@ -186,7 +186,6 @@ class BulletinService
                 $sequencesData[] = [
                     'id' => $seq->id,
                     'nom' => $seq->nom,
-                    'coefficient' => $seq->coefficient,
                     'controles' => $controlesData,
                     'moyenneSeq' => $this->moyenneService->moyenneSequence($etudiantId, $seq->id, $anneeAcademiqueId),
                 ];

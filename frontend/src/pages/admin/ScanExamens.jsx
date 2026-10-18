@@ -5,6 +5,7 @@ import { scanApi } from '../../api/scan';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Spinner from '../../components/common/Spinner';
+import Modal from '../../components/common/Modal';
 import FilterSelect from '../../components/common/FilterSelect';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
 import { MESSAGE_SEMESTRE_PUBLIE, formatNiveau, invalidNoteHint } from '../../utils/helpers';
@@ -45,6 +46,7 @@ export default function ScanExamens() {
   const [results, setResults] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmRescan, setConfirmRescan] = useState(false);
   const [searchQueries, setSearchQueries] = useState({});
   const [searchMatches, setSearchMatches] = useState({});
   // Every row carries a stable rowId, and all per-row UI state is keyed by it:
@@ -138,18 +140,20 @@ export default function ScanExamens() {
     setPdfUrls(prev => prev.filter((_, idx) => idx !== i));
   };
 
-  const handleScan = async () => {
+  const handleScan = () => {
     if (pdfs.length === 0 || !selUnite || !selType || !selGroupe || !currentAnnee?.id) {
       toast.warning('Veuillez remplir tous les champs et ajouter des PDFs');
       return;
     }
     if (results.length > 0) {
-      const confirmed = window.confirm(
-        `Un nouveau scan remplace les ${results.length} ligne(s) déjà affichées, ` +
-        `y compris les notes saisies à la main. Continuer ?`
-      );
-      if (!confirmed) return;
+      setConfirmRescan(true);
+      return;
     }
+    runScan();
+  };
+
+  const runScan = async () => {
+    setConfirmRescan(false);
     setScanning(true);
     setResults([]);
     setSearchQueries({});
@@ -731,6 +735,17 @@ export default function ScanExamens() {
           </div>
         </div>
       )}
+
+      <Modal open={confirmRescan} onClose={() => setConfirmRescan(false)} title="Remplacer les résultats">
+        <p>
+          Un nouveau scan remplace les {results.length} ligne(s) déjà affichées, y compris les notes
+          saisies à la main. Continuer ?
+        </p>
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={() => setConfirmRescan(false)}>Annuler</button>
+          <button className="btn btn-danger" onClick={runScan}>Remplacer</button>
+        </div>
+      </Modal>
     </div>
   );
 }

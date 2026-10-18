@@ -58,7 +58,8 @@ class UnitesImport implements ToCollection, WithHeadingRow
                     'nom'      => $row['sequence_nom'],
                 ],
                 [
-                    'coefficient'      => $row['sequence_coefficient'],
+                    // Mirror of the control count; never a weight.
+                    'coefficient'      => $row['sequence_controles'],
                     'nombre_controles' => $row['sequence_controles'],
                     'ordre'            => Sequence::where('unite_id', $unite->id)->count() + 1,
                     'is_active'        => true,

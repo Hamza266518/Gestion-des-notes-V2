@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Controle;
 use App\Models\Unite;
 use App\Models\Sequence;
 use App\Services\GeminiService;
@@ -95,14 +96,28 @@ class ScanUnitesController extends Controller
                     $created++;
 
                     foreach ($uniteData['sequences'] as $idx => $seqData) {
-                        Sequence::create([
+                        $sequence = Sequence::create([
                             'unite_id'         => $unite->id,
                             'nom'              => $seqData['nom'],
-                            'coefficient'      => $seqData['coefficient'],
+                            // Mirror of the control count; never a weight.
+                            'coefficient'      => (int) $seqData['nombre_controles'],
                             'nombre_controles'  => $seqData['nombre_controles'],
                             'ordre'            => $idx + 1,
                             'is_active'        => true,
                         ]);
+
+                        // A sequence is only usable when its contrôles exist:
+                        // without them the count in the tête de liste matched
+                        // nothing in the saisie grid.
+                        for ($i = 1; $i <= (int) $seqData['nombre_controles']; $i++) {
+                            Controle::create([
+                                'sequence_id' => $sequence->id,
+                                'numero'      => $i,
+                                'nom'         => 'Contrôle ' . $i,
+                                'note_max'    => 20,
+                            ]);
+                        }
+
                         $sequencesCreated++;
                     }
                 }

@@ -347,7 +347,7 @@ function SequenceRow({ sequence, isOpen, onToggle, searchTerm, selectedGroupeId 
         <div className="d-flex justify-content-between align-items-center" style={{ fontSize: 14, fontWeight: 600 }}>
           <span>
             {sequence.unite?.nom} — {sequence.nom}
-            <Badge label={`Coef: ${sequence.coefficient}`} color="info" className="ml-2" style={{ fontSize: 11 }} />
+            <Badge label={`${sequence.controles?.length ?? 0} contrôle(s)`} color="info" className="ml-2" style={{ fontSize: 11 }} />
             {lockedGroupes.size > 0 && (
               <Badge
                 label={toutVerrouille ? 'Publié' : `${lockedGroupes.size} groupe(s) publié(s)`}

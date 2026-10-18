@@ -5,6 +5,7 @@ import { soutenanceApi } from '../../api/soutenance';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
 import Spinner from '../../components/common/Spinner';
+import Modal from '../../components/common/Modal';
 import FilterSelect from '../../components/common/FilterSelect';
 import { handleApiError, showSuccess } from '../../utils/errorHandler';
 import { MESSAGE_SEMESTRE_PUBLIE, formatNiveau, invalidNoteHint } from '../../utils/helpers';
@@ -37,6 +38,7 @@ export default function Soutenance() {
   const [results, setResults] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [confirmRescan, setConfirmRescan] = useState(false);
 
   const [searchQueries, setSearchQueries] = useState({});
   const [searchMatches, setSearchMatches] = useState({});
@@ -133,19 +135,20 @@ export default function Soutenance() {
     setPdfUrls(prev => prev.filter((_, idx) => idx !== i));
   };
 
-  const handleScan = async () => {
+  const handleScan = () => {
     if (pdfs.length === 0 || !uniteId || !selGroupe || !currentAnnee?.id) {
       toast.warning('Choisissez la liste (groupe) et ajoutez au moins un PDF.');
       return;
     }
     if (results.length > 0) {
-      const ok = window.confirm(
-        `Un nouveau scan remplace les ${results.length} ligne(s) déjà affichée(s), ` +
-        'y compris les notes corrigées à la main. Continuer ?'
-      );
-      if (!ok) return;
+      setConfirmRescan(true);
+      return;
     }
+    runScan();
+  };
 
+  const runScan = async () => {
+    setConfirmRescan(false);
     setScanning(true);
     try {
       const fd = new FormData();
@@ -677,6 +680,17 @@ export default function Soutenance() {
           </div>
         </div>
       )}
+
+      <Modal open={confirmRescan} onClose={() => setConfirmRescan(false)} title="Remplacer les résultats">
+        <p>
+          Un nouveau scan remplace les {results.length} ligne(s) déjà affichée(s), y compris les notes
+          corrigées à la main. Continuer ?
+        </p>
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={() => setConfirmRescan(false)}>Annuler</button>
+          <button className="btn btn-danger" onClick={runScan}>Remplacer</button>
+        </div>
+      </Modal>
     </div>
   );
 }

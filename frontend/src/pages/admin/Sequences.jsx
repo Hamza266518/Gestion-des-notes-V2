@@ -32,11 +32,12 @@ export default function Sequences() {
     setSaved({ filiere_id: filters.filiere_id, niveau_id: filters.niveau_id, groupe_id: filters.groupe_id, selUnite });
   }, [filters, selUnite, setSaved]);
   const [form, setForm] = useState({
-    unite_id: '', nom: '', coefficient: '', nombre_controles: 2
+    unite_id: '', nom: '', nombre_controles: 2
   });
   const [deleteId, setDeleteId] = useState(null);
   const [editSeq, setEditSeq] = useState(null);
   const [editForm, setEditForm] = useState({ nom: '', nombre_controles: 2 });
+  const [reduceConfirm, setReduceConfirm] = useState(null);
   const toast = useToast();
   const { currentAnnee } = useAnneeAcademique();
 
@@ -117,16 +118,13 @@ export default function Sequences() {
   const handleCreate = async () => {
     setSaving(true);
     try {
-      // The sequence "coefficient" is derived: it only mirrors the control
-      // count and is never used as a weight in any average.
       await sequencesApi.createSequence({
         ...form,
-        coefficient: form.nombre_controles,
         unite_id: selUnite,
       });
       toast.success('Séquence créée');
       setOpen(false);
-      setForm({ unite_id: '', nom: '', coefficient: '', nombre_controles: 2 });
+      setForm({ unite_id: '', nom: '', nombre_controles: 2 });
       load();
     } catch (e) {
       toast.error(e.response?.data?.message ?? 'Erreur');
@@ -145,15 +143,37 @@ export default function Sequences() {
   };
 
   const handleUpdate = async () => {
+    const payload = {
+      nom: editForm.nom,
+      nombre_controles: Number(editForm.nombre_controles),
+    };
+
     setSaving(true);
     try {
-      await sequencesApi.updateSequence(editSeq.id, {
-        nom: editForm.nom,
-        nombre_controles: Number(editForm.nombre_controles),
-        // Mirrors the control count, same derivation as on creation.
-        coefficient: Number(editForm.nombre_controles),
-      });
+      await sequencesApi.updateSequence(editSeq.id, payload);
+    } catch (e) {
+      const res = e.response?.data;
+      if (e.response?.status === 409 && res?.requires_confirmation) {
+        setReduceConfirm({ notesCount: res.notes_count, payload });
+        return;
+      }
+      toast.error(res?.message ?? 'Erreur');
+      return;
+    } finally {
+      setSaving(false);
+    }
+
+    toast.success('Séquence mise à jour');
+    setEditSeq(null);
+    load();
+  };
+
+  const confirmReduce = async () => {
+    setSaving(true);
+    try {
+      await sequencesApi.updateSequence(editSeq.id, { ...reduceConfirm.payload, force: true });
       toast.success('Séquence mise à jour');
+      setReduceConfirm(null);
       setEditSeq(null);
       load();
     } catch (e) {
@@ -360,11 +380,11 @@ export default function Sequences() {
             <select
               className="form-select"
               value={form.nombre_controles}
-              onChange={e => setForm(p => ({ ...p, nombre_controles: e.target.value, coefficient: e.target.value }))}
+              onChange={e => setForm(p => ({ ...p, nombre_controles: e.target.value }))}
             >
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                <option key={n} value={n}>{n}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -393,9 +413,9 @@ export default function Sequences() {
                 value={editForm.nombre_controles}
                 onChange={e => setEditForm(p => ({ ...p, nombre_controles: e.target.value }))}
               >
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -412,6 +432,19 @@ export default function Sequences() {
           <div className="modal-footer">
             <button className="btn btn-outline" onClick={() => setDeleteId(null)}>Annuler</button>
             <button className="btn btn-danger" onClick={confirmDelete}>Supprimer</button>
+          </div>
+        </Modal>
+
+        <Modal open={reduceConfirm !== null} onClose={() => setReduceConfirm(null)} title="Confirmer la réduction">
+          <p>
+            Réduire le nombre de contrôles supprimera <strong>{reduceConfirm?.notesCount}</strong> note(s)
+            déjà saisie(s) sur les contrôles retirés. Cette action est irréversible.
+          </p>
+          <div className="modal-footer">
+            <button className="btn btn-outline" onClick={() => setReduceConfirm(null)}>Annuler</button>
+            <button className="btn btn-danger" onClick={confirmReduce} disabled={saving}>
+              {saving ? 'Suppression...' : 'Confirmer'}
+            </button>
           </div>
         </Modal>
     </div>

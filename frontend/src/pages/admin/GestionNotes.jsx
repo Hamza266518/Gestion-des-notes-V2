@@ -610,7 +610,7 @@ export default function GestionNotes() {
           <FilterSelect
             label="Séquence"
             value={selectedSequenceId}
-            options={sequences.map(s => ({ id: s.id, label: `${s.nom} (Coef: ${s.coefficient})` }))}
+            options={sequences.map(s => ({ id: s.id, label: `${s.nom} (${s.controles?.length ?? s.nombre_controles ?? 0} contrôle(s))` }))}
             onChange={(v) => {
               setSelectedSequenceId(v);
               setNotesByControl({});
