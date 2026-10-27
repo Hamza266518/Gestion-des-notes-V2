@@ -1,0 +1,69 @@
+=== ETAT DES FICHES ETUDIANTS ===
+
+  fiches completes (naissance + lieu + date insc): 75
+  fiches incompletes                           : 86
+  total                                       : 161
+
+  -- fiches COMPLETES par filiere/niveau --
+     Aide-Soignant niv1                 41
+     Infirmier Auxiliaire niv2          6
+     Infirmier Polyvalent niv3          28
+
+  -- fiches INCOMPLETES par filiere/niveau --
+     Aide-Soignant niv1                 31
+     Infirmier Auxiliaire niv1          12
+     Infirmier Polyvalent niv1          24
+     Infirmier Polyvalent niv2          18
+     Infirmier Polyvalent niv3          1
+
+=== LES 76 LAUREATS OFFICIELS ===
+  fiches completes   : 75
+  fiches incompletes : 1
+
+=== NOTES ===
+  notes des 31   : 220
+  notes des 76   : 135
+
+=== LES 41 LAUREATS AS (numeros) ===
+  41 trouves
+     id=554   Abdelghafour HAJJI             num=101 AS26     naiss=2000-05-25   lieu=errachidia       insc=2025-09-24   COMPLET
+     id=563   AMAL ZAMZAM                    num=113 AS26     naiss=2004-02-26   lieu=errachidia       insc=2025-09-01   COMPLET
+     id=551   Anass ELAOUNI                  num=97 AS26      naiss=2005-10-05   lieu=berkane          insc=2025-09-01   COMPLET
+     id=566   ASMAE ARGHAL                   num=116 AS26     naiss=1993-09-15   lieu=berkane          insc=2025-09-04   COMPLET
+     id=562   Bassma MOKHTARI                num=112 AS26     naiss=2005-10-06   lieu=berkane          insc=2025-09-04   COMPLET
+     id=560   Boutaina AMERE                 num=110 AS26     naiss=1993-11-28   lieu=berkane          insc=2025-09-01   COMPLET
+     id=590   Chahra YOUSFI                  num=144 AS26     naiss=1988-05-13   lieu=berkane          insc=2025-11-10   COMPLET
+     id=576   Doha BEKKAOUI                  num=128 AS26     naiss=2001-10-24   lieu=berkane          insc=2025-09-10   COMPLET
+     id=557   Douae MOUZOURI                 num=105 AS26     naiss=2004-12-16   lieu=berkane          insc=2025-09-03   COMPLET
+     id=586   Dounia LEHMER                  num=139 AS26     naiss=1995-06-07   lieu=berkane          insc=2025-10-06   COMPLET
+     id=585   Fatima zahra BOULERHCHA        num=138 AS26     naiss=2007-02-22   lieu=berkane          insc=2025-10-06   COMPLET
+     id=569   Fatima zahra JELLOULI          num=121 AS26     naiss=2005-09-21   lieu=berkane          insc=2025-09-04   COMPLET
+     id=584   Fatima zahra MAAROUF           num=137 AS26     naiss=2005-12-03   lieu=berkane          insc=2025-09-23   COMPLET
+     id=572   Hajar MELLOUKI                 num=124 AS26     naiss=2006-12-14   lieu=berkane          insc=2025-09-08   COMPLET
+     id=550   Hamza EL ACHI                  num=96 AS26      naiss=2006-04-05   lieu=oujda            insc=2025-09-01   COMPLET
+     id=559   Hanae MEHREZ                   num=109 AS26     naiss=2007-03-13   lieu=berkane          insc=2025-09-01   COMPLET
+     id=574   Houda HAJI                     num=126 AS26     naiss=2007-09-24   lieu=berkane          insc=2025-09-08   COMPLET
+     id=561   Ikram HABJAOUI                 num=111 AS26     naiss=2000-01-18   lieu=berkane          insc=2025-09-01   COMPLET
+     id=567   IMANE EL-AMRAOUI               num=117 AS26     naiss=2004-07-02   lieu=berkane          insc=2025-09-08   COMPLET
+     id=555   Khawla DEKHISSI                num=102 AS26     naiss=2007-10-31   lieu=berkane          insc=2025-09-01   COMPLET
+     id=570   Manal BACHIRI                  num=122 AS26     naiss=1995-01-26   lieu=berkane          insc=2025-09-04   COMPLET
+     id=587   Manal ZERIOUH                  num=141 AS26     naiss=2003-03-21   lieu=melilla          insc=2025-10-20   COMPLET
+     id=580   Maryem MEZIANI                 num=132 AS26     naiss=2006-12-17   lieu=berkane          insc=2025-09-12   COMPLET
+     id=581   Meryem KADDOURI                num=133 AS26     naiss=2007-03-17   lieu=berkane          insc=2025-09-15   COMPLET
+     id=564   Nouhayla DERFOUF               num=114 AS26     naiss=2006-06-29   lieu=berkane          insc=2025-09-04   COMPLET
+     id=553   Oualid ELMAHI                  num=100 AS26     naiss=2004-04-25   lieu=berkane          insc=2025-09-23   COMPLET
+     id=573   Oumaima EDAKAKI                num=125 AS26     naiss=2007-07-07   lieu=casablanca       insc=2025-09-08   COMPLET
+     id=552   Oussama OUAZZANI-CHAHDI        num=99 AS26      naiss=2005-08-21   lieu=berkane          insc=2025-09-01   COMPLET
+     id=589   Oussama TESSOULI               num=143 AS26     naiss=2009-04-23   lieu=berkane          insc=2025-10-20   COMPLET
+     id=578   Rania ZAOUI                    num=130 AS26     naiss=2000-03-28   lieu=berkane          insc=2025-09-12   COMPLET
+     id=571   Sabah EL BARKANI               num=123 AS26     naiss=2005-11-18   lieu=berkane          insc=2025-09-08   COMPLET
+     id=582   Sabrine OUFKIR                 num=135 AS26     naiss=2005-09-08   lieu=berkane          insc=2025-09-15   COMPLET
+     id=556   Salima ARRAHMANI               num=103 AS26     naiss=2007-01-06   lieu=taza             insc=2025-09-01   COMPLET
+     id=583   Siham BELKHER                  num=136 AS26     naiss=2000-08-28   lieu=nador            insc=2025-09-23   COMPLET
+     id=575   Soukayna BOROIGUI              num=127 AS26     naiss=2002-08-26   lieu=taourirt         insc=2025-09-09   COMPLET
+     id=558   Soukayna EL YOUBI              num=106 AS26     naiss=2003-07-10   lieu=sefrou           insc=2025-09-01   COMPLET
+     id=588   Widad ALLA                     num=142 AS26     naiss=2006-08-31   lieu=berkane          insc=2025-10-20   COMPLET
+     id=568   WISSAL ICHAOUI                 num=119 AS26     naiss=2001-01-04   lieu=berkane          insc=2025-09-01   COMPLET
+     id=579   Yasmine BEKHTI                 num=131 AS26     naiss=2001-05-12   lieu=berkane          insc=2025-09-12   COMPLET
+     id=577   Youssra ARRAHMANI              num=129 AS26     naiss=2004-10-26   lieu=taza             insc=2025-09-17   COMPLET
+     id=565   Zaineb DOUZI                   num=115 AS26     naiss=2002-07-09   lieu=berkane          insc=2025-09-01   COMPLET

@@ -20,8 +20,17 @@ class NiveauController extends Controller
     {
         $request->validate([
             'filiere_id' => 'required|exists:filieres,id',
-            'numero'     => 'required|integer',
+            'numero'     => 'required|integer|min:1|max:5',
         ]);
+
+        $exists = Niveau::where('filiere_id', $request->filiere_id)
+            ->where('numero', $request->numero)
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['success' => false, 'message' => 'Ce niveau existe déjà pour cette filière'], 422);
+        }
+
         $niveau = Niveau::create($request->all());
         return response()->json(['success' => true, 'data' => $niveau, 'message' => 'Niveau créé']);
     }

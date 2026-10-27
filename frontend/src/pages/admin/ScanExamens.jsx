@@ -465,13 +465,13 @@ export default function ScanExamens() {
       {step === 2 && (
         <div className="card card-body" style={{ maxWidth: 720, width: '100%' }}>
           <div style={{ marginBottom: 16, padding: '14px 18px', borderRadius: 10, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 13, lineHeight: 1.7 }}>
-            <div style={{ fontWeight: 700, color: '#1d4ed8', marginBottom: 6 }}>Important</div>
+            <div style={{ fontWeight: 700, color: '#1d4ed8', marginBottom: 6 }}>À savoir</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, color: '#1e3a5f' }}>
-              <span>1. Uploadez les <strong>feuilles de copies corrigées</strong> (liste des étudiants + note)</span>
-              <span>2. Le scan lit les <strong>noms</strong> sur la feuille et les rapproche de la liste du groupe sélectionné</span>
+              <span>1. Uploadez la <strong>feuille récapitulative</strong> contenant la liste des étudiants avec leurs notes.</span>
+              <span>2. Le scan lit les <strong>noms et les notes</strong> de cette feuille et les rapproche de la liste du groupe sélectionné.</span>
             </div>
             <div style={{ marginTop: 6, padding: '6px 10px', background: '#dbeafe', borderRadius: 6, fontSize: 12, color: '#1e40af' }}>
-              Aucune feuille de correspondance ni code anonyme n'est nécessaire.
+              Il ne s'agit pas du scan des copies individuelles de chaque étudiant.
             </div>
           </div>
           <div className="upload-zone">

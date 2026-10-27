@@ -103,6 +103,9 @@ class DashboardController extends Controller
             // (a grade only counts towards the year it belongs to)
             $enteredByCtrl = [];
             foreach ($allControles->groupBy(fn ($c) => $c->sequence?->unite?->numero_annee) as $numero => $ctrlsOfNiveau) {
+                if ($numero === null) {
+                    continue;
+                }
                 $niveauGroupeIds = $gIdsByNiveau[$numero] ?? [];
                 if (!$niveauGroupeIds) {
                     continue;
@@ -301,7 +304,7 @@ class DashboardController extends Controller
         }
 
         $filiereId = $request->input('filiere_id');
-        $limit = (int) $request->input('limit', 10);
+        $limit = max(1, min(200, (int) $request->input('limit', 10)));
 
         $filieres = $filiereId ? Filiere::where('id', $filiereId)->get() : Filiere::all();
 
@@ -338,6 +341,9 @@ class DashboardController extends Controller
             $poolByNiveau = [];
             $notedIdsByNiveau = [];
             foreach ($ctrlsByNiveau as $numero => $ctrlIds) {
+                if ($numero === null) {
+                    continue;
+                }
                 $niveauGroupeIds = $gIdsByNiveau[$numero] ?? [];
                 $pool = $niveauGroupeIds
                     ? Etudiant::whereIn('groupe_id', $niveauGroupeIds)

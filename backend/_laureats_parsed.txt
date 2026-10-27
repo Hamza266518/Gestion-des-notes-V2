@@ -1,0 +1,77 @@
+records=76
+96AS26     | cin=FA211848     | naiss=05/04/2006   | insc=01/09/2025   | nom_avant=HAMZA EL ACHI
+97AS26     | cin=FA218540     | naiss=05/10/2005   | insc=01/09/2025   | nom_avant=Anass ELAOUNI
+99AS26     | cin=FA218060     | naiss=21/08/2005   | insc=01/09/2025   | nom_avant=
+100AS26    | cin=FA203291     | naiss=25/04/2004   | insc=23/09/2025   | nom_avant=Oualid ELMAHI
+101AS26    | cin=U197938      | naiss=25/05/2000   | insc=24/09/2025   | nom_avant=ABDELGHAFOUR HAJJI
+102AS26    | cin=FA220275     | naiss=31/10/2007   | insc=01/09/2025   | nom_avant=Khawla DEKHISSI
+103AS26    | cin=FA215759     | naiss=06/01/2007   | insc=01/09/2025   | nom_avant=SALIMA ARRAHMANI
+105AS26    | cin=FA216230     | naiss=16/12/2004   | insc=03/09/2025   | nom_avant=Douae MOUZOURI
+106AS26    | cin=FA207855     | naiss=10/07/2003   | insc=01/09/2025   | nom_avant=SOUKAYNA EL YOUBI
+109AS26    | cin=FA221066     | naiss=13/03/2007   | insc=01/09/2025   | nom_avant=HANAE MEHREZ
+110AS26    | cin=FA154998     | naiss=28/11/1993   | insc=01/09/2025   | nom_avant=BOUTAINA AMERE
+111AS26    | cin=FA192207     | naiss=18/01/2000   | insc=01/09/2025   | nom_avant=Ikram HABJAOUI
+112AS26    | cin=FA214854     | naiss=06/10/2005   | insc=04/09/2025   | nom_avant=Bassma MOKHTARI
+113AS26    | cin=FA206836     | naiss=26/02/2004   | insc=01/09/2025   | nom_avant=AMAL ZAMZAM
+114AS26    | cin=FA221947     | naiss=29/06/2006   | insc=04/09/2025   | nom_avant=NOUHAYLA DERFOUF
+115AS26    | cin=FE21716      | naiss=09/07/2002   | insc=01/09/2025   | nom_avant=ZAINEB DOUZI
+116AS26    | cin=FJ23453      | naiss=15/09/1993   | insc=04/09/2025   | nom_avant=ASMAE ARGHAL
+117AS26    | cin=FA214250     | naiss=02/07/2004   | insc=08/09/2025   | nom_avant=IMANE EL-AMRAOUI
+119AS26    | cin=FA186983     | naiss=04/01/2001   | insc=01/09/2025   | nom_avant=WISSAL ICHAOUI
+121AS26    | cin=FA216419     | naiss=21/09/2005   | insc=04/09/2025   | nom_avant=Fatima zahra JELLOULI
+122AS26    | cin=FE17092      | naiss=26/01/1995   | insc=04/09/2025   | nom_avant=MANAL BACHIRI
+123AS26    | cin=FA224146     | naiss=18/11/2005   | insc=08/09/2025   | nom_avant=SABAH EL BARKANI
+124AS26    | cin=FA219933     | naiss=14/12/2006   | insc=08/09/2025   | nom_avant=HAJAR MELLOUKI
+125AS26    | cin=FA220348     | naiss=07/07/2007   | insc=08/09/2025   | nom_avant=Oumaima EDAKAKI
+126AS26    | cin=FE26115      | naiss=24/09/2007   | insc=08/09/2025   | nom_avant=HOUDA HAJI
+127AS26    | cin=FJ6860       | naiss=26/08/2002   | insc=09/09/2025   | nom_avant=SOUKAYNA BAROIGUI
+128AS26    | cin=FA198927     | naiss=24/10/2001   | insc=10/09/2025   | nom_avant=DOHA BEKKAOUI
+129AS26    | cin=FA215758     | naiss=26/10/2004   | insc=17/09/2025   | nom_avant=YOUSSRA ARRAHMANI
+130AS26    | cin=FJ28951      | naiss=28/03/2000   | insc=12/09/2025   | nom_avant=Rania ZAOUI
+131AS26    | cin=FJ26545      | naiss=12/05/2001   | insc=12/09/2025   | nom_avant=YASMINE BEKHTI
+132AS26    | cin=FA220739     | naiss=17/12/2006   | insc=12/09/2025   | nom_avant=Maryem MEZIANI
+133AS26    | cin=FA220779     | naiss=17/03/2007   | insc=15/09/2025   | nom_avant=Meryem KADDOURI
+135AS26    | cin=FJ28604      | naiss=08/09/2005   | insc=15/09/2025   | nom_avant=SABRINE OUFKIR
+136AS26    | cin=SZ19587      | naiss=28/08/2000   | insc=23/09/2025   | nom_avant=Siham BELKHER
+137AS26    | cin=FA198890     | naiss=03/12/2005   | insc=23/09/2025   | nom_avant=FATIMA ZAHRA MAAROUF
+138AS26    | cin=FJ33117      | naiss=22/02/2007   | insc=06/10/2025   | nom_avant=
+139AS26    | cin=FA170734     | naiss=07/06/1995   | insc=06/10/2025   | nom_avant=Dounia LEHMER
+141AS26    | cin=SA35928      | naiss=21/03/2003   | insc=20/10/2025   | nom_avant=MANAL ZERIOUH
+142AS26    | cin=FE24187      | naiss=31/08/2006   | insc=20/10/2025   | nom_avant=Widad ALLA
+143AS26    | cin=FA227526     | naiss=23/04/2009   | insc=20/10/2025   | nom_avant=Ossama TSSOULI
+144AS26    | cin=FA136693     | naiss=13/05/1988   | insc=10/11/2025   | nom_avant=CHAHRA YOUSFI
+39IP24     | cin=FE21753      | naiss=17/08/2002   | insc=11/09/2023   | nom_avant=NABIL HAJI
+40IP24     | cin=FA195431     | naiss=13/09/2003   | insc=11/09/2023   | nom_avant=HAYAT HADDOU
+41IP24     | cin=F772567      | naiss=01/01/2006   | insc=11/09/2023   | nom_avant=MERYEM EL AISSAOUI
+42IP24     | cin=FA179792     | naiss=17/07/1998   | insc=05/09/2023   | nom_avant=OUMAIMA MARGOUM
+43IP24     | cin=FA195008     | naiss=26/03/2004   | insc=12/09/2023   | nom_avant=MOUNA SAIDI
+44IP24     | cin=FA194156     | naiss=18/02/2004   | insc=11/09/2023   | nom_avant=IBTISSAM BOUJNANE
+45IP24     | cin=FA214221     | naiss=05/06/2005   | insc=05/09/2023   | nom_avant=MAROUA KADDOURI
+46IP24     | cin=FJ32036      | naiss=17/02/2006   | insc=11/09/2023   | nom_avant=AFRAE EL AISSAOUI
+47IP24     | cin=FJ31373      | naiss=17/05/2003   | insc=11/09/2023   | nom_avant=CHAHRAZAD RAHMANI
+48IP24     | cin=FA203858     | naiss=11/05/2003   | insc=05/09/2023   | nom_avant=HAJAR BERRAYAH
+49IP24     | cin=FA207226     | naiss=29/01/2005   | insc=05/09/2023   | nom_avant=HAJAR BALI
+50IP24     | cin=FA215560     | naiss=05/06/2005   | insc=11/09/2023   | nom_avant=FAYZA CHAHLAOUI
+51IP24     | cin=FA194287     | naiss=19/03/2004   | insc=05/09/2023   | nom_avant=Nassi Wiam
+52IP24     | cin=FA216560     | naiss=26/04/2004   | insc=11/09/2023   | nom_avant=AYA BERHAB
+53IP24     | cin=FA210858     | naiss=17/07/2004   | insc=05/09/2023   | nom_avant=SALMA FARSSI
+54IP24     | cin=FA202081     | naiss=20/10/2002   | insc=11/09/2023   | nom_avant=IMANE MAAMRI
+55IP24     | cin=FA209282     | naiss=29/07/2003   | insc=11/09/2023   | nom_avant=SALMA JELLOULI
+56IP24     | cin=FA211287     | naiss=17/10/2004   | insc=11/09/2023   | nom_avant=CHAHRAZAD BEN ALLAH
+57IP24     | cin=FE22034      | naiss=07/06/2005   | insc=25/09/2023   | nom_avant=KAOUTAR TAHRI
+59IP24     | cin=FA210326     | naiss=05/07/2003   | insc=25/09/2023   | nom_avant=FATINE MEHDAOUI
+60IP24     | cin=FA214456     | naiss=21/01/2006   | insc=25/09/2023   | nom_avant=SAMIRA AMARA
+61IP24     | cin=FA206866     | naiss=14/07/2004   | insc=25/09/2023   | nom_avant=BOUTAYEB Safae
+62IP24     | cin=FA189325     | naiss=12/07/2000   | insc=25/09/2023   | nom_avant=HIND MAHROUG
+63IP24     | cin=FA210392     | naiss=10/07/2003   | insc=25/09/2023   | nom_avant=CHAHBOUN Hadil
+65IP24     | cin=FE22917      | naiss=04/11/2004   | insc=25/09/2023   | nom_avant=
+68IP24     | cin=FA208412     | naiss=17/04/2004   | insc=30/10/2023   | nom_avant=ROMAISSAE HICHOUR
+73IP24     | cin=FE22075      | naiss=03/09/2003   | insc=31/10/2023   | nom_avant=OULA EL-GHOMARY
+74IP24     | cin=FA212315     | naiss=29/02/2004   | insc=02/09/2023   | nom_avant=DOHA EL HADDADI
+75IP24     | cin=SJ36005      | naiss=None         | insc=08/05/2001   | nom_avant=ZAINEB MEDDAH
+10IA25     | cin=FA204251     | naiss=23/04/2003   | insc=06/09/2024   | nom_avant=CHARAF ETTAHRI
+11IA25     | cin=FA213200     | naiss=05/06/2004   | insc=06/09/2024   | nom_avant=SABRINA ALLAOUI
+12IA25     | cin=FA198203     | naiss=01/05/2005   | insc=26/08/2024   | nom_avant=DOUAE HDIDOUAN
+13IA25     | cin=FA198660     | naiss=04/04/1999   | insc=25/09/2024   | nom_avant=KHADIJA AKLACHE
+14IA25     | cin=FA212072     | naiss=17/12/2005   | insc=02/10/2024   | nom_avant=DOUAA L'RHAYATI
+15IA25     | cin=F677491      | naiss=14/05/2001   | insc=05/10/2024   | nom_avant=Kaouthar HAMEL

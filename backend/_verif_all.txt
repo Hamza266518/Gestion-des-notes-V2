@@ -1,0 +1,11 @@
+=== VERIFICATION COMPLETE DES 76 LAUREATS (tous champs) ===
+
+--- TAUX PAR CHAMP ---
+  CIN                  ok=76  ko=0   pdf_vide=0  
+  date_naissance       ok=75  ko=0   pdf_vide=1  
+  date_inscription     ok=76  ko=0   pdf_vide=0  
+  nom_ar               ok=76  ko=0   pdf_vide=0  
+  lieu_naissance_ar    ok=73  ko=0   pdf_vide=3  
+
+--- ECARTS (0) ---
+

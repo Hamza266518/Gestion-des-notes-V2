@@ -1,0 +1,44 @@
+=== LES NOTES DES 31 ROWS A SUPPRIMER ===
+
+  total notes : 220
+
+  -- par unite --
+     (sans unite)                             220
+
+  -- par etudiant --
+     ASMAE BERRADA                      22
+     FATIMA ZAHRA IDRISSI               22
+     HAJAR FILALI                       22
+     HANAE TAZI                         22
+     IMANE TAHIRI                       22
+     MERYEM ALAOUI                      22
+     NOUR CHRAIBI                       22
+     SALIMA BENALI                      22
+     SOUKAINA KETTANI                   22
+     ZINEB MANSOURI                     22
+
+  dont absents : 0
+  controles concernes : 22
+
+=== NOTES DES 76 LAUREATS ===
+     (sans)                                   99
+     Soutenance                               20
+     Stage                                    16
+
+=== ECHANTILLON (12 notes des 31) ===
+     ASMAE BERRADA                -                              -                val=14.25  abs=0
+     ASMAE BERRADA                -                              -                val=13.25  abs=0
+     ASMAE BERRADA                -                              -                val=12.75  abs=0
+     ASMAE BERRADA                -                              Contrôle 1      val=12.5   abs=0
+     ASMAE BERRADA                -                              Contrôle 1      val=12     abs=0
+     ASMAE BERRADA                -                              -                val=15.25  abs=0
+     ASMAE BERRADA                -                              -                val=15.25  abs=0
+     ASMAE BERRADA                -                              -                val=14.75  abs=0
+     ASMAE BERRADA                -                              -                val=12.75  abs=0
+     ASMAE BERRADA                -                              -                val=15.25  abs=0
+     ASMAE BERRADA                -                              -                val=13.25  abs=0
+     ASMAE BERRADA                -                              -                val=13.75  abs=0
+
+=== LES CONTROLES DES 31 SONT-ILS PARTAGES AVEC D'AUTRES ETUDIANTS ? ===
+  controles partages avec d'autres etudiants : 4
+  controles uniquement lies aux 31         : 18

@@ -5,10 +5,67 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ActivityLogController extends Controller
 {
+    /**
+     * Per-admin marker of the last time the journal was looked at. Kept in the
+     * cache rather than a new column so notifying other admins needs no schema
+     * change. A missing marker means "never opened the journal", which shows no
+     * badge instead of flagging the whole history as new.
+     */
+    private const SEEN_KEY = 'activity-log:seen:';
+
+    private function seenAt(int $adminId): ?Carbon
+    {
+        $value = Cache::get(self::SEEN_KEY . $adminId);
+
+        return $value ? Carbon::parse($value) : null;
+    }
+
+    public function unseen(Request $request)
+    {
+        $adminId = (int) $request->user()->id;
+        $since   = $this->seenAt($adminId);
+
+        if (! $since) {
+            return response()->json([
+                'success' => true,
+                'data'    => ['count' => 0, 'since' => null, 'latest' => null],
+            ]);
+        }
+
+        $query = ActivityLog::where('admin_id', '!=', $adminId)
+            ->where('created_at', '>', $since);
+
+        $latest = (clone $query)
+            ->latest()
+            ->first(['id', 'admin_name', 'action_type', 'description', 'created_at']);
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'count'  => (clone $query)->count(),
+                'since'  => $since->toIso8601String(),
+                'latest' => $latest,
+            ],
+        ]);
+    }
+
+    public function seen(Request $request)
+    {
+        $now = now();
+        Cache::forever(self::SEEN_KEY . (int) $request->user()->id, $now->toIso8601String());
+
+        return response()->json([
+            'success' => true,
+            'data'    => ['seen_at' => $now->toIso8601String()],
+        ]);
+    }
+
     public function index(Request $request)
     {
         try {
@@ -55,9 +112,20 @@ class ActivityLogController extends Controller
                 $logs = $query->limit($limit)->get();
             }
 
+            $adminId = (int) $request->user()->id;
+            $since   = $this->seenAt($adminId);
+
             return response()->json([
                 'success' => true,
-                'data' => $logs,
+                'data'    => $logs,
+                'meta'    => [
+                    'last_seen_at' => $since?->toIso8601String(),
+                    'unseen_count' => $since
+                        ? ActivityLog::where('admin_id', '!=', $adminId)
+                            ->where('created_at', '>', $since)
+                            ->count()
+                        : 0,
+                ],
             ]);
         } catch (\Exception $e) {
             Log::error('Erreur chargement journaux d\'activité: ' . $e->getMessage());

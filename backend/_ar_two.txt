@@ -1,0 +1,17 @@
+=== LES 2 ECARTS ARABE A TRANCHER ===
+
+--- 142 AS26 : Widad ALLA (id=588) ---
+  BASE  : وداد عال
+  PDF   : وداد عا        (rendu brut du document)
+  Nom francais : ALLA
+  -> probablement : وداد علام (ALLA = علاّم)
+
+--- 56 IP24 : BEN ALLAH CHAHRAZAD (id=656) ---
+  BASE  : شهرزاد بن هللا
+  PDF   : شهرزاد بنلله   (rendu brut du document)
+  Nom francais : BEN ALLAH
+  -> base l'ecrit bien : بن الله
+
+--- CODES ---
+  base 142 : وداد عال   [0648 062F 0627 062F 0020 0639 0627 0644]
+  base 56 : شهرزاد بن هللا   [0634 0647 0631 0632 0627 062F 0020 0628 0646 0020 0647 0644 0644 0627]

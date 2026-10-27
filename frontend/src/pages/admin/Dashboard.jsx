@@ -1,48 +1,100 @@
-import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '../../api/admin';
 import { useToast } from '../../context/ToastContext';
 import { useAnneeAcademique } from '../../context/AnneeAcademiqueContext';
-import handleApiError from '../../utils/errorHandler';
+import { handleApiError } from '../../utils/errorHandler';
 import { formatNiveau } from '../../utils/helpers';
 import Spinner from '../../components/common/Spinner';
 import {
-  FiFileText,
-  FiChevronDown, FiChevronUp, FiCheckCircle,
-  FiEdit, FiAward, FiSend, FiTrendingUp, FiAlertCircle,
-  FiRefreshCw, FiArrowRight, FiInbox, FiGrid,
+  FiAward, FiEdit, FiTrendingUp, FiSend, FiFileText,
+  FiChevronDown, FiChevronUp, FiCheckCircle, FiAlertCircle,
+  FiRefreshCw, FiArrowRight, FiInbox, FiInfo,
 } from 'react-icons/fi';
 import '../../css/dashboard.css';
 
 const MAX_PENDING_ROWS = 6;
 
-const PUB_LABELS = { notes_s1: 'Notes S1', notes_s2: 'Notes S2', bulletin: 'Bulletin' };
+const PUB_LABELS = { notes_s1: 'S1', notes_s2: 'S2', bulletin: 'Bull.' };
 
 const QUICK_ACTIONS = [
-  { label: 'Saisie des notes', desc: 'Saisir les notes',       link: '/admin/saisie-notes', icon: FiEdit },
-  { label: 'Publications',     desc: 'Publier les résultats', link: '/admin/publications', icon: FiSend },
-  { label: 'Bulletins',        desc: 'Générer les bulletins',  link: '/admin/bulletins',   icon: FiFileText },
-  { label: 'Relevé des notes', desc: 'Consulter les relevés',  link: '/admin/notes',       icon: FiTrendingUp },
-  { label: 'Diplômes',         desc: 'Éditer les diplômes',   link: '/admin/diplomes',    icon: FiAward },
+  { label: 'Saisie des notes', desc: 'Saisir ou corriger les notes', link: '/admin/saisie-notes', icon: FiEdit },
+  { label: 'Relevé des notes', desc: 'Voir les notes par étudiant', link: '/admin/notes', icon: FiTrendingUp },
+  { label: 'Publications', desc: 'Publier notes et bulletins', link: '/admin/publications', icon: FiSend },
+  { label: 'Bulletins', desc: 'Générer et imprimer les bulletins', link: '/admin/bulletins', icon: FiFileText },
+  { label: 'Diplômes', desc: 'Éditer et imprimer les diplômes', link: '/admin/diplomes', icon: FiAward },
 ];
 
-/* A small heading that tells you what a block of information is for. */
-function SectionLabel({ icon: Icon, children, note }) {
+const clamp = (v) => Math.max(0, Math.min(100, Number(v) || 0));
+const pctOf = (a, b) => (b > 0 ? clamp((a / b) * 100) : 0);
+const stateOf = (pct) => (pct >= 100 ? 'done' : pct > 0 ? 'active' : 'todo');
+const formatPct = (v) => Number(v || 0).toFixed(1).replace('.', ',');
+
+/* Small "!" button: the detailed explanation only appears on click. */
+function InfoNote() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
   return (
-    <div className="dash-section-label">
-      <Icon size={14} />
-      <span>{children}</span>
-      {note && <span className="dash-section-note">{note}</span>}
+    <div className="info" ref={ref}>
+      <button
+        type="button"
+        className="info-btn"
+        aria-label="Comment lire ces chiffres"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <FiInfo size={13} />
+      </button>
+      {open && (
+        <div className="info-pop" role="dialog">
+          <span className="info-pop-title">Comment lire ces chiffres</span>
+          <p><b>Une note</b> = la note d’un étudiant à un contrôle.</p>
+          <p>Les <b>notes attendues</b> comptent une note par étudiant actif ou diplômé, pour chaque contrôle de son année d’étude.</p>
+          <p>Les notes de <b>stage</b> sont suivies séparément et ne sont pas comptées ici.</p>
+        </div>
+      )}
     </div>
   );
 }
 
-function n(v) { return Number(v || 0); }
-function fmt(v) { return n(v).toLocaleString('fr-FR'); }
+/* Publication counts for a whole filière: "S1 2/3  S2 1/3  Bull. 0/3". */
+function PubChips({ pub, total }) {
+  return (
+    <span className="db-pubs">
+      {Object.keys(PUB_LABELS).map((t) => {
+        const done = Number(pub?.[t]) || 0;
+        const isDone = total > 0 && done >= total;
+        return (
+          <span key={t} className={`db-pub${isDone ? ' is-done' : ''}`}>
+            {PUB_LABELS[t]} {done}/{total}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
-function pubText(types) {
-  if (!types || types.length === 0) return '—';
-  return types.map(t => PUB_LABELS[t] || t).join(' · ');
+/* Publication types already published for a single group. */
+function GroupPubs({ types }) {
+  if (!types || types.length === 0) return <span className="db-dash">—</span>;
+  return (
+    <span className="db-pubs">
+      {types.map((t) => <span key={t} className="db-pub is-done">{PUB_LABELS[t] || t}</span>)}
+    </span>
+  );
 }
 
 export default function Dashboard() {
@@ -74,12 +126,11 @@ export default function Dashboard() {
       ]);
       if (statsRes.status === 'rejected') throw statsRes.reason;
 
-      const dataOf = r => (r.status === 'fulfilled' ? r.value.data.data : null);
+      const dataOf = (r) => (r.status === 'fulfilled' ? r.value.data.data : null);
       const statsData = dataOf(statsRes) || {};
-      const fStats = statsData.filieres || [];
 
       setOvData(statsData.overview || null);
-      setFiliereStats(fStats);
+      setFiliereStats(statsData.filieres || []);
       setPendingControles(dataOf(pendingRes) || []);
     } catch (err) {
       const info = handleApiError(err, toastRef.current, { showToast: false });
@@ -96,25 +147,22 @@ export default function Dashboard() {
     load();
   }, [anneeLoading, currentAnnee, load]);
 
-  const ov = ovData || {};
-
   const pending = useMemo(() => {
     const rows = pendingControles
-      .flatMap(f => (f.items || []).map(i => ({ ...i, filiere_nom: f.filiere_nom })))
-      .sort((a, b) => b.missing_count - a.missing_count);
-
+      .flatMap((f) => (f.items || []).map((item) => ({ ...item, filiere_nom: f.filiere_nom })));
     return {
-      controls: pendingControles.reduce((s, f) => s + (f.total_pending_controles || 0), 0),
-      missing: pendingControles.reduce((s, f) => s + (f.total_missing_notes || 0), 0),
+      controls: pendingControles.reduce((sum, f) => sum + (f.total_pending_controles || 0), 0),
       rows,
-      hasOverflow: rows.length > MAX_PENDING_ROWS,
     };
   }, [pendingControles]);
 
-  if (loading || anneeLoading) {
+  const ov = ovData || {};
+  const hasStats = filiereStats.length > 0;
+
+  if (loading) {
     return (
-      <div className="dash" style={{ display: 'flex', justifyContent: 'center', paddingTop: 90 }}>
-        <Spinner />
+      <div className="dash">
+        <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 80 }}><Spinner /></div>
       </div>
     );
   }
@@ -122,407 +170,384 @@ export default function Dashboard() {
   if (error) {
     return (
       <div className="dash">
-        <div className="dash-error">
-          <div className="dash-error-icon"><FiAlertCircle size={20} /></div>
-          <div className="dash-error-title">Erreur de chargement</div>
-          <p className="dash-error-msg">{error}</p>
-          <button className="btn btn-primary" onClick={() => { setError(null); setLoading(true); }}>
-            Réessayer
-          </button>
+        <div className="card" style={{ marginTop: 8 }}>
+          <div className="db-empty" style={{ paddingTop: 48 }}>
+            <div className="db-empty-icon is-muted"><FiAlertCircle size={22} /></div>
+            <div className="db-empty-title">Erreur de chargement</div>
+            <p className="db-empty-text">{error}</p>
+            <button className="btn btn-sm btn-primary" onClick={() => { setError(null); setLoading(true); load(); }}>
+              Réessayer
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  const yearLabel = currentAnnee?.label ?? '—';
+  if (!currentAnnee) {
+    return (
+      <div className="dash">
+        <div className="dash-head">
+          <div>
+            <h1 className="dash-title">Tableau de bord</h1>
+            <p className="dash-subtitle">Aucune année académique courante</p>
+          </div>
+        </div>
+        <div className="card">
+          <div className="db-empty" style={{ paddingTop: 48 }}>
+            <div className="db-empty-icon is-muted"><FiInbox size={22} /></div>
+            <div className="db-empty-title">Aucune année académique</div>
+            <p className="db-empty-text">Définissez une année académique courante pour afficher le tableau de bord.</p>
+            <button className="btn btn-sm btn-primary" onClick={() => navigate('/admin/annees')}>
+              Gérer les années
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  /*
-   * Both the attention card and the side panel must agree. The API can report
-   * pending controls with zero missing notes (a group containing no students),
-   * so "is there work" is keyed off the control count, not the note count.
-   */
-  const hasWork = pending.controls > 0;
-  const hasMissing = pending.missing > 0;
+  /* ── figures ─────────────────────────────────────────────── */
+  const students = Number(ov.total_students) || 0;
+  const active = Number(ov.active_students) || 0;
+  const grad = Number(ov.graduate_students) || 0;
+  const notesMissing = Number(ov.notes_missing) || 0;
+  const notesPct = Number(ov.notes_pct) || 0;
+  const emptyControls = Number(ov.controles_sans_notes) || 0;
+  const totalGroupes = Number(ov.total_groupes) || 0;
+  const publishedGroups = Number(ov.groupes_publies) || 0;
+  const totalDiplomes = Number(ov.total_diplomes) || 0;
+  const diplomesPrinted = Number(ov.diplomes_printed) || 0;
+  const formateurs = Number(ov.total_formateurs) || 0;
 
-  const hasStats = filiereStats.length > 0;
-  const totalFilieres = filiereStats.length;
+  const bulletinsPublished = filiereStats.reduce(
+    (sum, f) => sum + (Number(f.publications?.bulletin) || 0), 0,
+  );
 
-  const statTiles = [
-    { key: 'students',  label: 'Étudiants',   value: fmt(ov.total_students),      sub: `${fmt(ov.active_students)} actifs · ${fmt(ov.graduate_students)} diplômés`, link: '/admin/etudiants' },
-    { key: 'groupes',   label: 'Groupes',     value: fmt(ov.total_groupes),       sub: `${fmt(ov.total_niveaux)} niveaux · ${totalFilieres} ${totalFilieres > 1 ? 'filières' : 'filière'}`, link: '/admin/filieres-groupes' },
-    { key: 'formateurs', label: 'Formateurs', value: fmt(ov.total_formateurs),    sub: 'équipe pédagogique', link: '/admin/formateurs' },
-    { key: 'controles', label: 'Contrôles',   value: fmt(ov.total_controles),     sub: `${fmt(ov.controles_avec_notes)} complétés · ${fmt(ov.controles_sans_notes)} vides`, link: '/admin/unites' },
-    { key: 'notes',     label: 'Notes saisies', value: `${Number(ov.notes_pct || 0).toFixed(1).replace('.', ',')}%`, sub: `${fmt(ov.notes_entered)} saisies · ${fmt(ov.notes_expected)} attendues`, link: '/admin/saisie-notes' },
-    { key: 'diplomes',  label: 'Diplômes',    value: fmt(ov.total_diplomes),      sub: `${fmt(ov.diplomes_printed)} imprimés`, link: '/admin/diplomes' },
+  /* The year as a workflow: inscription → notes → publications → bulletins → diplômes. */
+  const stages = [
+    {
+      key: 'inscriptions', label: 'Inscriptions', link: '/admin/etudiants',
+      hint: 'Étudiants inscrits cette année (actifs et diplômés).',
+      figure: students, sub: `${active} actifs · ${grad} diplômés`,
+      state: students > 0 ? 'done' : 'todo',
+      stacked: [
+        { value: active, className: 'is-active' },
+        { value: grad, className: 'is-done' },
+      ],
+    },
+    {
+      key: 'notes', label: 'Saisie des notes', link: '/admin/saisie-notes',
+      hint: 'Notes saisies par rapport aux notes attendues.',
+      figure: `${formatPct(notesPct)}%`,
+      sub: notesMissing > 0
+        ? `${notesMissing} notes restantes · ${emptyControls} contrôles sans note`
+        : 'toutes saisies',
+      pct: notesPct, state: stateOf(notesPct),
+    },
+    {
+      key: 'publications', label: 'Publications', link: '/admin/publications',
+      hint: 'Groupes dont un semestre (ou le bulletin) est publié.',
+      figure: `${publishedGroups}/${totalGroupes}`,
+      sub: totalGroupes - publishedGroups > 0
+        ? `${totalGroupes - publishedGroups} groupe(s) à publier` : 'tout est publié',
+      pct: pctOf(publishedGroups, totalGroupes), state: stateOf(pctOf(publishedGroups, totalGroupes)),
+    },
+    {
+      key: 'bulletins', label: 'Bulletins', link: '/admin/bulletins',
+      hint: 'Groupes dont le bulletin est publié.',
+      figure: `${bulletinsPublished}/${totalGroupes}`,
+      sub: totalGroupes - bulletinsPublished > 0
+        ? `${totalGroupes - bulletinsPublished} à générer` : 'tous générés',
+      pct: pctOf(bulletinsPublished, totalGroupes), state: stateOf(pctOf(bulletinsPublished, totalGroupes)),
+    },
+    {
+      key: 'diplomes', label: 'Diplômes', link: '/admin/diplomes',
+      hint: 'Diplômes imprimés par rapport au total délivré.',
+      figure: `${diplomesPrinted}/${totalDiplomes}`,
+      sub: totalDiplomes - diplomesPrinted > 0
+        ? `${totalDiplomes - diplomesPrinted} à imprimer` : 'tous imprimés',
+      pct: pctOf(diplomesPrinted, totalDiplomes), state: stateOf(pctOf(diplomesPrinted, totalDiplomes)),
+    },
   ];
+
+  /* First unfinished stage = the year's bottleneck. */
+  const nextStage = stages.find((s) => s.key !== 'inscriptions' && s.state !== 'done');
+
+  const shownRows = pending.rows.slice(0, showAllPending ? pending.rows.length : MAX_PENDING_ROWS);
 
   return (
     <div className="dash">
 
       {/* ── HEADER ── */}
       <div className="dash-head">
-        <div className="dash-head-text">
+        <div>
           <h1 className="dash-title">Tableau de bord</h1>
-          <p className="dash-subtitle">Année académique {yearLabel}</p>
+          <p className="dash-subtitle">Année académique <strong>{currentAnnee.label}</strong></p>
         </div>
         <button
+          type="button"
           className={`dash-refresh${refreshing ? ' is-spinning' : ''}`}
           onClick={() => load(true)}
           disabled={refreshing}
           title="Actualiser les données"
           aria-label="Actualiser les données"
         >
-          <FiRefreshCw size={15} />
+          <FiRefreshCw size={16} />
         </button>
       </div>
 
-      {/* ── 1. THE ONE THING THAT MATTERS ── */}
-      {hasWork ? (
-        <div className="dash-attention">
-          <div className="dash-attention-main">
-            <div className="dash-attention-value">
-              {hasMissing ? pending.missing : pending.controls}
-              <span className="dash-attention-unit">
-                {hasMissing ? 'notes à saisir' : 'contrôles à vérifier'}
-              </span>
-            </div>
-            <p className="dash-attention-text">
-              {hasMissing ? (
-                <>
-                  réparties sur <strong>{pending.controls}</strong>{' '}
-                  {pending.controls > 1 ? 'contrôles' : 'contrôle'} incomplet
-                  {pending.controls > 1 ? 's' : ''}.
-                </>
-              ) : (
-                <>
-                  aucun groupe ne contient d’étudiant pour ces contrôles.
-                </>
-              )}
+      {!hasStats ? (
+        <div className="card">
+          <div className="db-empty" style={{ paddingTop: 48 }}>
+            <div className="db-empty-icon is-muted"><FiInbox size={22} /></div>
+            <div className="db-empty-title">Aucune donnée pour cette année</div>
+            <p className="db-empty-text">
+              Créez des filières, des unités et des contrôles pour suivre la saisie des notes.
             </p>
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => navigate('/admin/unites')}>
+              Gérer les unités
+            </button>
           </div>
-          <button className="dash-attention-btn" onClick={() => navigate('/admin/saisie-notes')}>
-            Commencer la saisie <FiArrowRight size={15} />
-          </button>
         </div>
       ) : (
-        <div className="dash-clear">
-          <FiCheckCircle size={18} />
-          <div>
-            <div className="dash-clear-title">Tout est à jour</div>
-            <p className="dash-clear-text">Aucune note en attente. Toutes les notes attendues ont été saisies.</p>
-          </div>
-        </div>
-      )}
+        <>
+          {/* ── RACCOURCIS (en haut) ── */}
+          <nav className="quick" aria-label="Raccourcis">
+            {QUICK_ACTIONS.map((a) => {
+              const Icon = a.icon;
+              return (
+                <button key={a.link} type="button" className="quick-item" onClick={() => navigate(a.link)}>
+                  <span className="quick-icon"><Icon size={16} /></span>
+                  <span className="quick-text">
+                    <span className="quick-label">{a.label}</span>
+                    <span className="quick-desc">{a.desc}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
 
-      {/* ── 2. KEY NUMBERS ── */}
-      <SectionLabel icon={FiGrid}>Chiffres clés</SectionLabel>
-      <div className="dash-stats">
-        {statTiles.map(t => (
-          <button
-            key={t.key}
-            className="stat"
-            onClick={() => navigate(t.link)}
-          >
-            <span className="stat-value">{t.value}</span>
-            <span className="stat-label">{t.label}</span>
-            <span className="stat-sub">{t.sub}</span>
-          </button>
-        ))}
-      </div>
+          {/* ── LE PARCOURS DE L'ANNÉE ── */}
+          <section className="card flow-card">
+            <header className="card-head">
+              <h2 className="card-title">Le parcours de l’année</h2>
+              <InfoNote />
+              <span className="card-meta">
+                {filiereStats.length} filières · {totalGroupes} groupes · {formateurs} formateurs
+              </span>
+            </header>
 
-      {/* ── 3. DETAIL ── */}
-      <div className="dash-grid">
-
-        {/* LEFT — RESULTS OF THE YEAR */}
-        <div className="panel">
-          <div className="panel-head">
-            <span className="panel-title">Résultats de l’année</span>
-            <span className="panel-head-note">
-              {hasStats
-                ? `${fmt(ov.notes_missing)} note${n(ov.notes_missing) > 1 ? 's' : ''} attendante${n(ov.notes_missing) > 1 ? 's' : ''}`
-                : ''}
-            </span>
-          </div>
-
-          {!hasStats ? (
-            <div className="dash-empty">
-              <div className="dash-empty-icon is-muted"><FiInbox size={18} /></div>
-              <div className="dash-empty-title">Aucune donnée pour cette année</div>
-              <p className="dash-empty-text">
-                Créez des filières, des unités et des contrôles pour visualiser les résultats de l’année.
-              </p>
-              <button className="btn btn-sm btn-primary" onClick={() => navigate('/admin/unites')}>
-                Gérer les unités
-              </button>
-            </div>
-          ) : (
-            <div className="rt-scroll">
-              <table className="rt">
-                <thead>
-                  <tr>
-                    <th>Filière</th>
-                    <th>Étudiants</th>
-                    <th>Groupes</th>
-                    <th>Contrôles</th>
-                    <th>Notes</th>
-                    <th>G. publiés</th>
-                    <th>Diplômes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filiereStats.map(f => {
-                    const isOpen = expandedFiliere === f.filiere_id;
-                    const hasGroupes = (f.groupes || []).length > 0;
-                    return (
-                      <Fragment key={f.filiere_id}>
-                        <tr
-                          className={`rt-row${hasGroupes ? ' rt-clickable' : ''}`}
-                          onClick={hasGroupes ? () => setExpandedFiliere(isOpen ? null : f.filiere_id) : undefined}
-                        >
-                          <td>
-                            <span className="rt-name">
-                              {hasGroupes && (
-                                <span className="rt-chevron">
-                                  {isOpen ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
-                                </span>
-                              )}
-                              {f.filiere_nom}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="rt-big">{fmt(f.total_students)}</span>
-                            <span className="rt-small">
-                              {fmt(f.active_students)} actifs · {fmt(f.graduate_students)} diplômés{f.dropped_students > 0 ? ` · ${fmt(f.dropped_students)} abandonnés` : ''}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="rt-big">{f.total_groupes}</span>
-                          </td>
-                          <td>
-                            <span className="rt-big">{fmt(f.controles_avec_notes)}/{fmt(f.total_controles)}</span>
-                            <span className="rt-small">{f.saisie_pct}% complétés</span>
-                          </td>
-                          <td>
-                            <span className="rt-big">{Number(f.notes_pct || 0).toFixed(1).replace('.', ',')}%</span>
-                            <span className="rt-small">{fmt(f.notes_entered)} / {fmt(f.notes_expected)} saisies</span>
-                          </td>
-                          <td>
-                            <span className="rt-big">{f.groupes_publies}/{f.total_groupes}</span>
-                            <span className="rt-small">groupes publiés</span>
-                          </td>
-                          <td>
-                            <span className="rt-big">{fmt(f.total_diplomes)}</span>
-                            <span className="rt-small">{fmt(f.diplomes_printed)} imprimés · {fmt(f.diplomes_non_imprimes)} à imprimer</span>
-                          </td>
-                        </tr>
-
-                        {isOpen && hasGroupes && (f.groupes || []).map(g => (
-                          <tr key={g.id} className="rt-sub">
-                            <td><span className="rt-grp-name">{g.nom} · {formatNiveau(g.niveau_numero)}</span></td>
-                            <td>{g.etudiants_count}</td>
-                            <td>—</td>
-                            <td>
-                              <span className="rt-big">{g.avec_notes}/{g.total_controles}</span>
-                              <span className="rt-small">{g.total_controles > 0 ? Math.round((g.avec_notes / g.total_controles) * 100) : 0}% complétés</span>
-                            </td>
-                            <td>
-                              <span className="rt-big">{Number(g.notes_pct || 0).toFixed(1).replace('.', ',')}%</span>
-                              <span className="rt-small">{fmt(g.notes_entered)} saisies</span>
-                            </td>
-                            <td colSpan="2" className="rt-pub">
-                              <span className="rt-small">Publié : {pubText(g.publie_types)}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT — TO PROCESS */}
-        <div className="panel">
-          <div className="panel-head">
-            <span className="panel-title">Contrôles à compléter</span>
-            {pending.controls > 0 && (
-              <span className="panel-count">{pending.controls}</span>
-            )}
-          </div>
-
-          {pending.controls === 0 ? (
-            <div className="dash-empty">
-              <div className="dash-empty-icon"><FiCheckCircle size={18} /></div>
-              <div className="dash-empty-title">Rien à faire</div>
-              <p className="dash-empty-text">Tous les contrôles ont leurs notes saisies.</p>
-            </div>
-          ) : (
-            <>
-              <div className="pend-list">
-                {pending.rows
-                  .slice(0, showAllPending ? pending.rows.length : MAX_PENDING_ROWS)
-                  .map(item => {
-                    const state = item.missing_count > 0
-                      ? (item.notes_entered === 0 ? 'danger' : 'warn')
-                      : 'ok';
-                    return (
-                      <button
-                        key={item.controle_id}
-                        className="pend-row"
-                        onClick={() => navigate('/admin/saisie-notes')}
-                      >
-                        <span className={`pend-dot ${state}`} />
-                        <span className="pend-body">
-                          <span className="pend-title" title={item.unite_nom}>{item.unite_nom}</span>
-                          <span className="pend-sub">
-                            {item.filiere_nom} · Contrôle {item.controle_numero}
-                          </span>
-                        </span>
-                        <span className="pend-figure">
-                          <span className="pend-done">{item.notes_entered}/{item.total_expected}</span>
-                          <span className={`pend-left${item.missing_count > 0 ? ' is-alert' : ''}`}>
-                            {item.missing_count > 0
-                              ? `${item.missing_count} restante${item.missing_count > 1 ? 's' : ''}`
-                              : 'complet'}
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
+            <div className="card-body">
+              <div className="flow-track">
+                {stages.map((s, i) => (
+                  <Fragment key={s.key}>
+                    {i > 0 && <span className="flow-arrow" aria-hidden="true"><FiArrowRight size={15} /></span>}
+                    <button
+                      type="button"
+                      className={`flow-stage is-${s.state}${nextStage?.key === s.key ? ' is-current' : ''}`}
+                      onClick={() => navigate(s.link)}
+                      title={s.hint}
+                    >
+                      <span className="flow-stage-head">
+                        <span className="flow-step">{String(i + 1).padStart(2, '0')}</span>
+                        <span className="flow-label">{s.label}</span>
+                        {nextStage?.key === s.key && <span className="flow-flag">à traiter</span>}
+                      </span>
+                      <span className="flow-bar">
+                        {s.stacked ? (
+                          s.stacked.map((part) => (
+                            <span
+                              key={part.className}
+                              className={`flow-seg ${part.className}`}
+                              style={{ width: `${pctOf(part.value, s.figure)}%` }}
+                            />
+                          ))
+                        ) : (
+                          <span className="flow-fill" style={{ width: `${clamp(s.pct)}%` }} />
+                        )}
+                      </span>
+                      <span className="flow-figure">{s.figure}</span>
+                      <span className="flow-sub">{s.sub}</span>
+                    </button>
+                  </Fragment>
+                ))}
               </div>
+            </div>
+          </section>
 
-              <div className="pend-foot">
-                <span className="pend-foot-note">
-                  {showAllPending || !pending.hasOverflow
-                    ? `${pending.rows.length} contrôle(s) au total`
-                    : `${MAX_PENDING_ROWS} sur ${pending.rows.length} affichés`}
-                </span>
-                {pending.hasOverflow && (
-                  <button className="link-action" onClick={() => setShowAllPending(v => !v)}>
+          {/* ── CONTRÔLES À COMPLÉTER ── */}
+          <section className="card">
+            <header className="card-head">
+              <h2 className="card-title">Contrôles à compléter</h2>
+              {pending.controls > 0
+                ? <span className="badge badge-warn">{pending.controls} au total</span>
+                : <span className="badge badge-ok">à jour</span>}
+            </header>
+
+            {pending.controls === 0 ? (
+              <div className="db-empty" style={{ paddingTop: 40, paddingBottom: 44 }}>
+                <div className="db-empty-icon"><FiCheckCircle size={22} /></div>
+                <div className="db-empty-title">Rien à faire</div>
+                <p className="db-empty-text">Tous les contrôles ont leurs notes saisies.</p>
+              </div>
+            ) : (
+              <>
+                <div className="card-body">
+                  <div className="todo-grid">
+                    {shownRows.map((item) => {
+                      const state = item.missing_count === 0 ? 'ok' : (item.notes_entered === 0 ? 'danger' : 'warn');
+                      return (
+                        <button
+                          key={item.controle_id}
+                          type="button"
+                          className={`todo-row is-${state}`}
+                          onClick={() => navigate('/admin/saisie-notes')}
+                        >
+                          <span className="todo-dot" />
+                          <span className="todo-main">
+                            <span className="todo-title" title={item.unite_nom}>{item.unite_nom}</span>
+                            <span className="todo-meta">
+                              {item.filiere_nom} · {formatNiveau(item.niveau_numero)} · Contrôle {item.controle_numero}
+                            </span>
+                            {item.missing_students?.length > 0 && (
+                              <span
+                                className="todo-missing"
+                                title={item.missing_students.map((s) => s.nom_prenom).join(', ')}
+                              >
+                                Manque : {item.missing_students.slice(0, 3).map((s) => s.nom_prenom).join(', ')}
+                                {item.missing_count > 3 ? ` +${item.missing_count - 3}` : ''}
+                              </span>
+                            )}
+                          </span>
+                          <span className="todo-side">
+                            <span className="todo-chip">
+                              {item.missing_count > 0 ? `${item.missing_count} restante${item.missing_count > 1 ? 's' : ''}` : 'complet'}
+                            </span>
+                            <span className="todo-count">{item.notes_entered}/{item.total_expected}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="card-foot">
+                  <span>
+                    {showAllPending
+                      ? `${pending.rows.length} contrôle(s) affiché(s)`
+                      : `Aperçu de ${Math.min(MAX_PENDING_ROWS, pending.rows.length)} sur ${pending.controls}`}
+                  </span>
+                  <button
+                    type="button"
+                    className="link-action"
+                    onClick={() => setShowAllPending((v) => !v)}
+                  >
                     {showAllPending ? 'Réduire' : 'Tout afficher'}
                   </button>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+                </div>
+              </>
+            )}
+          </section>
 
-      {/* ── 4. PUBLICATIONS + SYNTHESIS ── */}
-      <div className="dash-grid">
+          {/* ── DÉTAIL PAR FILIÈRE ── */}
+          <section className="card">
+            <header className="card-head">
+              <h2 className="card-title">Détail par filière</h2>
+              <span className="badge badge-neutral">{publishedGroups}/{totalGroupes} groupes publiés</span>
+            </header>
 
-        {/* LEFT — PUBLICATIONS */}
-        <div className="panel">
-          <div className="panel-head">
-            <span className="panel-title">Publications</span>
-            <span className="panel-head-note">{fmt(ov.groupes_publies)}/{fmt(ov.total_groupes)} groupes publiés</span>
-          </div>
-
-          {!hasStats ? (
-            <div className="dash-empty">
-              <div className="dash-empty-icon is-muted"><FiInbox size={18} /></div>
-              <div className="dash-empty-title">Aucune publication enregistrée</div>
-              <p className="dash-empty-text">Publiez les notes et les bulletins depuis la page Publications.</p>
-            </div>
-          ) : (
-            <>
-              <div className="rt-scroll">
-                <table className="rt is-narrow">
+            <div className="card-body card-body--table">
+              <div className="db-scroll">
+                <table className="db-table">
                   <thead>
                     <tr>
                       <th>Filière</th>
-                      <th>Notes S1</th>
-                      <th>Notes S2</th>
-                      <th>Bulletins</th>
+                      <th>Étudiants</th>
+                      <th>Notes saisies</th>
+                      <th>Publications</th>
+                      <th>Diplômes</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filiereStats.map(f => {
-                      const pub = f.publications || {};
+                    {filiereStats.map((f) => {
+                      const isOpen = expandedFiliere === f.filiere_id;
+                      const hasGroupes = (f.groupes || []).length > 0;
                       return (
-                        <tr key={f.filiere_id} className="rt-plain">
-                          <td><span className="rt-name">{f.filiere_nom}</span></td>
-                          <td><span className="rt-big">{pub.notes_s1 || 0}/{f.total_groupes}</span><span className="rt-small">groupes</span></td>
-                          <td><span className="rt-big">{pub.notes_s2 || 0}/{f.total_groupes}</span><span className="rt-small">groupes</span></td>
-                          <td><span className="rt-big">{pub.bulletin || 0}/{f.total_groupes}</span><span className="rt-small">groupes</span></td>
-                        </tr>
+                        <Fragment key={f.filiere_id}>
+                          <tr
+                            className={`db-row${hasGroupes ? ' is-clickable' : ''}`}
+                            onClick={hasGroupes ? () => setExpandedFiliere(isOpen ? null : f.filiere_id) : undefined}
+                          >
+                            <td>
+                              <span className="db-name">
+                                {hasGroupes && (
+                                  <span className="db-chevron">
+                                    {isOpen ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
+                                  </span>
+                                )}
+                                {f.filiere_nom}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="db-big">{f.total_students}</span>
+                              <span className="db-small">{f.active_students} actifs · {f.graduate_students} diplômés</span>
+                            </td>
+                            <td>
+                              <span className="db-saisie">
+                                <span className={`db-bar${f.notes_pct >= 100 ? ' is-done' : f.notes_pct <= 0 ? ' is-empty' : ''}`}>
+                                  <span style={{ width: `${clamp(f.notes_pct)}%` }} />
+                                </span>
+                                <span className="db-pct">{formatPct(f.notes_pct)}%</span>
+                              </span>
+                              <span className="db-small">{f.notes_entered} / {f.notes_expected} notes</span>
+                            </td>
+                            <td>
+                              <PubChips pub={f.publications} total={f.total_groupes} />
+                              <span className="db-small">{f.groupes_publies}/{f.total_groupes} groupes publiés</span>
+                            </td>
+                            <td>
+                              <span className="db-big">{f.total_diplomes}</span>
+                              <span className="db-small">{f.diplomes_printed} imprimés</span>
+                            </td>
+                          </tr>
+
+                          {isOpen && hasGroupes && (f.groupes || []).map((g) => (
+                            <tr key={g.id} className="db-sub">
+                              <td>
+                                <span className="db-sub-name">{g.nom} <em>{formatNiveau(g.niveau_numero)}</em></span>
+                              </td>
+                              <td>{g.etudiants_count}</td>
+                              <td>
+                                <span className="db-saisie">
+                                  <span className={`db-bar${g.notes_pct >= 100 ? ' is-done' : g.notes_pct <= 0 ? ' is-empty' : ''}`}>
+                                    <span style={{ width: `${clamp(g.notes_pct)}%` }} />
+                                  </span>
+                                  <span className="db-pct">{formatPct(g.notes_pct)}%</span>
+                                </span>
+                                <span className="db-small">{g.notes_entered} saisies</span>
+                              </td>
+                              <td><GroupPubs types={g.publie_types} /></td>
+                              <td><span className="db-dash">—</span></td>
+                            </tr>
+                          ))}
+                        </Fragment>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
-              <div className="pend-foot">
-                <span className="pend-foot-note">
-                  {fmt(ov.publications_by_type?.notes_s1 || 0)} Notes S1 · {fmt(ov.publications_by_type?.notes_s2 || 0)} Notes S2 · {fmt(ov.publications_by_type?.bulletin || 0)} bulletins enregistrés
-                </span>
-                <button className="link-action" onClick={() => navigate('/admin/publications')}>
-                  Gérer les publications
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+            </div>
 
-        {/* RIGHT — YEAR OVERVIEW */}
-        <div className="panel">
-          <div className="panel-head">
-            <span className="panel-title">Synthèse de l’année</span>
-          </div>
-          <div className="summ">
-            <div className="summ-row">
-              <span className="summ-label">Notes attendues</span>
-              <span className="summ-value">{fmt(ov.notes_expected)}<small>{fmt(ov.notes_missing)} encore manquantes</small></span>
+            <div className="card-foot">
+              <span>{notesMissing} note{notesMissing > 1 ? 's' : ''} restante{notesMissing > 1 ? 's' : ''} sur l’année</span>
+              <button type="button" className="link-action" onClick={() => navigate('/admin/publications')}>
+                Gérer les publications
+              </button>
             </div>
-            <div className="summ-row">
-              <span className="summ-label">Notes saisies</span>
-              <span className="summ-value">{fmt(ov.notes_entered)}<small>{Number(ov.notes_pct || 0).toFixed(1).replace('.', ',')} % du prévisionnel</small></span>
-            </div>
-            <div className="summ-row">
-              <span className="summ-label">Contrôles</span>
-              <span className="summ-value">{fmt(ov.total_controles)}<small>{fmt(ov.controles_avec_notes)} complets · {fmt(ov.controles_sans_notes)} sans note</small></span>
-            </div>
-            <div className="summ-row">
-              <span className="summ-label">Unités / séquences</span>
-              <span className="summ-value">{fmt(ov.total_unites)}<small>{fmt(ov.total_sequences)} séquences</small></span>
-            </div>
-            <div className="summ-row">
-              <span className="summ-label">Étudiants</span>
-              <span className="summ-value">{fmt(ov.total_students)}<small>{fmt(ov.active_students)} actifs · {fmt(ov.graduate_students)} diplômés · {fmt(ov.dropped_students)} abandonnés</small></span>
-            </div>
-            <div className="summ-row">
-              <span className="summ-label">Diplômes édités</span>
-              <span className="summ-value">{fmt(ov.total_diplomes)}<small>{fmt(ov.diplomes_printed)} imprimés · {fmt(n(ov.total_diplomes) - n(ov.diplomes_printed))} à imprimer</small></span>
-            </div>
-            <div className="summ-row">
-              <span className="summ-label">Groupes</span>
-              <span className="summ-value">{fmt(ov.total_groupes)}<small>{fmt(ov.groupes_publies)} avec au moins une publication</small></span>
-            </div>
-            <div className="summ-row">
-              <span className="summ-label">Formateurs</span>
-              <span className="summ-value">{fmt(ov.total_formateurs)}<small>équipe pédagogique</small></span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 5. QUICK ACTIONS ── */}
-      <SectionLabel icon={FiEdit}>Raccourcis</SectionLabel>
-      <div className="qa-grid">
-        {QUICK_ACTIONS.map(a => {
-          const Icon = a.icon;
-          return (
-            <button key={a.link} className="qa-item" onClick={() => navigate(a.link)}>
-              <span className="qa-icon"><Icon size={15} /></span>
-              <span className="qa-text">
-                <span className="qa-title">{a.label}</span>
-                <span className="qa-desc">{a.desc}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }

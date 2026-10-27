@@ -1,0 +1,37 @@
+CALENDRIER tableau 5 (IP2) header:
+  [0] Service
+  [1] Médecine
+  [2] Chirurgie
+  [3] Pédiatrie
+  [4] BlOC
+  [5] Obstétrique
+  [6] PF
+  [7] CS
+
+JSON IP niv2 services (groupe A, ordre):
+  [0] Médecine
+  [1] Chirurgie
+  [2] Pédiatrie
+  [3] Obstétrique
+  [4] PF
+  [5] BlOC
+  [6] CS
+  [7] BlOC
+  [8] CS
+  [9] PF
+  [10] Obstétrique
+  [11] Médecine
+  [12] PF
+  [13] Obstétrique
+  [14] CS
+  [15] Chirurgie
+  [16] PF
+
+JSON IP niv2 services UNIQUES (7):
+  - Médecine
+  - Chirurgie
+  - Pédiatrie
+  - Obstétrique
+  - PF
+  - BlOC
+  - CS

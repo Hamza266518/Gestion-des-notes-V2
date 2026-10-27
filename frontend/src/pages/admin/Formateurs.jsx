@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { adminApi } from '../../api/admin';
 import { formateursApi } from '../../api/formateurs';
 import { unitesApi } from '../../api/unites';
@@ -17,11 +18,14 @@ export default function Formateurs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openCreate, setOpenCreate] = useState(false);
+  const [pendingCreate, setPendingCreate] = useState(null);
+  const [nameConfirm, setNameConfirm] = useState({ open: false, message: '', onConfirm: null });
   const [openManage, setOpenManage] = useState(false);
   const [openScan, setOpenScan] = useState(false);
   const [openBulkScan, setOpenBulkScan] = useState(false);
   const [selectedFormateur, setSelectedFormateur] = useState(null);
   const [formateurSequences, setFormateurSequences] = useState([]);
+  const [formateurUsage, setFormateurUsage] = useState({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [removingSequence, setRemovingSequence] = useState(null);
@@ -30,14 +34,14 @@ export default function Formateurs() {
   const [scanResults, setScanResults] = useState([]);
   const [extracting, setExtracting] = useState(false);
   const [scanSaving, setScanSaving] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: '', password: '' });
+  const [createForm, setCreateForm] = useState({ nom: '', prenom: '', password: '' });
   const [bulkImages, setBulkImages] = useState([]);
   const [bulkResults, setBulkResults] = useState([]);
   const [bulkExtracting, setBulkExtracting] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkPassword, setBulkPassword] = useState('');
   const [openPassword, setOpenPassword] = useState(false);
-  const [passwordForm, setPasswordForm] = useState({ password: '', confirm: '' });
+  const [passwordForm, setPasswordForm] = useState({ password: '', confirm: '', nom: '', prenom: '' });
   const [passwordErrors, setPasswordErrors] = useState({});
   const [copiedId, setCopiedId] = useState(null);
   const [filterNum, setFilterNum] = useState('');
@@ -54,7 +58,12 @@ export default function Formateurs() {
     formateursApi.getFormateurs({ signal: controller.signal })
       .then(res => {
         if (!controller.signal.aborted) {
-          setFormateurs(res.data.data);
+          const list = (res.data.data || []).slice().sort((a, b) => {
+            const an = (a.user?.name || '').toLowerCase();
+            const bn = (b.user?.name || '').toLowerCase();
+            return an.localeCompare(bn, 'fr');
+          });
+          setFormateurs(list);
         }
       })
       .catch((error) => {
@@ -95,10 +104,49 @@ export default function Formateurs() {
       .catch(() => setAllSequences([]));
   }, []);
 
+  const submitCreateFormateur = async (force = false) => {
+    setSaving(true);
+    setFormErrors({});
+    try {
+      await formateursApi.createFormateur({ ...createForm, force });
+      showSuccess(toast, 'Formateur créé');
+      setOpenCreate(false);
+      setCreateForm({ nom: '', prenom: '', password: '' });
+      setPendingCreate(null);
+      load();
+    } catch (error) {
+      if (error.response?.status === 409 && error.response?.data?.code === 'NAME_EXISTS') {
+        setSaving(false);
+        setNameConfirm({
+          open: true,
+          message: error.response?.data?.message || "Un formateur portant un nom similaire existe déjà. Voulez-vous quand même créer ce formateur ?",
+          onConfirm: async () => {
+            setNameConfirm({ open: false, message: '', onConfirm: null });
+            setPendingCreate(createForm);
+            await submitCreateFormateur(true);
+          }
+        });
+        return;
+      }
+      const fieldErrors = getFieldErrors(error);
+      if (Object.keys(fieldErrors).length > 0) {
+        setFormErrors(fieldErrors);
+      }
+      const errMsg = error.response?.data?.errors?.password?.[0] || error.response?.data?.errors?.user?.password?.[0] || error.response?.data?.errors?.nom?.[0] || error.response?.data?.errors?.prenom?.[0] || error.response?.data?.errors?.name?.[0] || error.response?.data?.message;
+      if (errMsg) {
+        toast.error(errMsg);
+      } else {
+        handleApiError(error, toast);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleCreate = async () => {
     const errors = {};
-    if (!createForm.name) errors.name = 'Le nom est requis';
-    if (!createForm.password) errors.password = 'Le mot de passe est requis';
+    if (!createForm.nom?.trim()) errors.nom = 'Le nom est requis';
+    if (!createForm.prenom?.trim()) errors.prenom = 'Le prénom est requis';
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -106,24 +154,7 @@ export default function Formateurs() {
       return;
     }
 
-    setSaving(true);
-    setFormErrors({});
-
-    try {
-      await formateursApi.createFormateur(createForm);
-      showSuccess(toast, 'Formateur créé');
-      setOpenCreate(false);
-      setCreateForm({ name: '', password: '' });
-      load();
-    } catch (error) {
-      const fieldErrors = getFieldErrors(error);
-      if (Object.keys(fieldErrors).length > 0) {
-        setFormErrors(fieldErrors);
-      }
-      handleApiError(error, toast);
-    } finally {
-      setSaving(false);
-    }
+    await submitCreateFormateur(false);
   };
 
   const handleDelete = (id, name) => {
@@ -146,6 +177,8 @@ export default function Formateurs() {
     }
   };
 
+  const [visiblePasswords, setVisiblePasswords] = useState({});
+
   const handleCopyCredentials = async (formateur) => {
     const text = `Identifiant: ${formateur.user?.username}\nMot de passe: ${formateur.user?.password_plain || '(non disponible)'}`;
     try {
@@ -158,9 +191,20 @@ export default function Formateurs() {
     }
   };
 
+  const splitName = (fullName) => {
+    const name = (fullName || '').trim();
+    if (!name) return { nom: '', prenom: '' };
+    const parts = name.split(/\s+/);
+    if (parts.length === 1) return { nom: parts[0].toUpperCase(), prenom: '' };
+    const prenom = parts.slice(1).join(' ');
+    const nom = parts[0].toUpperCase();
+    return { nom, prenom: prenom.replace(/\b\w/g, c => c.toUpperCase()) };
+  };
+
   const openPasswordModal = (formateur) => {
     setSelectedFormateur(formateur);
-    setPasswordForm({ password: '', confirm: '' });
+    const { nom, prenom } = splitName(formateur?.user?.name);
+    setPasswordForm({ password: '', confirm: '', nom, prenom });
     setPasswordErrors({});
     setOpenPassword(true);
   };
@@ -170,6 +214,8 @@ export default function Formateurs() {
     if (!passwordForm.password) errors.password = 'Le mot de passe est requis';
     else if (passwordForm.password.length < 6) errors.password = 'Minimum 6 caractères';
     if (passwordForm.password !== passwordForm.confirm) errors.confirm = 'Les mots de passe ne correspondent pas';
+    if (!passwordForm.nom?.trim()) errors.nom = 'Le nom est requis';
+    if (!passwordForm.prenom?.trim()) errors.prenom = 'Le prénom est requis';
 
     if (Object.keys(errors).length > 0) {
       setPasswordErrors(errors);
@@ -178,12 +224,24 @@ export default function Formateurs() {
 
     setSaving(true);
     try {
-      await formateursApi.updatePassword(selectedFormateur.id, passwordForm.password);
-      showSuccess(toast, 'Mot de passe mis à jour');
+      await formateursApi.updatePassword(selectedFormateur.id, passwordForm.password, {
+        nom: passwordForm.nom,
+        prenom: passwordForm.prenom
+      });
+      showSuccess(toast, 'Informations mises à jour');
       setOpenPassword(false);
       load();
     } catch (error) {
-      handleApiError(error, toast);
+      const fieldErrors = getFieldErrors(error);
+      if (Object.keys(fieldErrors).length > 0) {
+        setPasswordErrors(fieldErrors);
+      }
+      const errMsg = error.response?.data?.errors?.password?.[0] || error.response?.data?.errors?.nom?.[0] || error.response?.data?.errors?.prenom?.[0] || error.response?.data?.message;
+      if (errMsg && !Object.keys(fieldErrors).length) {
+        toast.error(errMsg);
+      } else {
+        handleApiError(error, toast);
+      }
     } finally {
       setSaving(false);
     }
@@ -196,6 +254,7 @@ export default function Formateurs() {
     try {
       const seqRes = await adminApi.getFormateurSequences(formateur.id);
       setFormateurSequences(seqRes.data.data || []);
+      setFormateurUsage(seqRes.data.usage || {});
     } catch (error) {
       handleApiError(error, toast);
     }
@@ -217,6 +276,7 @@ export default function Formateurs() {
       showSuccess(toast, 'Séquence retirée');
       const res = await adminApi.getFormateurSequences(selectedFormateur.id);
       setFormateurSequences(res.data.data || []);
+      setFormateurUsage(res.data.usage || {});
     } catch (error) {
       handleApiError(error, toast);
     } finally {
@@ -224,19 +284,41 @@ export default function Formateurs() {
     }
   };
 
-  const handleAssignSequence = async (sequenceId) => {
+  const handleUpdateMasseHoraire = async (sequenceId, value) => {
+    if (!selectedFormateur) return;
+    const masse = value === '' ? null : parseInt(value);
+    try {
+      await adminApi.updateFormateurMasseHoraire(selectedFormateur.id, sequenceId, { masse_horaire: masse });
+      const res = await adminApi.getFormateurSequences(selectedFormateur.id);
+      setFormateurSequences(res.data.data || []);
+      setFormateurUsage(res.data.usage || {});
+    } catch (error) {
+      handleApiError(error, toast);
+    }
+  };
+
+  const handleAssignSequence = async (sequenceId, force = false) => {
     if (!selectedFormateur || !sequenceId) return;
 
     try {
       await adminApi.assignFormateurSequence(selectedFormateur.id, {
         sequence_id: sequenceId,
+        force,
       });
       showSuccess(toast, 'Séquence assignée');
       const res = await adminApi.getFormateurSequences(selectedFormateur.id);
       setFormateurSequences(res.data.data || []);
+      setFormateurUsage(res.data.usage || {});
       setSearchSequence('');
       setFilterNum('');
     } catch (error) {
+      if (error.response?.status === 409 && error.response?.data?.conflict) {
+        const owner = error.response.data.owner;
+        if (window.confirm(`${error.response.data.message || `Cette séquence est déjà attribuée à ${owner}. Voulez-vous quand même l'attribuer à ce formateur ?`}`)) {
+          return handleAssignSequence(sequenceId, true);
+        }
+        return;
+      }
       handleApiError(error, toast);
     }
   };
@@ -378,7 +460,7 @@ export default function Formateurs() {
             <button className="btn btn-outline" onClick={() => { setOpenBulkScan(true); setBulkResults([]); setBulkImages([]); }}>
               Scanner
             </button>
-            <button className="btn btn-primary" onClick={() => { setOpenCreate(true); setFormErrors({}); }}>
+            <button className="btn btn-primary" onClick={() => { setOpenCreate(true); setFormErrors({}); setCreateForm({ nom: '', prenom: '', password: '' }); setPendingCreate(null); }}>
               + Nouveau formateur
             </button>
           </>
@@ -404,7 +486,7 @@ export default function Formateurs() {
             <button className="btn btn-outline" onClick={() => { setOpenBulkScan(true); setBulkResults([]); setBulkImages([]); }}>
               Scanner
             </button>
-            <button className="btn btn-primary" onClick={() => { setOpenCreate(true); setFormErrors({}); }}>
+            <button className="btn btn-primary" onClick={() => { setOpenCreate(true); setFormErrors({}); setCreateForm({ nom: '', prenom: '', password: '' }); setPendingCreate(null); }}>
               + Nouveau formateur
             </button>
           </div>
@@ -429,9 +511,19 @@ export default function Formateurs() {
                   <td><strong>{f.user?.name}</strong></td>
                   <td>{f.user?.username ?? '—'}</td>
                   <td>
-                    <span style={{ fontFamily: 'monospace', fontSize: '13px' }}>
-                      {f.user?.password_plain || '—'}
-                    </span>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'monospace', fontSize: '13px', background: '#f3f4f6', padding: '4px 8px', borderRadius: 6 }}>
+                      <span>{visiblePasswords[f.id] && f.user?.password_plain ? f.user.password_plain : (f.user?.password_plain ? '••••••••' : '—')}</span>
+                      {f.user?.password_plain && (
+                        <button
+                          type="button"
+                          onClick={() => setVisiblePasswords(p => ({ ...p, [f.id]: !p[f.id] }))}
+                          style={{ padding: '2px 6px', border: 'none', background: 'none', cursor: 'pointer', lineHeight: 1 }}
+                          title={visiblePasswords[f.id] ? 'Masquer' : 'Afficher'}
+                        >
+                          {visiblePasswords[f.id] ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td><Badge label={`${f.sequences?.length ?? 0} séquence(s)`} color="teal" /></td>
                   <td>
@@ -450,7 +542,7 @@ export default function Formateurs() {
                         Gérer séquences
                       </button>
                       <button className="btn btn-sm btn-outline" onClick={() => openPasswordModal(f)}>
-                        Modifier MDP
+                        Modifier infos
                       </button>
                       <button
                         className="btn btn-sm btn-danger"
@@ -469,34 +561,34 @@ export default function Formateurs() {
       )}
 
       {/* Create formateur modal */}
-      <Modal open={openCreate} onClose={() => { setOpenCreate(false); setFormErrors({}); }} title="Nouveau Formateur">
+      <Modal open={openCreate} onClose={() => { setOpenCreate(false); setFormErrors({}); setPendingCreate(null); }} title="Nouveau Formateur">
         <div className="form-group">
           <label className="form-label">Nom *</label>
           <input
-            className={`form-input ${formErrors.name ? 'border-red-500' : ''}`}
-            value={createForm.name}
-            onChange={e => setCreateForm(p => ({ ...p, name: e.target.value }))}
-            style={formErrors.name ? { borderColor: '#ef4444' } : {}}
+            className={`form-input ${formErrors.nom ? 'border-red-500' : ''}`}
+            value={createForm.nom || ''}
+            onChange={e => setCreateForm(p => ({ ...p, nom: e.target.value }))}
+            style={formErrors.nom ? { borderColor: '#ef4444' } : {}}
           />
-          {formErrors.name && (
-            <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.name}</div>
+          {formErrors.nom && (
+            <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.nom}</div>
           )}
         </div>
         <div className="form-group">
-          <label className="form-label">Mot de passe *</label>
+          <label className="form-label">Prénom *</label>
           <input
-            type="password"
-            className={`form-input ${formErrors.password ? 'border-red-500' : ''}`}
-            value={createForm.password}
-            onChange={e => setCreateForm(p => ({ ...p, password: e.target.value }))}
-            style={formErrors.password ? { borderColor: '#ef4444' } : {}}
+            className={`form-input ${formErrors.prenom ? 'border-red-500' : ''}`}
+            value={createForm.prenom || ''}
+            onChange={e => setCreateForm(p => ({ ...p, prenom: e.target.value }))}
+            style={formErrors.prenom ? { borderColor: '#ef4444' } : {}}
           />
-          {formErrors.password && (
-            <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.password}</div>
+          {formErrors.prenom && (
+            <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{formErrors.prenom}</div>
           )}
         </div>
+        <div style={{ fontSize: 12, color: '#6b7280' }}>Un mot de passe aléatoire sera généré automatiquement.</div>
         <div className="modal-footer">
-          <button className="btn btn-outline" onClick={() => { setOpenCreate(false); setFormErrors({}); }}>Annuler</button>
+          <button className="btn btn-outline" onClick={() => { setOpenCreate(false); setFormErrors({}); setPendingCreate(null); }}>Annuler</button>
           <button className="btn btn-primary" onClick={handleCreate} disabled={saving}>
             {saving ? 'Création...' : 'Créer'}
           </button>
@@ -504,7 +596,31 @@ export default function Formateurs() {
       </Modal>
 
       {/* Password edit modal */}
-      <Modal open={openPassword} onClose={() => { setOpenPassword(false); setPasswordErrors({}); }} title={`Modifier mot de passe - ${selectedFormateur?.user?.name}`}>
+      <Modal open={openPassword} onClose={() => { setOpenPassword(false); setPasswordErrors({}); }} title={`Modifier informations - ${selectedFormateur?.user?.name}`}>
+        <div className="form-group">
+          <label className="form-label">Nom *</label>
+          <input
+            className={`form-input ${passwordErrors.nom ? 'border-red-500' : ''}`}
+            value={passwordForm.nom || ''}
+            onChange={e => setPasswordForm(p => ({ ...p, nom: e.target.value.toUpperCase() }))}
+            style={passwordErrors.nom ? { borderColor: '#ef4444' } : {}}
+          />
+          {passwordErrors.nom && (
+            <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{passwordErrors.nom}</div>
+          )}
+        </div>
+        <div className="form-group">
+          <label className="form-label">Prénom *</label>
+          <input
+            className={`form-input ${passwordErrors.prenom ? 'border-red-500' : ''}`}
+            value={passwordForm.prenom || ''}
+            onChange={e => setPasswordForm(p => ({ ...p, prenom: e.target.value.replace(/\b\w/g, c => c.toUpperCase()) }))}
+            style={passwordErrors.prenom ? { borderColor: '#ef4444' } : {}}
+          />
+          {passwordErrors.prenom && (
+            <div style={{ color: '#ef4444', fontSize: 12, marginTop: 4 }}>{passwordErrors.prenom}</div>
+          )}
+        </div>
         <div className="form-group">
           <label className="form-label">Nouveau mot de passe *</label>
           <input
@@ -534,8 +650,16 @@ export default function Formateurs() {
         <div className="modal-footer">
           <button className="btn btn-outline" onClick={() => { setOpenPassword(false); setPasswordErrors({}); }}>Annuler</button>
           <button className="btn btn-primary" onClick={handleUpdatePassword} disabled={saving}>
-            {saving ? 'Modification...' : 'Modifier'}
+            {saving ? 'Modification...' : 'Enregistrer'}
           </button>
+        </div>
+      </Modal>
+
+      <Modal open={nameConfirm.open} onClose={() => setNameConfirm({ open: false, message: '', onConfirm: null })} title="Nom similaire détecté">
+        <p style={{ marginBottom: 16 }}>{nameConfirm.message}</p>
+        <div className="modal-footer">
+          <button className="btn btn-outline" onClick={() => setNameConfirm({ open: false, message: '', onConfirm: null })}>Annuler</button>
+          <button className="btn btn-primary" onClick={nameConfirm.onConfirm}>Créer quand même</button>
         </div>
       </Modal>
 
@@ -552,14 +676,15 @@ export default function Formateurs() {
               <input type="number" className="form-input" placeholder="N° séquence" min={0} value={filterNum} onChange={e => setFilterNum(e.target.value)} style={{ padding: '7px 12px', fontSize: 13 }} />
             </div>
           </div>
-          <div style={{ maxHeight: 500, overflowY: 'auto' }}>
+          <div className="formateurs-seq-scroll" style={{ maxHeight: 500, overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#fafafa', position: 'sticky', top: 0 }}>
                   <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6b7280', borderBottom: '1px solid #e5e7eb' }}>Séquence</th>
                   <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6b7280', borderBottom: '1px solid #e5e7eb' }}>Unité</th>
                   <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6b7280', borderBottom: '1px solid #e5e7eb' }}>Filière</th>
-                  <th style={{ padding: '10px 20px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#6b7280', borderBottom: '1px solid #e5e7eb' }}>H</th>
+                  <th style={{ padding: '10px 20px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6b7280', borderBottom: '1px solid #e5e7eb' }}>Statut</th>
+                  <th style={{ padding: '10px 20px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#6b7280', borderBottom: '1px solid #e5e7eb' }}>Masse horaire</th>
                   <th style={{ padding: '10px 20px', textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#6b7280', borderBottom: '1px solid #e5e7eb' }}></th>
                 </tr>
               </thead>
@@ -577,12 +702,34 @@ export default function Formateurs() {
                   const renderRow = (s) => {
                     const seqData = assignedIds.get(s.id);
                     const isAssigned = !!seqData;
+                    const usage = formateurUsage && formateurUsage[s.id] ? formateurUsage[s.id] : [];
+                    const otherOwners = usage.filter(u => !selectedFormateur || u.formateur_id !== selectedFormateur.id);
+                    const currentOwner = usage.find(u => selectedFormateur && u.formateur_id === selectedFormateur.id);
                     return (
                       <tr key={s.id} style={{ background: isAssigned ? '#f0fdf4' : '#fff' }}>
                         <td style={{ padding: '10px 20px', fontSize: 14, fontWeight: 500 }}>{s.nom}</td>
                         <td style={{ padding: '10px 20px', fontSize: 13, color: '#6b7280' }}>{s.unite}</td>
                         <td style={{ padding: '10px 20px', fontSize: 13, color: '#6b7280' }}>{s.filiere}</td>
-                        <td style={{ padding: '10px 20px', textAlign: 'center', fontSize: 13 }}>{isAssigned && seqData.masse_horaire ? seqData.masse_horaire + 'h' : '—'}</td>
+                        <td style={{ padding: '10px 20px', fontSize: 12 }}>
+                          {isAssigned && currentOwner ? (
+                            <span style={{ color: '#166534', fontWeight: 600 }}>Attribuée à ce formateur</span>
+                          ) : otherOwners.length > 0 ? (
+                            <span style={{ color: '#ea580c', fontWeight: 600 }}>Attribuée à: {otherOwners.map(o => o.formateur_name).join(', ')}</span>
+                          ) : (
+                            <span style={{ color: '#16a34a', fontWeight: 600 }}>Libre</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px 20px', textAlign: 'center', fontSize: 13 }}>
+                          {isAssigned && currentOwner ? (
+                            <input
+                              type="number"
+                              min="0"
+                              defaultValue={seqData.masse_horaire || ''}
+                              onBlur={(e) => handleUpdateMasseHoraire(seqData.id, e.target.value)}
+                              style={{ width: 60, padding: '4px 6px', fontSize: 12, textAlign: 'center' }}
+                            />
+                          ) : '—'}
+                        </td>
                         <td style={{ padding: '8px 20px', textAlign: 'center' }}>
                           {isAssigned ? (
                             <button className="btn btn-sm btn-danger" onClick={() => handleRemoveSequence(seqData.id)} disabled={removingSequence === seqData.id} style={{ fontSize: 12, padding: '3px 10px' }}>{removingSequence === seqData.id ? '...' : 'Retirer'}</button>
@@ -597,7 +744,7 @@ export default function Formateurs() {
                   if (assigned.length > 0) {
                     rows.push(
                       <tr key="__assigned_header" style={{ background: '#f0fdf4' }}>
-                        <td colSpan={5} style={{ padding: '8px 20px', fontSize: 12, fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #86efac' }}>
+                        <td colSpan={6} style={{ padding: '8px 20px', fontSize: 12, fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #86efac' }}>
                           Séquences assignées ({assigned.length})
                         </td>
                       </tr>
@@ -607,7 +754,7 @@ export default function Formateurs() {
                   if (unassigned.length > 0) {
                     rows.push(
                       <tr key="__unassigned_header" style={{ background: '#fafafa' }}>
-                        <td colSpan={5} style={{ padding: '8px 20px', fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #d1d5db' }}>
+                        <td colSpan={6} style={{ padding: '8px 20px', fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #d1d5db' }}>
                           Autres séquences ({unassigned.length})
                         </td>
                       </tr>

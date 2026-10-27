@@ -1,0 +1,9 @@
+﻿
+Parse error: syntax error, unexpected token "=", expecting end of file in Command line code on line 1
+php : PHP Parse error:  syntax error, unexpected token "=", expecting end of file in Command line code on line 1
+At line:1 char:1
++ php -r "require 'vendor/autoload.php'; $app = require 'bootstrap/app. ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PHP Parse error... code on line 1:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

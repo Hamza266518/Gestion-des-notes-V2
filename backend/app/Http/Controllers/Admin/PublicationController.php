@@ -69,8 +69,13 @@ class PublicationController extends Controller
             );
 
             // Log activity
-            $groupe = \App\Models\Groupe::find($request->groupe_id);
-            $description = 'Admin IFP a publié ' . ($this->typeLabels[$request->type] ?? $request->type) . ' pour ' . ($groupe->nom ?? 'Groupe');
+            $groupe = \App\Models\Groupe::with('niveau.filiere')->find($request->groupe_id);
+            $annee  = \App\Models\AnneeAcademique::find($request->annee_academique_id);
+            $description = 'a publié ' . ($this->typeLabels[$request->type] ?? $request->type)
+                . ' pour ' . (ActivityLog::groupeLabel($groupe) ?: 'Groupe');
+            if ($annee?->label) {
+                $description .= " — année {$annee->label}";
+            }
             $this->logActivity('publish', $request->type, $description, $publication->id);
 
             $typeMessages = [
@@ -115,7 +120,12 @@ class PublicationController extends Controller
                 $count++;
             }
 
-            $description = 'Admin IFP a publié ' . ($this->typeLabels[$request->type] ?? $request->type) . ' pour tous les groupes (' . $count . ')';
+            $annee = \App\Models\AnneeAcademique::find($request->annee_academique_id);
+            $description = 'a publié ' . ($this->typeLabels[$request->type] ?? $request->type)
+                . " pour tous les groupes ({$count})";
+            if ($annee?->label) {
+                $description .= " — année {$annee->label}";
+            }
             $this->logActivity('publish', $request->type, $description);
 
             return response()->json([
@@ -155,7 +165,13 @@ class PublicationController extends Controller
             $publication->update(['is_published' => false, 'published_at' => null]);
 
             // Log activity
-            $description = 'Admin IFP a dépublié ' . ($this->typeLabels[$request->type] ?? $request->type);
+            $groupe = \App\Models\Groupe::with('niveau.filiere')->find($request->groupe_id);
+            $annee  = \App\Models\AnneeAcademique::find($request->annee_academique_id);
+            $description = 'a dépublié ' . ($this->typeLabels[$request->type] ?? $request->type)
+                . ' pour ' . (ActivityLog::groupeLabel($groupe) ?: 'Groupe');
+            if ($annee?->label) {
+                $description .= " — année {$annee->label}";
+            }
             $this->logActivity('unpublish', $request->type, $description, $publication->id);
 
             return response()->json(['success' => true, 'message' => 'Publication annulée']);
@@ -181,7 +197,12 @@ class PublicationController extends Controller
                 'published_at' => null,
             ]);
 
-            $description = 'Admin IFP a dépublié ' . ($this->typeLabels[$request->type] ?? $request->type) . ' pour tous les groupes (' . $count . ')';
+            $annee = \App\Models\AnneeAcademique::find($request->annee_academique_id);
+            $description = 'a dépublié ' . ($this->typeLabels[$request->type] ?? $request->type)
+                . " pour tous les groupes ({$count})";
+            if ($annee?->label) {
+                $description .= " — année {$annee->label}";
+            }
             $this->logActivity('unpublish', $request->type, $description);
 
             return response()->json([

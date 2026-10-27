@@ -1,0 +1,18 @@
+=== TOUS LES BLOCS DU FICHIER, AVEC ANNEE SCOLAIRE + ANNEE DE FORMATION ===
+
+########## Fichier 2026-2027 ##########
+  Infirmier Auxiliaire Année Scolaire :2026/2027 Section :Technicien Année de formation :2ème année Promotion : 2025/2027 | formation: 2ème année | scolaire: 2026/2027  | promo: 2025/2027  | 9 etudiants
+  Infirmier Polyvalent Année Scolaire :2026/2027 Section :Technicien spécialisé Année de formation :2ème Année Promotion : 2025/2028 | formation: 2ème Année | scolaire: 2026/2027  | promo: 2025/2028  | 20 etudiants
+  Infirmier Polyvalent Année Scolaire :2026/2027 Section :Technicien spécialisé Année de formation :3ème année Promotion : 2024/2027 | formation: 3ème année | scolaire: 2026/2027  | promo: 2024/2027  | 18 etudiants
+  Aide-Soignant Année Scolaire :2026/2027 Section :Qualification Année de formation :1ère année Promotion : 2026/2027 | formation: 1ère année | scolaire: 2026/2027  | promo: 2026/2027  | 35 etudiants
+  Infirmier Auxiliaire Année Scolaire :2026/2027 Section :Technicien Année de formation :1ère année Promotion : 2026/2028 | formation: 1ère année | scolaire: 2026/2027  | promo: 2026/2028  | 14 etudiants
+  Infirmier Polyvalent Année Scolaire :2026/2027 Section :Technicien spécialisé Année de formation :1ère Année Promotion : 2026/2029 | formation: 1ère Année | scolaire: 2026/2027  | promo: 2026/2029  | 15 etudiants
+
+########## Fichier IP2 2025-2026 ##########
+  Infirmier Polyvalent Année Scolaire :2025/2026 Section :Technicien spécialisé Année de formation :2éme année Promotion : 2024/2027 | formation: 2éme année | scolaire: 2025/2026  | promo: 2024/2027  | 18 etudiants
+
+=== STRUCTURE REELLE DES FILIERES (d'apres le fichier) ===
+
+  Aide-Soignant          : 1ere annee seulement  -> 1 an  -> diplome apres 1ere
+  Infirmier Auxiliaire   : 1ere, 2eme           -> 2 ans -> diplome apres 2eme
+  Infirmier Polyvalent   : 1ere, 2eme, 3eme     -> 3 ans -> diplome apres 3eme

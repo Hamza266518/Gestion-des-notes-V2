@@ -129,16 +129,15 @@ class CinScanNormalizer
             return '';
         }
 
+        $day   = (int) $m[3];
         $month = (int) $m[2];
-        if ($month < 1 || $month > 12) {
+        $year  = (int) $m[1];
+
+        if ($month < 1 || $month > 12 || $day < 1 || $day > 31) {
             return '';
         }
 
-        $name = self::ARABIC_MONTHS[$month][0];
-        $day  = (int) $m[3];
-        $year = (int) $m[1];
-
-        return $day . ' ' . $name . ' ' . $year;
+        return sprintf('%02d/%02d/%04d', $day, $month, $year);
     }
 
     public function normalize(array $student): array

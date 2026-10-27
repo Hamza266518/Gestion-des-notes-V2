@@ -543,27 +543,7 @@ export default function GestionNotes() {
           setRoster([]);
           setFiltersApplied(false);
         }}
-        actions={(
-          <>
-            {selectedUnite && selectedUnite.nom !== 'Soutenance' && (
-              <button
-                className="btn btn-outline"
-                onClick={() => setMode(m => m === 'controles' ? 'examens' : 'controles')}
-                disabled={!selected.groupe_id}
-              >
-                {mode === 'controles' ? "Saisie examens de l'unité" : 'Saisie des contrôles'}
-              </button>
-            )}
-            <button className="btn btn-primary" onClick={handleLoad} disabled={!selected.groupe_id}>
-              Afficher
-            </button>
-            {!selected.groupe_id && selected.filiere_id && (
-              <span className="alert alert-warning" style={{ margin: 0 }}>
-                Sélectionnez un groupe
-              </span>
-            )}
-          </>
-        )}
+        actions={null}
       >
         <FiliereCascade selected={selected} onChange={setSelected} />
         <FilterSelect

@@ -1,0 +1,16 @@
+=== ARABE : PDF vs BASE (les 76) ===
+
+  identiques      : 74 / 76
+  avec ecart      : 2
+  dont vides      : 0
+
+=== DETAIL DES ECARTS ARABE ===
+
+  142 AS26   id=588   Widad ALLA                  
+        PDF : وداد علام
+        BASE: وداد عال
+
+  56 IP24    id=656   BEN ALLAH CHAHRAZAD         
+        PDF : شهرزاد بن لله
+        BASE: شهرزاد بن هللا
+

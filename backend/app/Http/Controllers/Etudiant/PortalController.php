@@ -83,7 +83,9 @@ class PortalController extends Controller
     {
         $unites = Unite::where('filiere_id', $filiereId)
             ->where('numero_annee', $niveauNumero)
-            ->where('semestre', $semestre)
+            ->where(function ($q) use ($semestre) {
+                $q->where('semestre', $semestre)->orWhere('semestre', 0);
+            })
             ->where('is_active', true)
             ->with('sequences.controles', 'controles')
             ->orderBy('ordre')
@@ -156,7 +158,7 @@ class PortalController extends Controller
 
         $semestres = [1 => [], 2 => []];
         foreach ($bulletin['unites'] as $u) {
-            $semestres[$u['semestre']][] = [
+            $item = [
                 'nom' => $u['nom'],
                 'coefficient' => $u['coefficient'],
                 'sequences' => $u['sequences'],
@@ -165,6 +167,17 @@ class PortalController extends Controller
                 'moyenne_theorique' => $u['moyenne_theorique'],
                 'moyenne_pratique' => $u['moyenne_pratique'],
             ];
+
+            $semestre = (int) $u['semestre'];
+            if ($semestre === 0) {
+                $semestres[1][] = $item;
+                $semestres[2][] = $item;
+                continue;
+            }
+
+            if (isset($semestres[$semestre])) {
+                $semestres[$semestre][] = $item;
+            }
         }
 
         return [

@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\AnneeAcademique;
 use App\Models\Etudiant;
 use App\Models\Filiere;
+use App\Models\Groupe;
 use App\Models\Niveau;
 use App\Models\User;
 use App\Services\EtudiantDocxService;
@@ -14,6 +16,7 @@ use App\Services\NumeroInscriptionService;
 use App\Services\UsernameGenerator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -257,9 +260,32 @@ class EtudiantController extends Controller
                 'date_inscription'  => 'nullable|date',
                 'groupe_id'         => 'required|exists:groupes,id',
                 'annee_academique_id' => 'required|exists:annees_academiques,id',
+                'force'             => 'nullable|boolean',
             ]);
 
-            return DB::transaction(function () use ($request) {
+            $nomPrenom = trim((string) $request->nom_prenom);
+            if ($nomPrenom === '') {
+                return response()->json(['success' => false, 'message' => 'Le nom et prénom sont requis'], 422);
+            }
+
+            $nameKey = UsernameGenerator::nameKey($nomPrenom);
+            if ($nameKey !== '' && !$request->boolean('force')) {
+                $existingEtudiant = Etudiant::with('user')
+                    ->get()
+                    ->first(function (Etudiant $e) use ($nameKey) {
+                        return UsernameGenerator::nameKey((string) $e->nom_prenom) === $nameKey;
+                    });
+                if ($existingEtudiant) {
+                    return response()->json([
+                        'success' => false,
+                        'code'    => 'NAME_EXISTS',
+                        'message' => "Un étudiant portant un nom similaire existe déjà ({$existingEtudiant->nom_prenom}). Voulez-vous quand même créer cet étudiant ?",
+                        'existing' => ['id' => $existingEtudiant->id, 'name' => $existingEtudiant->nom_prenom],
+                    ], 409);
+                }
+            }
+
+            return DB::transaction(function () use ($request, $nomPrenom) {
                 $filiereCode = \App\Models\Groupe::with('niveau.filiere')
                     ->findOrFail($request->groupe_id)
                     ->niveau->filiere->code;
@@ -269,16 +295,16 @@ class EtudiantController extends Controller
                     $request->annee_academique_id
                 );
 
-$password = User::generateStrongPassword();
+                $password = User::generateStrongPassword();
 
                 // Matched on the CIN, which is the stable student identifier: the username
                 // is generated once and never regenerated when the name or CIN changes.
-                $username = app(UsernameGenerator::class)->reserveFor($request->nom_prenom, 'etudiant');
+                $username = app(UsernameGenerator::class)->reserveFor($nomPrenom, 'etudiant');
 
                 $user = User::firstOrCreate(
                     ['username' => $username],
                     [
-                        'name'               => $request->nom_prenom,
+                        'name'               => $nomPrenom,
                         'password'           => Hash::make($password),
                         'password_encrypted' => Crypt::encryptString($password),
                         'password_original_encrypted' => Crypt::encryptString($password),
@@ -286,13 +312,18 @@ $password = User::generateStrongPassword();
                     ]
                 );
 
+                if ($user->name !== $nomPrenom) {
+                    $user->name = $nomPrenom;
+                    $user->save();
+                }
+
                 $etudiant = Etudiant::updateOrCreate(
                     ['cin' => strtoupper($request->cin)],
                     [
                         'user_id'             => $user->id,
                         'groupe_id'           => $request->groupe_id,
                         'annee_academique_id' => $request->annee_academique_id,
-                        'nom_prenom'          => $request->nom_prenom,
+                        'nom_prenom'          => $nomPrenom,
                         'nom_ar'              => $request->nom_ar,
                         'cin'                 => strtoupper($request->cin),
                         'date_naissance'      => $request->date_naissance,
@@ -310,7 +341,20 @@ $password = User::generateStrongPassword();
                     ]
                 );
 
-                return response()->json(['success' => true, 'data' => $etudiant->load('groupe.niveau.filiere'), 'message' => 'Étudiant créé']);
+                $etudiant->load('groupe.niveau.filiere');
+                ActivityLog::create([
+                    'admin_id'    => Auth::id(),
+                    'admin_name'  => Auth::user()?->name ?? 'Admin',
+                    'action_type' => $etudiant->wasRecentlyCreated ? 'create' : 'update',
+                    'description' => ($etudiant->wasRecentlyCreated ? 'a créé' : 'a mis à jour')
+                        . " le stagiaire {$etudiant->nom_prenom}"
+                        . ($etudiant->numero_inscription ? " ({$etudiant->numero_inscription})" : '')
+                        . (($label = ActivityLog::groupeLabel($etudiant->groupe)) !== '' ? " — {$label}" : ''),
+                    'model_type'  => 'App\Models\Etudiant',
+                    'model_id'    => $etudiant->id,
+                ]);
+
+                return response()->json(['success' => true, 'data' => $etudiant, 'message' => 'Étudiant créé']);
             });
         } catch (\Exception $e) {
             \Log::error('EtudiantController::store error: ' . $e->getMessage());
@@ -403,6 +447,8 @@ $password = User::generateStrongPassword();
                 $etudiant->user->update(['name' => $request->nom_prenom]);
             }
 
+            $this->logEtudiantUpdate($etudiant);
+
             return response()->json(['success' => true, 'data' => $etudiant->load('groupe.niveau.filiere'), 'message' => 'Étudiant modifié']);
         } catch (ValidationException $e) {
             throw $e;
@@ -411,15 +457,87 @@ $password = User::generateStrongPassword();
         }
     }
 
+    /**
+     * Journal entry for a student edit, naming only the fields that actually
+     * changed so the line says what happened rather than "modifié".
+     */
+    private function logEtudiantUpdate(Etudiant $etudiant): void
+    {
+        $admin = Auth::user();
+        if (! $admin) {
+            return;
+        }
+
+        $labels = [
+            'nom_prenom'            => 'nom',
+            'cin'                   => 'CIN',
+            'date_naissance'        => 'date de naissance',
+            'lieu_naissance'        => 'lieu de naissance',
+            'nationalite'           => 'nationalité',
+            'date_inscription'      => 'date d\'inscription',
+            'groupe_id'             => 'groupe',
+            'numero_inscription'    => 'n° inscription',
+            'nom_ar'                => 'nom (arabe)',
+            'date_naissance_ar'     => 'date de naissance (arabe)',
+            'lieu_naissance_ar'     => 'lieu de naissance (arabe)',
+            'cin_ar'                => 'CIN (arabe)',
+            'nationalite_ar'        => 'nationalité (arabe)',
+            'numero_inscription_ar' => 'n° inscription (arabe)',
+            'date_inscription_ar'   => 'date d\'inscription (arabe)',
+        ];
+
+        $changed = [];
+        foreach (array_keys($etudiant->getChanges()) as $field) {
+            if (isset($labels[$field])) {
+                $changed[$labels[$field]] = true;
+            }
+        }
+
+        $etudiant->loadMissing('groupe.niveau.filiere');
+
+        $description = "a modifié le stagiaire {$etudiant->nom_prenom}"
+            . ($etudiant->numero_inscription ? " ({$etudiant->numero_inscription})" : '');
+        if ($changed !== []) {
+            $description .= ' — champs : ' . implode(', ', array_keys($changed));
+        }
+        $label = ActivityLog::groupeLabel($etudiant->groupe);
+        if ($label !== '') {
+            $description .= " — {$label}";
+        }
+
+        ActivityLog::create([
+            'admin_id'    => $admin->id,
+            'admin_name'  => $admin->name,
+            'action_type' => 'update',
+            'description' => $description,
+            'model_type'  => 'App\Models\Etudiant',
+            'model_id'    => $etudiant->id,
+        ]);
+    }
+
     public function destroy($id)
     {
         try {
             $etudiant = Etudiant::with('user.formateur')->findOrFail($id);
             $user = $etudiant->user;
+
+            $description = "a supprimé le stagiaire {$etudiant->nom_prenom}"
+                . ($etudiant->numero_inscription ? " ({$etudiant->numero_inscription})" : '');
+
             $etudiant->delete();
             if ($user && !$user->formateur) {
                 $user->delete();
             }
+
+            ActivityLog::create([
+                'admin_id'    => Auth::id(),
+                'admin_name'  => Auth::user()?->name ?? 'Admin',
+                'action_type' => 'delete',
+                'description' => $description,
+                'model_type'  => 'App\Models\Etudiant',
+                'model_id'    => (int) $id,
+            ]);
+
             return response()->json(['success' => true, 'message' => 'Stagiaire supprimé']);
         } catch (\Exception $e) {
             \Log::error('EtudiantController::destroy error: ' . $e->getMessage());

@@ -1,0 +1,17 @@
+=== FILIERES : nombre_annees ===
+  id=1    Aide-Soignant            nombre_annees=1   type=Qualification
+  id=2    Infirmier Auxiliaire     nombre_annees=2   type=Technicien
+  id=3    Infirmier Polyvalent     nombre_annees=3   type=Specialisation
+
+=== ANNEES ACADEMIQUES ===
+  id=1     2025/2026        current=1
+
+=== CANDIDATS 'annee diplomante' PAR ANNEE (logique du controleur) ===
+  -- annee 2025/2026 (id=1) : 107 candidats --
+    Aide-Soignant            niv1   (sur 1   ans) 72  etu <-- ANNEE DIPLOMANTE
+    Infirmier Auxiliaire     niv1   (sur 2   ans) 12  etu 
+    Infirmier Auxiliaire     niv2   (sur 2   ans) 6   etu <-- ANNEE DIPLOMANTE
+    Infirmier Polyvalent     niv1   (sur 3   ans) 24  etu 
+    Infirmier Polyvalent     niv2   (sur 3   ans) 18  etu 
+    Infirmier Polyvalent     niv3   (sur 3   ans) 29  etu <-- ANNEE DIPLOMANTE
+

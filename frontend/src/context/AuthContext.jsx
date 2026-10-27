@@ -42,8 +42,7 @@ export const AuthProvider = ({ children }) => {
       .then(res => {
         setUser(res.data.data);
       })
-      .catch((err) => {
-        console.error('Auth check failed:', err);
+      .catch(() => {
         logout();
       })
       .finally(() => {

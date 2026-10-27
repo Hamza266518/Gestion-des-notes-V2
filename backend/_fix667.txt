@@ -1,0 +1,11 @@
+=== CORRECTION 75 IP24 (id=667) ===
+
+AVANT :
+  date_naissance   = 2001-05-08
+  date_inscription = (vide)
+
+APRES :
+  date_naissance   = (vide)
+  date_inscription = 2001-05-08
+
+  (PDF : 08/05/2001 en date d'inscription)

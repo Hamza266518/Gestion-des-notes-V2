@@ -1,0 +1,73 @@
+﻿[
+  {
+    "page": 1,
+    "y": 31.4,
+    "x": 315.0,
+    "dir": [
+      1.0,
+      0.0
+    ],
+    "text": "تاريخ االلتحاق ",
+    "spans": [
+      {
+        "t": "تاريخ االلتحاق ",
+        "dir": null,
+        "font": "Times New Roman,Bold"
+      }
+    ]
+  },
+  {
+    "page": 1,
+    "y": 41.7,
+    "x": 319.8,
+    "dir": [
+      1.0,
+      0.0
+    ],
+    "text": "بالمؤسســة ",
+    "spans": [
+      {
+        "t": "بالمؤسســة",
+        "dir": null,
+        "font": "Times New Roman,Bold"
+      },
+      {
+        "t": " ",
+        "dir": null,
+        "font": "Century Gothic,Bold"
+      }
+    ]
+  },
+  {
+    "page": 1,
+    "y": 31.4,
+    "x": 385.1,
+    "dir": [
+      1.0,
+      0.0
+    ],
+    "text": " رقم البطاقة",
+    "spans": [
+      {
+        "t": " رقم البطاقة",
+        "dir": null,
+        "font": "Times New Roman,Bold"
+      }
+    ]
+  },
+  {
+    "page": 1,
+    "y": 36.0,
+    "x": 391.3,
+    "dir": [
+      1.0,
+      0.0
+    ],
+    "text": "الوطنيــة مكان اإلزدياد تاريخ االزدياد االسم والنســب ",
+    "spans": [
+      {
+        "t": "الوطنيــة",
+        "dir": null,
+        "font": "Times New Roman,Bold"
+      },
+

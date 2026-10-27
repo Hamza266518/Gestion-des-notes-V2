@@ -141,8 +141,8 @@ export default function GrilleExamenStage({ etudiant, onDataChange, onSaved }) {
         <div className="data-grid">
           <div><label className="form-label">Lieu</label><input className="form-input" value={form.lieu} onChange={e => set('lieu', e.target.value)} /></div>
           <div>
+            <label className="form-label">Service</label>
             <FilterSelect
-              label="Service"
               value={service}
               options={serviceOptions}
               onChange={setService}

@@ -459,33 +459,41 @@ export default function Scanner() {
         found: r.found || false,
         introuvable: r.introuvable ?? !(r.found || r.etudiant_id),
         already_confirmed: r.already_confirmed || false,
+        readOnly: !!r.already_confirmed,
         confidence: r.found ? 'high' : 'low'
       }));
 
-      const unconfirmedResults = scanned.filter(r => !r.already_confirmed);
+      const confirmable = scanned.filter(r => !r.readOnly && r.etudiant_id);
+      const confirmedReadOnly = scanned.filter(r => r.readOnly);
 
       if (scanned.length === 0) {
         setAllConfirmed(false);
         setResults([]);
         toast.error('Aucun résultat trouvé. Vérifiez que le fichier PDF est lisible.');
-      } else if (unconfirmedResults.length === 0) {
-        setAllConfirmed(true);
-        setResults([]);
-        toast.info('Toutes les notes pour ce contrôle ont déjà été confirmées. Modifiez-les depuis la page Mes Notes ou choisissez un autre contrôle.');
-      } else {
-        setAllConfirmed(false);
-        const confirmedCount = scanned.length - unconfirmedResults.length;
-        const unrecCount = unconfirmedResults.filter(r => !r.found).length;
-        const absentCount = unconfirmedResults.filter(r => r.est_absent).length;
-        const unreadableCount = unconfirmedResults.filter(r => r.note_invalide).length;
-        let msg = `${unconfirmedResults.length} note(s) détectée(s)`;
-        if (confirmedCount > 0) msg += ` (${confirmedCount} déjà confirmée(s) ignorée(s))`;
-        if (unrecCount > 0) msg += `, ${unrecCount} non reconnue(s)`;
-        if (absentCount > 0) msg += `, ${absentCount} absent(s)`;
-        if (unreadableCount > 0) msg += `, ${unreadableCount} illisible(s)`;
-        showSuccess(toast, msg);
-        setResults(unconfirmedResults);
+        setStep(3);
+        return;
       }
+
+      if (confirmable.length === 0) {
+        setAllConfirmed(true);
+        setResults(scanned.map(r => ({ ...r, readOnly: true })));
+        toast.info('Toutes les notes sont déjà confirmées. Affichage en lecture seule pour comparaison.');
+        setStep(3);
+        return;
+      }
+
+      setAllConfirmed(false);
+      const toShow = [...confirmable, ...confirmedReadOnly];
+      const unrecCount = confirmable.filter(r => !r.found).length;
+      const absentCount = confirmable.filter(r => r.est_absent).length;
+      const unreadableCount = confirmable.filter(r => r.note_invalide).length;
+      let msg = `${confirmable.length} note(s) à confirmer`;
+      if (confirmedReadOnly.length > 0) msg += `, ${confirmedReadOnly.length} déjà confirmé(e)(s) affiché(e)(s) pour comparaison`;
+      if (unrecCount > 0) msg += `, ${unrecCount} non reconnue(s)`;
+      if (absentCount > 0) msg += `, ${absentCount} absent(s)`;
+      if (unreadableCount > 0) msg += `, ${unreadableCount} illisible(s)`;
+      showSuccess(toast, msg);
+      setResults(toShow);
 
       setStep(3);
     } catch (err) {
@@ -520,14 +528,19 @@ export default function Scanner() {
   };
 
   const handleNextFromResults = () => {
-    const unrec = results.filter(r => !r.etudiant_id);
+    const confirmable = results.filter(r => !r.readOnly && !r.already_confirmed);
+    const unrec = confirmable.filter(r => !r.etudiant_id);
     if (unrec.length > 0) {
-      toast.warning(`${unrec.length} étudiant(s) introuvable(s) : leur nom ne correspond à aucun étudiant de cette filière/année. Reliez-les par recherche ou cliquez « Ignorer ».`);
+      toast.warning(`${unrec.length} étudiant(s) à confirmer sont introuvable(s). Reliez-les par recherche ou cliquez « Ignorer ».`);
       return;
     }
-    const unreadable = results.filter(r => r.note_invalide && !r.est_absent);
+    const unreadable = confirmable.filter(r => r.note_invalide && !r.est_absent);
     if (unreadable.length > 0) {
-      toast.warning(`${unreadable.length} note(s) illisible(s). Saisissez-les ou cochez « Absent » avant de continuer.`);
+      toast.warning(`${unreadable.length} note(s) à confirmer sont illisibles. Saisissez-les ou cochez « Absent » avant de continuer.`);
+      return;
+    }
+    if (confirmable.length === 0) {
+      toast.info('Aucune note à confirmer. Seuls les étudiants déjà confirmés sont affichés.');
       return;
     }
     setStep(4);
@@ -536,22 +549,21 @@ export default function Scanner() {
   const handleConfirm = async () => {
     if (results.length === 0 || !sel.controle_id) return;
 
-    const missing = results.filter(r => !r.etudiant_id);
+    const toConfirm = results.filter(r => !r.readOnly && !r.already_confirmed && r.etudiant_id);
+    if (toConfirm.length === 0) {
+      toast.info('Aucune note à confirmer. Seuls les étudiants déjà confirmés sont affichés.');
+      return;
+    }
+
+    const missing = toConfirm.filter(r => !r.etudiant_id);
     if (missing.length > 0) {
       toast.warning(`${missing.length} étudiant(s) introuvable(s). Reliez-les ou ignorez-les avant d'enregistrer.`);
       return;
     }
 
-    const alreadyConfirmed = results.filter(r => r.already_confirmed);
-    if (alreadyConfirmed.length > 0) {
-      const names = alreadyConfirmed.map(r => r.nom).join(', ');
-      toast.warning(`${alreadyConfirmed.length} étudiant(s) ont déjà une note confirmée : ${names}. Contactez l'administrateur si vous devez modifier ces notes.`);
-      return;
-    }
-
     setSavingResults(true);
     try {
-      const notes = results.map(r => ({
+      const notes = toConfirm.map(r => ({
         etudiant_id: r.etudiant_id,
         controle_id: parseInt(sel.controle_id),
         valeur: r.est_absent ? null : r.note,
@@ -877,6 +889,10 @@ export default function Scanner() {
               </div>
               <div>
                 <div style={{ overflowX: 'auto', marginBottom: 16, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                  <div style={{ padding: '10px 16px', background: '#f9fafb', fontSize: 13, color: '#374151', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                    <span><strong>{results.filter(r => !r.readOnly && !r.already_confirmed).length}</strong> à confirmer</span>
+                    <span><strong>{results.filter(r => r.readOnly || r.already_confirmed).length}</strong> déjà confirmé(s) – vue seule</span>
+                  </div>
                   <table style={{ fontSize: '15px', minWidth: '700px', width: '100%' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f9fafb' }}>
@@ -891,14 +907,18 @@ export default function Scanner() {
                     </thead>
                     <tbody>
                       {results.map((r) => {
-                        const isUnmatched = !r.etudiant_id && !r.already_confirmed;
+                        const isReadOnly = !!(r.readOnly || r.already_confirmed);
+                        const isUnmatched = !r.etudiant_id && !isReadOnly;
                         return (
                         <tr key={r.rowId} style={{
                           borderBottom: '1px solid #e5e7eb',
-                          background: isUnmatched ? '#fff7ed' : r.note_invalide && !r.est_absent ? '#fef2f2' : 'transparent'
+                          background: isReadOnly ? '#f8f9fa' : isUnmatched ? '#fff7ed' : r.note_invalide && !r.est_absent ? '#fef2f2' : 'transparent',
+                          opacity: isReadOnly ? 0.9 : 1
                         }}>
                           <td style={{ padding: '12px 16px' }}>
-                            {isUnmatched ? (
+                            {isReadOnly ? (
+                              <span style={{ padding: '8px 12px', display: 'block', color: '#6b7280' }}>{r.nom}</span>
+                            ) : isUnmatched ? (
                               <input
                                 className="form-input"
                                 style={{ width: '100%', padding: '6px 10px', fontSize: '14px' }}
@@ -924,9 +944,9 @@ export default function Scanner() {
                             <span style={{ padding: '8px 12px', display: 'block' }}>{r.groupe}</span>
                           </td>
                           <td style={{ padding: '12px 16px' }}>
-                            {r.already_confirmed ? (
-                              <span style={{ padding: '8px 12px', display: 'block', color: '#999' }}>
-                                {r.est_absent ? 'Absent' : r.note}
+                            {isReadOnly ? (
+                              <span style={{ padding: '8px 12px', display: 'block', color: '#6b7280' }}>
+                                {r.est_absent ? 'Absent' : (r.note ?? '—')}
                               </span>
                             ) : !r.etudiant_id ? (
                               <span style={{ padding: '8px 12px', display: 'block', color: '#999' }}>{r.est_absent ? 'Absent' : (r.note ?? '—')}</span>
@@ -961,31 +981,28 @@ onChange={e => {
                             )}
                           </td>
                           <td style={{ padding: '12px 16px' }}>
-                            {r.etudiant_id && !r.already_confirmed && (
+                            {r.etudiant_id && !isReadOnly && (
                               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
                                 <input
                                   type="checkbox"
                                   checked={!!r.est_absent}
                                   disabled={processing}
-onChange={e => {
-                                     const on = e.target.checked;
-                                     setResults(prev => prev.map((row) => row.rowId === r.rowId
-                                       ? on
-                                         // Stash the scanned grade: overwriting `note`
-                                         // with 0 made unchecking restore a 0 instead
-                                         // of what was actually read on the sheet.
-                                         ? { ...row, est_absent: true, note_avant_absent: row.note ?? null, note: 0, note_invalide: false }
-                                         : { ...row, est_absent: false, note: row.note_avant_absent ?? null, note_avant_absent: null, note_invalide: (row.note_avant_absent ?? null) === null }
-                                       : row));
-                                   }}
+                                  onChange={e => {
+                                    const on = e.target.checked;
+                                    setResults(prev => prev.map((row) => row.rowId === r.rowId
+                                      ? on
+                                        ? { ...row, est_absent: true, note_avant_absent: row.note ?? null, note: 0, note_invalide: false }
+                                        : { ...row, est_absent: false, note: row.note_avant_absent ?? null, note_avant_absent: null, note_invalide: (row.note_avant_absent ?? null) === null }
+                                      : row));
+                                  }}
                                 />
                                 Absent
                               </label>
                             )}
                           </td>
                           <td style={{ padding: '12px 16px' }}>
-                            {r.already_confirmed ? (
-                              <span style={{ color: 'var(--warning)', fontWeight: 600, fontSize: 13 }}>🔒 Déjà confirmé</span>
+                            {isReadOnly ? (
+                              <span style={{ color: 'var(--gray-500)', fontWeight: 600, fontSize: 13 }}>🔒 Déjà confirmé – Vue seule</span>
                             ) : r.etudiant_id ? (
                               <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: 13 }}>✓ Reconnu</span>
                             ) : (
@@ -993,7 +1010,9 @@ onChange={e => {
                             )}
                           </td>
                           <td style={{ padding: '12px 16px' }}>
-                            {isUnmatched ? (
+                            {isReadOnly ? (
+                              <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>—</span>
+                            ) : isUnmatched ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <span style={{ fontSize: 11, color: 'var(--gray-500)', lineHeight: 1.4 }}>
                                   Reliez-le par recherche, sinon l'administrateur créera l'étudiant.
@@ -1018,7 +1037,9 @@ onChange={e => {
                 </div>
                 <div className="scanner-btn-row">
                   <button className="btn btn-outline" onClick={() => setStep(2)} disabled={processing}>← Retour</button>
-                  <button className="btn btn-primary" onClick={handleNextFromResults} disabled={processing}>Suivant →</button>
+                  <button className="btn btn-primary" onClick={handleNextFromResults} disabled={processing}>
+                    {results.filter(r => !r.readOnly && !r.already_confirmed && r.etudiant_id).length > 0 ? 'Suivant →' : 'Terminé'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -1100,30 +1121,23 @@ onChange={e => {
             title="Confirmation finale"
             subtitle="Cette action est définitive : aucune modification ne sera possible après l'enregistrement."
           />
-          {results.some(r => !r.etudiant_id) && (
+          {results.filter(r => !r.readOnly && !r.already_confirmed && !r.etudiant_id).length > 0 && (
             <div className="alert alert-warning" style={{ marginBottom: 16 }}>
-              <span><strong>Étudiants introuvables :</strong> leur nom ne correspond à aucun étudiant de cette
-              filière/année, donc aucune note ne peut leur être attribuée. Reliez-les par recherche, ou
-              demandez à l'administrateur de les créer, puis relancez le scan.</span>
-            </div>
-          )}
-          {results.some(r => r.already_confirmed) && (
-            <div className="alert alert-danger" style={{ marginBottom: 16 }}>
-              <span><strong>Notes déjà confirmées :</strong> certains étudiants ont déjà une note confirmée.
-              Contactez l'administrateur pour les modifier.</span>
+              <span><strong>Étudiants introuvables :</strong> certains étudiants à confirmer ne correspondent à aucun étudiant de cette
+              filière/année. Reliez-les par recherche ou ignorez-les avant d'enregistrer.</span>
             </div>
           )}
           <div className="alert alert-warning" style={{ marginBottom: 16 }}>
-            <span><strong>Confirmez pour enregistrer les notes</strong> — toute modification sera impossible après.</span>
+            <span><strong>Confirmez pour enregistrer les notes</strong> — toute modification sera impossible après. Seuls les étudiants non confirmés seront enregistrés. Les autres restent en lecture seule.</span>
           </div>
           <div className="scanner-btn-row">
             <button className="btn btn-outline" onClick={() => setStep(3)} disabled={processing}>← Retour</button>
-            <button className="btn btn-primary" style={{ minWidth: 220, justifyContent: 'center' }} disabled={processing || results.some(r => !r.etudiant_id || r.already_confirmed)} onClick={handleConfirm}>
+            <button className="btn btn-primary" style={{ minWidth: 220, justifyContent: 'center' }} disabled={processing || results.filter(r => !r.readOnly && !r.already_confirmed && r.etudiant_id).length === 0 || results.filter(r => !r.readOnly && !r.already_confirmed && !r.etudiant_id).length > 0} onClick={handleConfirm}>
               {savingResults ? (
                 <>
                   <Spinner /> Enregistrement...
                 </>
-              ) : `Confirmer ${results.length} note(s)`}
+              ) : `Confirmer ${results.filter(r => !r.readOnly && !r.already_confirmed && r.etudiant_id).length} note(s)`}
             </button>
           </div>
         </div>

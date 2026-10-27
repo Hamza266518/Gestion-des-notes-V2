@@ -1,0 +1,13 @@
+﻿pages=4
+numeros trouves=76
+CINs trouves=75
+
+Le plus proche CIN apres chaque numero :
+  96AS26     -> FA211848
+  97AS26     -> FA218540
+  99AS26     -> FA218060
+  100AS26    -> FA203291
+  101AS26    -> U197938
+  102AS26    -> FA220275
+  103AS26    -> FA215759
+...

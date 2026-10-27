@@ -1,0 +1,49 @@
+=== POOL 'ANNEE DIPLOMANTE' : 107 etudiants ===
+   MATCH la liste officielle : 76
+   NE MATCH PAS             : 31
+
+=== NE MATCHENT PAS LA LISTE OFFICIELLE (31) ===
+
+  id=686   ASMAE BERRADA                  cin=MN890123       num=07 AS26        Aide-Soignant          niv1   né=2000-01-01
+  id=696   ASMAE BERRADA                  cin=AB100007       num=AB100007       Aide-Soignant          niv1   né=-
+  id=705   CHAIMAE LAHLOU                 cin=AB100016       num=AB100016       Aide-Soignant          niv1   né=-
+  id=708   DOUNIA BELKADI                 cin=AB100019       num=AB100019       Aide-Soignant          niv1   né=-
+  id=680   FATIMA ZAHRA IDRISSI           cin=AB123456       num=01 AS26        Aide-Soignant          niv1   né=2000-01-01
+  id=690   FATIMA ZAHRA IDRISSI           cin=AB100001       num=AB100001       Aide-Soignant          niv1   né=-
+  id=688   HAJAR FILALI                   cin=QR012345       num=09 AS26        Aide-Soignant          niv1   né=2000-01-01
+  id=698   HAJAR FILALI                   cin=AB100009       num=AB100009       Aide-Soignant          niv1   né=-
+  id=682   HANAE TAZI                     cin=EF345678       num=03 AS26        Aide-Soignant          niv1   né=2000-01-01
+  id=692   HANAE TAZI                     cin=AB100003       num=AB100003       Aide-Soignant          niv1   né=-
+  id=706   HIND KARIMI                    cin=AB100017       num=AB100017       Aide-Soignant          niv1   né=-
+  id=710   HOUDA BAHRAOUI                 cin=AB100021       num=AB100021       Aide-Soignant          niv1   né=-
+  id=689   IMANE TAHIRI                   cin=ST678901       num=10 AS26        Aide-Soignant          niv1   né=2000-01-01
+  id=699   IMANE TAHIRI                   cin=AB100010       num=AB100010       Aide-Soignant          niv1   né=-
+  id=700   KHADIJA OUALI                  cin=AB100011       num=AB100011       Aide-Soignant          niv1   né=-
+  id=704   LOUBNA SENHAJI                 cin=AB100015       num=AB100015       Aide-Soignant          niv1   né=-
+  id=683   MERYEM ALAOUI                  cin=GH901234       num=04 AS26        Aide-Soignant          niv1   né=2000-01-01
+  id=693   MERYEM ALAOUI                  cin=AB100004       num=AB100004       Aide-Soignant          niv1   né=-
+  id=703   NAWAL HAJJI                    cin=AB100014       num=AB100014       Aide-Soignant          niv1   né=-
+  id=684   NOUR CHRAIBI                   cin=IJ567890       num=05 AS26        Aide-Soignant          niv1   né=2000-01-01
+  id=694   NOUR CHRAIBI                   cin=AB100005       num=AB100005       Aide-Soignant          niv1   né=-
+  id=707   RANIA ZIANI                    cin=AB100018       num=AB100018       Aide-Soignant          niv1   né=-
+  id=709   SAFAE RHAZI                    cin=AB100020       num=AB100020       Aide-Soignant          niv1   né=-
+  id=681   SALIMA BENALI                  cin=CD789012       num=02 AS26        Aide-Soignant          niv1   né=2000-01-01
+  id=691   SALIMA BENALI                  cin=AB100002       num=AB100002       Aide-Soignant          niv1   né=-
+  id=701   SAMIRA BENSAID                 cin=AB100012       num=AB100012       Aide-Soignant          niv1   né=-
+  id=687   SOUKAINA KETTANI               cin=OP456789       num=08 AS26        Aide-Soignant          niv1   né=2000-01-01
+  id=697   SOUKAINA KETTANI               cin=AB100008       num=AB100008       Aide-Soignant          niv1   né=-
+  id=702   WIDAD AMRANI                   cin=AB100013       num=AB100013       Aide-Soignant          niv1   né=-
+  id=685   ZINEB MANSOURI                 cin=KL234567       num=06 AS26        Aide-Soignant          niv1   né=2000-01-01
+  id=695   ZINEB MANSOURI                 cin=AB100006       num=AB100006       Aide-Soignant          niv1   né=-
+
+  Par filiere :
+    Aide-Soignant            31
+
+=== MATCHENT LA LISTE OFFICIELLE (76) ===
+    Aide-Soignant            41
+    Infirmier Auxiliaire     6
+    Infirmier Polyvalent     29
+
+  Notes des non-matches : 220
+
+  Laureats officiels ABSENTS du pool : 0

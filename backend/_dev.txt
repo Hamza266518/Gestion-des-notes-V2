@@ -1,0 +1,18 @@
+DB de l'application : Gestion_des_notes_V2
+
+== annees_academiques ==
+  id=1     2025/2026        current=1 archived=0
+
+== etudiants par annee/niveau/filiere ==
+  2025/2026    Aide-Soignant            niv1   g8      Groupe A   52 etu
+  2025/2026    Aide-Soignant            niv1   g9      Groupe B   20 etu
+  2025/2026    Infirmier Auxiliaire     niv1   g10     Groupe A   12 etu
+  2025/2026    Infirmier Auxiliaire     niv2   g11     Groupe A   6 etu
+  2025/2026    Infirmier Polyvalent     niv1   g12     Groupe A   24 etu
+  2025/2026    Infirmier Polyvalent     niv2   g13     Groupe A   18 etu
+  2025/2026    Infirmier Polyvalent     niv3   g14     Groupe A   29 etu
+
+== totaux ==
+  etudiants : 161
+  notes     : 446
+  groupes   : 7

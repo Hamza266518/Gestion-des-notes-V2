@@ -68,6 +68,13 @@ class ExamController extends Controller
         $admin = Auth::user();
         $saved = 0;
 
+        // Resolved once for the journal: the unit name and the groups involved
+        // turn "1 note(s)" into a line that reads on its own.
+        $etudiants = Etudiant::with('groupe.niveau.filiere')
+            ->whereIn('id', $etudiantIds->unique()->all())
+            ->get();
+        $unite = \App\Models\Unite::find($request->unite_id);
+
         foreach ($request->examens as $data) {
             $estAbsent = (bool) ($data['est_absent'] ?? false);
 
@@ -88,12 +95,32 @@ class ExamController extends Controller
             $saved++;
         }
 
+        $type = $request->type === 'theorique' ? 'théorique' : 'pratique';
+        $description = "a enregistré {$saved} note" . ($saved > 1 ? 's' : '') . " d'examen {$type} (Bloc {$request->bloc} / Semestre {$request->semestre})";
+        if ($unite) {
+            $description .= " — Unité « {$unite->nom} » (coef. {$unite->coefficient})";
+        }
+        $groupesLabel = ActivityLog::groupesLabel($etudiants->pluck('groupe'));
+        if ($groupesLabel !== '') {
+            $description .= " — {$groupesLabel}";
+        }
+        if ($saved === 1 && $etudiants->count() === 1) {
+            $etudiant = $etudiants->first();
+            $description .= " — {$etudiant->nom_prenom}" . ($etudiant->numero_inscription ? " ({$etudiant->numero_inscription})" : "");
+        } elseif ($saved > 1 && $groupesLabel === '') {
+            $description .= " — " . $etudiants->pluck('nom_prenom')->take(3)->implode(', ');
+            if ($etudiants->count() > 3) {
+                $description .= " et " . ($etudiants->count() - 3) . " autre(s)";
+            }
+        }
+
         ActivityLog::create([
             'admin_id' => $admin->id,
             'admin_name' => $admin->name,
             'action_type' => 'update',
-            'description' => "{$admin->name} a enregistre {$saved} note(s) d'examen {$request->type} pour le bloc {$request->bloc}",
+            'description' => $description,
             'model_type' => 'App\Models\Examen',
+            'model_id' => $request->unite_id,
         ]);
 
         return response()->json(['success' => true, 'message' => "{$saved} note(s) enregistree(s)"]);

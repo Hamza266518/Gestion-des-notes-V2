@@ -1,0 +1,66 @@
+=== LES 54 SANS DONNEES COMPLETES ===
+
+  total incomplets : 55
+
+  -- par filiere/niveau --
+     Infirmier Auxiliaire niv1          12
+     Infirmier Polyvalent niv1          24
+     Infirmier Polyvalent niv2          18
+     Infirmier Polyvalent niv3          1
+
+  -- detail --
+     id=546   Beddouri OUSSAMA               num=27 IA27        cin=FA208328       Infirmier Auxiliaire   niv1   naiss=-           lieu=-          insc=-
+     id=540   Douae SNOUBRI                  num=21 IA26        cin=FA214035       Infirmier Auxiliaire   niv1   naiss=-           lieu=-          insc=-
+     id=543   Fadoua KISSI                   num=24 IA26        cin=F692546        Infirmier Auxiliaire   niv1   naiss=-           lieu=-          insc=-
+     id=549   Imane BELHAJ                   num=30 IA30        cin=FA215753       Infirmier Auxiliaire   niv1   naiss=-           lieu=-          insc=-
+     id=547   Kamal HAMZA                    num=28 IA28        cin=FA131267       Infirmier Auxiliaire   niv1   naiss=-           lieu=-          insc=-
+     id=544   Malika BOUTA                   num=25 IA26        cin=FE23299        Infirmier Auxiliaire   niv1   naiss=-           lieu=-          insc=-
+     id=545   Mohammed MAAROUF               num=26 IA26        cin=FA188940       Infirmier Auxiliaire   niv1   naiss=-           lieu=-          insc=-
+     id=539   Rihab EL HASSOUNI              num=20 IA26        cin=CD934851       Infirmier Auxiliaire   niv1   naiss=-           lieu=-          insc=-
+     id=538   Safae GUAADAOUI                num=19 IA26        cin=FA197032       Infirmier Auxiliaire   niv1   naiss=-           lieu=-          insc=-
+     id=548   Salma BAADDI                   num=29 IA29        cin=FA216589       Infirmier Auxiliaire   niv1   naiss=-           lieu=-          insc=-
+     id=541   Salma CHARAI                   num=22 IA26        cin=FA213582       Infirmier Auxiliaire   niv1   naiss=-           lieu=-          insc=-
+     id=542   Siham DERAOUI                  num=23 IA26        cin=FA211967       Infirmier Auxiliaire   niv1   naiss=-           lieu=-          insc=-
+     id=602   Aya CHENOUF                    num=104 IP26       cin=FA199176       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=599   Aymen GUECHCHATI               num=101 IP26       cin=FA215308       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=600   Ayoub SETTI                    num=102 IP26       cin=FA199498       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=612   Chaymae ASAIDI                 num=115 IP26       cin=FA219548       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=616   Dounia EL MAHBOUB              num=121 IP26       cin=FA221049       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=598   Fathi ELABDI                   num=100 IP26       cin=FA215494       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=615   Fatima zahra BENALLAH          num=120 IP26       cin=FA219368       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=608   Fatima-Ez-Zahra AHADRI         num=111 IP26       cin=FA224017       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=606   Fatima-Zahra LATRECH           num=109 IP26       cin=FA222362       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=611   Ikram ELYAMANI                 num=114 IP26       cin=FA212075       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=619   IMANE BOUSETTA                 num=125 IP26       cin=FA218117       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=603   Kaoutar MAAROUFI               num=106 IP26       cin=FE23382        Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=613   Manal TEMIMI                   num=117 IP26       cin=FA222306       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=607   Meryame BERKANI                num=110 IP26       cin=FA222942       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=597   Mohammed RAHHAOUI              num=99 IP26        cin=FA217279       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=604   Rofayda EL HADAD               num=107 IP26       cin=FA212266       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=609   Salima BELMUSTAPHA             num=112 IP26       cin=FE22336        Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=601   Salma BINDECHE                 num=103 IP26       cin=FA213293       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=617   Salma BOURHALEB                num=123 IP26       cin=FA203432       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=620   Salma MAKHLOUFI                num=126 IP26       cin=FA222082       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=605   Samiha EL JAIMI                num=108 IP26       cin=FA220894       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=618   Sanae RABHI                    num=124 IP26       cin=FA210581       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=610   Sara AKACHAR                   num=113 IP26       cin=FA219260       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=614   Souad MOUADDAH                 num=119 IP26       cin=FA221114       Infirmier Polyvalent   niv1   naiss=-           lieu=-          insc=-
+     id=621   Abdessamie BOUAYYADY           num=76 IP25        cin=FA197691       Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=636   Aya KIRAT                      num=95 IP25        cin=SZ19639        Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=622   Aymane BEKKAOUI                num=77 IP25        cin=FA199586       Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=627   Fatima Zahra EL GASMI          num=86 IP25        cin=FE18212        Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=629   Ghariba LAARAJ                 num=88 IP25        cin=FA205216       Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=628   Imane AARAB                    num=87 IP25        cin=SZ24926        Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=633   Khaoula BOUMEDIENE             num=92 IP25        cin=FE23304        Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=638   Lamiae DRIOUACH                num=98 IP25        cin=FA175500       Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=630   Lamyaae MARGOUM                num=89 IP25        cin=FA207232       Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=631   Maissae AFKIR                  num=90 IP25        cin=FE23649        Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=637   Manal BOUARFA                  num=96 IP25        cin=FA212913       Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=634   Marieme EL-AOUNI               num=93 IP25        cin=FE24384        Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=632   Marwa MOURAD                   num=91 IP25        cin=FE24520        Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=625   Othmane BENSALAH               num=84 IP25        cin=FA205314       Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=624   Oussama MESSAOUDI              num=82 IP25        cin=FA208269       Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=635   Romayssae EL-FILALI            num=94 IP25        cin=FA207066       Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=626   Smail JBARA                    num=85 IP25        cin=FJ27172        Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=623   Youssef BOUMAAZA               num=81 IP25        cin=FA181588       Infirmier Polyvalent   niv2   naiss=-           lieu=-          insc=-
+     id=667   MEDDAH ZAINEB                  num=75 IP24        cin=SJ36005        Infirmier Polyvalent   niv3   naiss=-           lieu=oujda      insc=2001-05-08

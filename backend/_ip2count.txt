@@ -1,0 +1,21 @@
+IP2 (tableau 5) : occurrences par (service, groupe)
+
+Médecine : A=2 B=2 C=2 D=2 E=2 F=2 G=2 H=2 I=2 J=2 
+Chirurgie : A=2 B=2 C=2 D=2 E=2 F=2 G=2 H=2 I=2 J=2 
+Pédiatrie : A=1 B=1 C=1 D=1 E=1 F=1 G=1 H=1 I=1 J=1 
+BlOC : A=2 B=2 C=2 D=2 E=2 F=2 G=2 H=2 I=2 J=2 
+Obstétrique : A=3 B=3 C=3 D=3 E=3 F=3 G=3 H=3 I=3 J=3 
+PF : A=4 B=4 C=3 D=3 E=3 F=3 G=4 H=4 I=3 J=3 
+CS : A=3 B=3 C=4 D=4 E=4 F=4 G=3 H=3 I=4 J=4 
+
+TOTAL par groupe (calendrier):
+  A : 17
+  B : 17
+  C : 17
+  D : 17
+  E : 17
+  F : 17
+  G : 17
+  H : 17
+  I : 17
+  J : 17

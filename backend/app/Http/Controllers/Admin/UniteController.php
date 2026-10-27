@@ -37,10 +37,10 @@ class UniteController extends Controller
         try {
             $request->validate([
                 'filiere_id'   => 'required|exists:filieres,id',
-                'nom'          => 'required|string',
-                'coefficient'  => 'required|integer',
-                'numero_annee' => 'required|integer',
-                'semestre'     => 'required|integer|in:1,2',
+                'nom'          => 'required|string|max:255',
+                'coefficient'  => 'required|integer|min:0|max:20',
+                'numero_annee' => 'required|integer|min:1|max:5',
+                'semestre'     => 'required|integer|in:0,1,2',
             ]);
             $unite = Unite::create($request->only(['filiere_id', 'nom', 'coefficient', 'numero_annee', 'semestre', 'ordre']));
             return response()->json(['success' => true, 'data' => $unite, 'message' => 'Unité créée']);
@@ -52,6 +52,12 @@ class UniteController extends Controller
     public function update(Request $request, $id)
     {
         try {
+            $request->validate([
+                'nom'          => 'sometimes|required|string|max:255',
+                'coefficient'  => 'sometimes|required|integer|min:0|max:20',
+                'numero_annee' => 'sometimes|required|integer|min:1|max:5',
+                'semestre'     => 'sometimes|required|integer|in:0,1,2',
+            ]);
             $unite = Unite::findOrFail($id);
             $unite->update($request->only(['nom', 'coefficient', 'numero_annee', 'semestre', 'ordre']));
             return response()->json(['success' => true, 'data' => $unite, 'message' => 'Unité mise à jour']);

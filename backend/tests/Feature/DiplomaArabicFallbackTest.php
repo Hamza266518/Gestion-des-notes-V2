@@ -124,8 +124,8 @@ class DiplomaArabicFallbackTest extends TestCase
 
         $this->assertSame('مغربية', $data['nationalite_ar']);
         $this->assertSame('فاس', $data['lieu_naissance_ar']);
-        $this->assertSame('15 ماي 1998', $data['date_naissance_ar']);
-        $this->assertSame('15 شتنبر 2024', $data['date_inscription_ar']);
+        $this->assertSame('15/05/1998', $data['date_naissance_ar']);
+        $this->assertSame('15/09/2024', $data['date_inscription_ar']);
         $this->assertSame('', $data['nom_ar']);
     }
 

@@ -1,0 +1,19 @@
+=== VERIFICATION DES 76 LAUREATS : PDF vs BASE ===
+
+champs compares : numero, cin, date_naissance, date_inscription
+
+  CONFORMES        : 75 / 76
+  AVEC ECART       : 1
+  ABSENTS DE LA BASE: 0
+
+=== DETAIL DES ECARTS ===
+
+  75IP24     id=667   MEDDAH ZAINEB                (pdf: ZAINEB MEDDAH)
+        DATE_NAISSANCE pdf=-            base=2001-05-08  
+        DATE_INSCRIPTION pdf=08/05/2001   base=-           
+
+
+=== ECARTS PAR TYPE ===
+  CIN                  0
+  DATE_NAISSANCE       1
+  DATE_INSCRIPTION     1

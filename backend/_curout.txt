@@ -1,0 +1,13 @@
+﻿DB : Gestion_des_notes_v2_test
+
+SELECT id,label,is_current FROM annees_academiques :
+  id=1     2025/2026        is_current=0
+  id=523   SCANEX be4ea0    is_current=0
+  id=583   SCANEX 8f5e73    is_current=0
+  id=801   SCANEX 4ca0ba    is_current=0
+  id=961   SCANEX 215f18    is_current=0
+  id=1217  2026/2027        is_current=1
+
+AnneeAcademique::where('is_current', true)->first() : id=1217 label=2026/2027
+
+Etudiants de l'annee courante : 40

@@ -1,0 +1,31 @@
+CALENDRIER tableau 9 (IA2) header (12 col):
+  [0] Service
+  [1] Médecine
+  [2] Chirurgie
+  [3] Pédiatrie
+  [4] Urgences
+  [5] Réanimation
+  [6] Maternité
+  [7] CS
+  [8] Dispensaire
+  [9] Référence
+  [10] Rural
+  [11] Rural
+
+JSON IA niv2 groupe A (14 etapes):
+  [0] Dispensaire
+  [1] Référence
+  [2] Rural
+  [3] Rural
+  [4] Médecine
+  [5] Chirurgie
+  [6] Pédiatrie
+  [7] Urgences
+  [8] Réanimation
+  [9] Maternité
+  [10] CS
+  [11] Médecine
+  [12] Chirurgie
+  [13] Pédiatrie
+
+JSON IA niv2 services UNIQUES (10): Dispensaire, Référence, Rural, Médecine, Chirurgie, Pédiatrie, Urgences, Réanimation, Maternité, CS

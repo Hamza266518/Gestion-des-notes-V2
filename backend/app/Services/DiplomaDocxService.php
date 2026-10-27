@@ -15,6 +15,15 @@ class DiplomaDocxService
 {
     private CitiesTranslator $cities;
 
+    /**
+     * True when the current diploma's filière is listed in
+     * config('diplomes.font_ar_filiere_codes'): its Arabic filière name is
+     * then printed in config('diplomes.font_ar_filiere') instead of font_ar.
+     * Set by buildPhpWord() for each document, so it never leaks between two
+     * diplomas built in the same request (batch downloads).
+     */
+    private bool $dedicatedFiliereFont = false;
+
     public function __construct(?CitiesTranslator $cities = null)
     {
         $this->cities = $cities ?? new CitiesTranslator();
@@ -29,6 +38,29 @@ class DiplomaDocxService
      * derived (Moroccan city dictionaries, Arabic month names) or left blank,
      * so a diploma never shows "MAROCAINE" or "Casablanca" on its Arabic half.
      */
+    private function diplomaTypeFromFiliere($filiere): string
+    {
+        if (!$filiere) {
+            return config('diplomes.default_type');
+        }
+        $section = strtoupper(trim((string) ($filiere->section ?? '')));
+        if (in_array($section, ['Q', 'QUALIFICATION'], true)) {
+            return 'Qualification';
+        }
+        if (in_array($section, ['T', 'TECHNICIEN'], true)) {
+            return 'Technicien';
+        }
+        if (in_array($section, ['TS', 'SPECIALISATION', 'TECHNICIEN SPECIALISE'], true)) {
+            return 'Specialisation';
+        }
+        // fallback to old if section not set
+        $type = $filiere->type_formation ?? null;
+        if ($type) {
+            return $type;
+        }
+        return config('diplomes.default_type');
+    }
+
     public function dataFor(Diplome $diplome): array
     {
         $etudiant = $diplome->etudiant;
@@ -36,9 +68,16 @@ class DiplomaDocxService
         $groupe = $etudiant->groupe;
         $normalizer = new CinScanNormalizer();
 
+        $typeFormation = $this->diplomaTypeFromFiliere($filiere);
+        $typeFormationAr = $filiere?->type_formation_ar ?? match ($typeFormation) {
+            'Qualification' => 'تأهيل',
+            'Specialisation' => 'تخصص',
+            default => 'تقني',
+        };
+
         return [
             'nom_prenom'            => $etudiant->nom_prenom ?? '',
-            'type_formation'        => $filiere?->type_formation ?? '',
+            'type_formation'        => $typeFormation,
             'date_naissance'        => $this->frDate($etudiant->date_naissance),
             'lieu_naissance'        => mb_strtoupper((string) ($etudiant->lieu_naissance ?? ''), 'UTF-8'),
             'cin'                   => $etudiant->cin ?? '',
@@ -49,14 +88,17 @@ class DiplomaDocxService
             'promotion'             => $groupe?->promotion ?? '',
             'date_delivrance'       => now()->format('d/m/Y'),
             'nom_ar'                => $etudiant->nom_ar ?? '',
-            'date_naissance_ar'     => $etudiant->date_naissance_ar ?: $normalizer->toArabicDate($etudiant->date_naissance),
+            // Birth and inscription dates must be numeric (dd/mm/yyyy) on both
+            // halves, same face/size as French. Never use stored Arabic month
+            // forms.
+            'date_naissance_ar'     => $this->frDate($etudiant->date_naissance),
             'lieu_naissance_ar'     => $etudiant->lieu_naissance_ar ?: $this->cities->translate($etudiant->lieu_naissance),
             'cin_ar'                => $etudiant->cin_ar ?? ($etudiant->cin ?? ''),
             'nationalite_ar'        => $etudiant->nationalite_ar ?: $this->nationaliteAr($etudiant->nationalite),
             'numero_inscription_ar' => $etudiant->numero_inscription ?? '',
-            'date_inscription_ar'   => $etudiant->date_inscription_ar ?: $normalizer->toArabicDate($etudiant->date_inscription),
+            'date_inscription_ar'   => $this->frDate($etudiant->date_inscription),
             'filiere_ar'            => $filiere?->nom_ar ?? '',
-            'type_formation_ar'     => $filiere?->type_formation_ar ?? '',
+            'type_formation_ar'     => $typeFormationAr,
         ];
     }
 
@@ -367,12 +409,22 @@ class DiplomaDocxService
      */
     public function buildPhpWord(Diplome $diplome): PhpWord
     {
-        $type = $diplome->etudiant->groupe?->niveau?->filiere?->type_formation
-            ?? config('diplomes.default_type');
+        $filiere = $diplome->etudiant->groupe?->niveau?->filiere;
+        $type = $this->diplomaTypeFromFiliere($filiere) ?? $filiere?->type_formation_effective ?? config('diplomes.default_type');
 
         if (!isset(config('diplomes.templates')[$type])) {
             $type = config('diplomes.default_type');
         }
+
+        // The Arabic filière name wears a face of its own only for the
+        // filières listed in config('diplomes.font_ar_filiere_codes') — today
+        // IP (Infirmier Polyvalent). Every other filière keeps font_ar on its
+        // Arabic half; the size is never touched.
+        $this->dedicatedFiliereFont = in_array(
+            (string) ($diplome->etudiant->groupe?->niveau?->filiere?->code ?? ''),
+            (array) config('diplomes.font_ar_filiere_codes', []),
+            true
+        );
 
         $pageW = (float) config('diplomes.page_width_pt');
         $pageH = (float) config('diplomes.page_height_pt');
@@ -471,7 +523,11 @@ class DiplomaDocxService
                     $pageW,
                     $pageH,
                     $boxW,
-                    $colors
+                    $colors,
+                    // Some facts declare their own alignment (the institute name
+                    // is centered in both languages); the rest keep the anchor's
+                    // default (left for 'fr', right for 'ar').
+                    $info['align'] ?? null
                 );
             }
         }
@@ -485,7 +541,9 @@ class DiplomaDocxService
     /**
      * Draw one field as an absolutely-positioned, transparent text box. 'fr'
      * values are anchored at their left edge, 'ar' at their right edge (Arabic
-     * writing expands toward the left), matching the old renderer.
+     * writing expands toward the left), matching the old renderer. A caller may
+     * also pass an explicit alignment ('center' for the institute name): the
+     * anchor is unchanged, only the text's alignment inside the box.
      */
     private function addValueBox(
         $section,
@@ -499,7 +557,8 @@ class DiplomaDocxService
         float $pageW,
         float $pageH,
         float $boxW,
-        array $colors
+        array $colors,
+        ?string $align = null
     ): void {
         // A value on the Arabic half is only rendered with the Arabic face when
         // it actually contains Arabic letters. Identifiers and numbers (CIN,
@@ -518,6 +577,15 @@ class DiplomaDocxService
             'size' => $size,
             'bold' => $bold,
         ];
+        // The Arabic filière name alone wears a different face (diploma only,
+        // IP only). Colours, bold and kashida are untouched; the French filière
+        // and every other Arabic field keep the shared fonts.
+        if ($useArabicFace && $key === 'filiere_ar' && $this->dedicatedFiliereFont) {
+            $font['name'] = (string) config('diplomes.font_ar_filiere', $font['name']);
+            // The dedicated face reads smaller than the shared Arabic one, so it
+            // is nudged up a little — only that value (user request).
+            $font['size'] = max(6, $size + (int) config('diplomes.font_ar_filiere_size_adjust', 0));
+        }
         if ($useArabicFace) {
             $font['rtl'] = true;
         }
@@ -551,7 +619,16 @@ class DiplomaDocxService
         ]);
 
         $run = $textbox->addTextRun([
-            'alignment' => $isAr ? Jc::RIGHT : Jc::LEFT,
+            // A value declares its own alignment when it must sit centered in
+            // its box (the institute name, in both languages); otherwise 'fr'
+            // runs are left-aligned and 'ar' runs right-aligned, anchored at
+            // their calibrated marker.
+            'alignment' => match ($align) {
+                'center' => Jc::CENTER,
+                'right'  => Jc::RIGHT,
+                'left'   => Jc::LEFT,
+                default  => $isAr ? Jc::RIGHT : Jc::LEFT,
+            },
         ]);
 
         $this->writeValue($run, $value, $font, $key, $useArabicFace, $colors);
@@ -580,8 +657,14 @@ class DiplomaDocxService
     {
         $accented = in_array($key, ['filiere', 'type_formation', 'filiere_ar', 'type_formation_ar'], true);
 
+        // Letters set closer (user request): the IP Arabic filière is printed
+        // without the template's kashida stretching, so its letters sit next to
+        // each other instead of being pulled apart by tatweels. Only that value:
+        // every other Arabic field keeps the stretched template look.
+        $stretch = !($this->dedicatedFiliereFont && $key === 'filiere_ar');
+
         if (!$accented) {
-            $run->addText($this->arText($value, $isAr), $font);
+            $run->addText($this->arText($value, $isAr, $stretch), $font);
 
             return;
         }
@@ -590,7 +673,7 @@ class DiplomaDocxService
         // ("En" / "في"), every other word accented; the formation type is one
         // uniform blue value, as in the previous renderer.
         if ($key === 'type_formation' || $key === 'type_formation_ar') {
-            $run->addText($this->arText($value, $isAr), array_merge($font, ['color' => $colors['accent']]));
+            $run->addText($this->arText($value, $isAr, $stretch), array_merge($font, ['color' => $colors['accent']]));
 
             return;
         }
@@ -600,14 +683,18 @@ class DiplomaDocxService
             $wordFont = strcmp($word, $blackWord) === 0
                 ? $font
                 : array_merge($font, ['color' => $colors['accent']]);
-            $run->addText($this->arText($word, $isAr) . ' ', $wordFont);
+            $run->addText($this->arText($word, $isAr, $stretch) . ' ', $wordFont);
         }
     }
 
-    /** Wrap an Arabic value so it takes the template's stretched kashida. */
-    private function arText(string $value, bool $isAr): string
+    /**
+     * Wrap an Arabic value so it takes the template's stretched kashida. The
+     * IP Arabic filière passes $stretch = false: its letters stay close
+     * together instead of being pulled apart by tatweels.
+     */
+    private function arText(string $value, bool $isAr, bool $stretch = true): string
     {
-        return $isAr ? $this->stretchArabic($value) : $value;
+        return $isAr && $stretch ? $this->stretchArabic($value) : $value;
     }
 
     /**

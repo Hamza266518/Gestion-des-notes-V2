@@ -22,8 +22,8 @@ class AuthController extends Controller
     {
         try {
             $request->validate([
-                'username' => 'required|string|max:60',
-                'password' => 'required',
+                'username' => ['required', 'string', 'max:60', 'regex:/^[a-z0-9]+(?:\.[a-z0-9]+)*$/'],
+                'password' => 'required|string|min:6',
             ]);
 
             $username = mb_strtolower(trim($request->username));

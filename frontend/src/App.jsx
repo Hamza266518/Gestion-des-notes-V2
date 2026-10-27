@@ -140,6 +140,8 @@ export default function App() {
               <Route path="liste-notes" element={<MesNotesList />} />
             </Route>
 
+            <Route path="*" element={<Navigate to="/login" replace />} />
+
           </Routes>
           <MonCompte />
           </AccountModalProvider>

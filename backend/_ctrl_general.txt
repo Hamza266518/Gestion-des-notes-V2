@@ -1,0 +1,26 @@
+=== CONTROLE GENERAL DES 130 ETUDIANTS ===
+
+  total etudiants : 130
+
+--- CHAMPS VIDES (champ principal) ---
+  nom_prenom             0
+  nom_ar                 0
+  cin                    0
+  cin_ar                 54
+  numero_inscription     0
+  date_naissance         55
+  lieu_naissance         54
+  nationalite            0
+  date_inscription       54
+
+--- DOUBLONS CIN ---
+  => 0 doublons
+
+--- DOUBLONS NUMERO INSCRIPTION ---
+  => 0 doublons
+
+--- DOUBLONS NOM ---
+  => 0 doublons
+
+--- CIN arabe vs CIN latin (resume) ---
+  identiques=76 differents=0 vides=54

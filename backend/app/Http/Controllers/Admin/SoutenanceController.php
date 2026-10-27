@@ -371,12 +371,23 @@ class SoutenanceController extends Controller
                     $saved++;
                 }
 
+                $groupesSoutenance = Groupe::with('niveau.filiere')
+                    ->whereIn('id', $etudiants->pluck('groupe_id')->filter()->unique()->all())
+                    ->get();
+
+                $description = "a scanné {$saved} note(s) de soutenance — Unité « {$unite->nom} », semestre {$semestre}";
+                $groupesLabel = ActivityLog::groupesLabel($groupesSoutenance);
+                if ($groupesLabel !== '') {
+                    $description .= " — {$groupesLabel}";
+                }
+
                 ActivityLog::create([
                     'admin_id'    => $admin?->id,
                     'admin_name'  => $admin?->name,
                     'action_type' => 'update',
-                    'description' => ($admin?->name ?? 'Admin') . " a scanné {$saved} note(s) de soutenance ({$unite->nom})",
+                    'description' => $description,
                     'model_type'  => 'App\Models\Note',
+                    'model_id'    => $unite->id,
                 ]);
             });
 

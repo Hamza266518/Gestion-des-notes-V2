@@ -30,7 +30,7 @@ export default function FilieresGroupes() {
   const [saving, setSaving]       = useState(false);
   const [errors, setErrors]       = useState({});
 
-  const [formF, setFormF] = useState({ nom: '', nom_ar: '', code: '', section: '', type_formation: '', nombre_annees: 1 });
+  const [formF, setFormF] = useState({ nom: '', nom_ar: '', code: '', section: '', nombre_annees: 1 });
   const [formN, setFormN] = useState({ numero: 1 });
   const [formG, setFormG] = useState({ niveau_id: '', annee_academique_id: '', nom: '', promotion: '' });
 
@@ -99,7 +99,6 @@ export default function FilieresGroupes() {
     if (!formF.nom.trim()) newErrors.nom = 'Le nom est requis';
     if (!formF.code.trim()) newErrors.code = 'Le code est requis';
     if (!formF.section) newErrors.section = 'La section est requise';
-    if (!formF.type_formation) newErrors.type_formation = 'Le type est requis';
     if (!formF.nombre_annees || formF.nombre_annees < 1) newErrors.nombre_annees = 'Nombre d\'années invalide';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -126,14 +125,14 @@ export default function FilieresGroupes() {
   // Filiere handlers
   const openCreateFiliere = () => {
     setEditingFiliere(null);
-    setFormF({ nom: '', nom_ar: '', code: '', section: '', type_formation: '', nombre_annees: 1 });
+    setFormF({ nom: '', nom_ar: '', code: '', section: '', nombre_annees: 1 });
     setErrors({});
     setOpenF(true);
   };
 
   const openEditFiliere = (f) => {
     setEditingFiliere(f);
-    setFormF({ nom: f.nom, nom_ar: f.nom_ar || '', code: f.code, section: f.section, type_formation: f.type_formation || '', nombre_annees: f.nombre_annees });
+    setFormF({ nom: f.nom, nom_ar: f.nom_ar || '', code: f.code, section: f.section, nombre_annees: f.nombre_annees });
     setErrors({});
     setOpenF(true);
   };
@@ -142,16 +141,17 @@ export default function FilieresGroupes() {
     if (!validateFiliere()) return;
     setSaving(true);
     try {
+      const payload = { ...formF };
       if (editingFiliere) {
-        await adminApi.updateFiliere(editingFiliere.id, formF);
+        await adminApi.updateFiliere(editingFiliere.id, payload);
         toast.success('Filière modifiée');
       } else {
-        await adminApi.createFiliere(formF);
+        await adminApi.createFiliere(payload);
         toast.success('Filière créée');
       }
       setOpenF(false);
       setEditingFiliere(null);
-      setFormF({ nom: '', nom_ar: '', code: '', section: '', type_formation: '', nombre_annees: 1 });
+      setFormF({ nom: '', nom_ar: '', code: '', section: '', nombre_annees: 1 });
       setErrors({});
       load();
     } catch (e) {
@@ -264,7 +264,7 @@ export default function FilieresGroupes() {
                   <div>
                     <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{f.nom}</div>
                     {f.nom_ar && <div style={{ fontSize: 13, color: 'var(--gray-500)', direction: 'rtl', marginBottom: 2 }}>{toWesternDigits(f.nom_ar)}</div>}
-                    <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>{f.type_formation_fr ?? f.type_formation}</div>
+                    {(f.type_formation_fr ?? f.type_formation_effective) && <div style={{ fontSize: 12, color: 'var(--gray-500)' }}>{f.type_formation_fr ?? f.type_formation_effective}</div>}
                     {f.type_formation_ar && <div style={{ fontSize: 12, color: 'var(--gray-500)', direction: 'rtl' }}>{toWesternDigits(f.type_formation_ar)}</div>}
                   </div>
                   <Badge label={f.code} color="blue" />
@@ -370,16 +370,7 @@ export default function FilieresGroupes() {
           </select>
           {errors.section && <div className="form-error">{errors.section}</div>}
         </div>
-        <div className="form-group">
-          <label className="form-label">Type de formation</label>
-          <select className="form-select" value={formF.type_formation} onChange={e => { setFormF(p => ({ ...p, type_formation: e.target.value })); setErrors(p => ({ ...p, type_formation: undefined })); }}>
-            <option value="">Sélectionner</option>
-            <option value="Qualification">Qualification</option>
-            <option value="Technicien">Technicien</option>
-            <option value="Specialisation">Spécialisation</option>
-          </select>
-          {errors.type_formation && <div className="form-error">{errors.type_formation}</div>}
-        </div>
+
         <div className="form-group">
           <label className="form-label">Nombre d'années</label>
           <input type="number" min={1} max={5} className="form-input" value={formF.nombre_annees} onChange={e => { setFormF(p => ({ ...p, nombre_annees: e.target.value })); setErrors(p => ({ ...p, nombre_annees: undefined })); }} />

@@ -1,0 +1,80 @@
+=== TABLES ===
+  activity_logs
+  annees_academiques
+  auth_codes
+  cache
+  cache_locks
+  controles
+  curriculum_corrections
+  diplome_parametres
+  diplomes
+  etudiants
+  examens
+  failed_jobs
+  filieres
+  formateur_sequences
+  formateur_unites
+  formateurs
+  groupes
+  job_batches
+  jobs
+  migrations
+  niveaux
+  notes
+  personal_access_tokens
+  scan_logs
+  scan_name_cache
+  semestre_publications
+  sequences
+  stage_evaluations
+  stage_notes
+  unites
+  users
+
+=== COLONNES controles ===
+  id                       bigint unsigned
+  sequence_id              bigint unsigned
+  unite_id                 bigint unsigned
+  numero                   int
+  nom                      varchar(255)
+  date                     date
+  note_max                 int
+  created_at               timestamp
+  updated_at               timestamp
+  formateur_id             bigint unsigned
+
+=== COLONNES notes ===
+  id                       bigint unsigned
+  etudiant_id              bigint unsigned
+  controle_id              bigint unsigned
+  valeur                   double
+  est_absent               tinyint(1)
+  chemin_image             varchar(255)
+  is_confirmed             tinyint(1)
+  confirmed_at             timestamp
+  created_at               timestamp
+  updated_at               timestamp
+
+=== COLONNES etudiants ===
+  id                       bigint unsigned
+  user_id                  bigint unsigned
+  groupe_id                bigint unsigned
+  status                   varchar(255)
+  annee_academique_id      bigint unsigned
+  nom_prenom               varchar(255)
+  nom_ar                   varchar(255)
+  cin                      varchar(255)
+  cin_ar                   varchar(255)
+  numero_inscription       varchar(255)
+  numero_inscription_ar    varchar(255)
+  date_naissance           date
+  date_naissance_ar        varchar(255)
+  lieu_naissance_ar        varchar(255)
+  lieu_naissance           varchar(255)
+  nationalite              varchar(255)
+  nationalite_ar           varchar(255)
+  date_inscription         date
+  date_inscription_ar      varchar(255)
+  created_at               timestamp
+  updated_at               timestamp
+  deleted_at               timestamp

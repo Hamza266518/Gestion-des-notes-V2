@@ -1,0 +1,50 @@
+﻿=== LAUREATS 2025/2026 (depuis LAUREATS_2025_2026_CIN_EXACT.pdf) ===
+
+Par filiere :
+  AS   41
+  FA   54
+  FE   8
+  FJ   8
+  IA   6
+  IP   29
+  SA   1
+  SZ   1
+
+Par numero (filiere+promo) :
+  AS26         41
+  FA13         1
+  FA15         1
+  FA17         2
+  FA18         2
+  FA19         9
+  FA20         10
+  FA21         21
+  FA22         8
+  FE17         1
+  FE21         2
+  FE22         3
+  FE24         1
+  FE26         1
+  FJ23         1
+  FJ26         1
+  FJ28         2
+  FJ31         1
+  FJ32         1
+  FJ33         1
+  FJ68         1
+  IA25         6
+  IP24         29
+  SA35         1
+  SZ19         1
+
+TOTAL laureats : 148
+
+Numeros trouves (76) :
+  96AS26, 97AS26, 99AS26, 100AS26, 101AS26, 102AS26, 103AS26, 105AS26, 106AS26, 109AS26
+  110AS26, 111AS26, 112AS26, 113AS26, 114AS26, 115AS26, 116AS26, 117AS26, 119AS26, 121AS26
+  122AS26, 123AS26, 124AS26, 125AS26, 126AS26, 127AS26, 128AS26, 129AS26, 130AS26, 131AS26
+  132AS26, 133AS26, 135AS26, 136AS26, 137AS26, 138AS26, 139AS26, 141AS26, 142AS26, 143AS26
+  144AS26, 39 IP24, 40 IP24, 41 IP24, 42 IP24, 43 IP24, 44 IP24, 45 IP24, 46 IP24, 47 IP24
+  48 IP24, 49 IP24, 50 IP24, 51 IP24, 52 IP24, 53 IP24, 54 IP24, 55 IP24, 56 IP24, 57 IP24
+  59 IP24, 60 IP24, 61 IP24, 62 IP24, 63 IP24, 65 IP24, 68 IP24, 73 IP24, 74 IP24, 75 IP24
+  10 IA25, 11 IA25, 12 IA25, 13 IA25, 14 IA25, 15 IA25

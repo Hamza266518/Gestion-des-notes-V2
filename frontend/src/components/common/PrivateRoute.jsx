@@ -14,7 +14,8 @@ export default function PrivateRoute({ children, role }) {
   }
   
   if (role && userRole !== role) {
-    return <Navigate to="/login" replace />;
+    const homePath = { admin: '/admin/journal', formateur: '/formateur/scanner', etudiant: '/etudiant/bulletin' };
+    return <Navigate to={homePath[userRole] ?? '/login'} replace />;
   }
   
   return <>{children}</>;

@@ -155,8 +155,8 @@ export default function GrilleEvaluationStage({ etudiant, onDataChange, onSaved 
           <div><label className="form-label">Durée</label><input className="form-input" value={form.duree} onChange={e => set('duree', e.target.value)} /></div>
           <div><label className="form-label">Lieu du Stage</label><input className="form-input" value={form.lieu_stage} onChange={e => set('lieu_stage', e.target.value)} /></div>
           <div>
+            <label className="form-label">Service</label>
             <FilterSelect
-              label="Service"
               value={service}
               options={serviceOptions}
               onChange={setService}

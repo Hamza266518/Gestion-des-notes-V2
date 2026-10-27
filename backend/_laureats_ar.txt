@@ -1,0 +1,41 @@
+96AS26     | fr=HAMZA EL ACHI                    | ar=وجدة العاشي حمزة
+97AS26     | fr=Anass ELAOUNI                    | ar=بركان العوني أنس
+99AS26     | fr=                                 | ar=الشاهدي الوزاني أسامة
+100AS26    | fr=Oualid ELMAHI                    | ar=بركان بوغريبة الماحي وليد
+101AS26    | fr=ABDELGHAFOUR HAJJI               | ar=الرشيدية حجي الغفور عبد
+102AS26    | fr=Khawla DEKHISSI                  | ar=بركان الدخيسي خولة
+103AS26    | fr=SALIMA ARRAHMANI                 | ar=تازة طريبة الرحماني سليمة
+105AS26    | fr=Douae MOUZOURI                   | ar=بركان موزوري دعاء
+106AS26    | fr=SOUKAYNA EL YOUBI                | ar=صفرو اليوبي سكينة
+109AS26    | fr=HANAE MEHREZ                     | ar=بركان مهرز هناء
+110AS26    | fr=BOUTAINA AMERE                   | ar=بركان أمير بثينة
+111AS26    | fr=Ikram HABJAOUI                   | ar=بركان زكزل حبجاوي إكرام
+112AS26    | fr=Bassma MOKHTARI                  | ar=بركان أكليم مختاري بسمة
+113AS26    | fr=AMAL ZAMZAM                      | ar=الرشيدية أرفود زمزم أمل
+114AS26    | fr=NOUHAYLA DERFOUF                 | ar=بركان بوغريبة درفوف نهيلة
+115AS26    | fr=ZAINEB DOUZI                     | ar=بركان لعطامنة دوزي زينب
+116AS26    | fr=ASMAE ARGHAL                     | ar=بركان أغبال أرغال أسماء
+117AS26    | fr=IMANE EL-AMRAOUI                 | ar=بركان العمراوي إيمان
+119AS26    | fr=WISSAL ICHAOUI                   | ar=بركان إيشاوي وصال
+121AS26    | fr=Fatima zahra JELLOULI            | ar=بركان جلولي الزهراء فاطمة
+122AS26    | fr=MANAL BACHIRI                    | ar=بركان مداغ بشيري منال
+123AS26    | fr=SABAH EL BARKANI                 | ar=بركان البركاني صباح
+124AS26    | fr=HAJAR MELLOUKI                   | ar=بركان ملوكي هاجر
+125AS26    | fr=Oumaima EDAKAKI                  | ar=البيضاء الدار عثمان سيدي الدكاكي أميمة
+126AS26    | fr=HOUDA HAJI                       | ar=بركان مداغ حاجي هدى
+127AS26    | fr=SOUKAYNA BAROIGUI                | ar=تاوريرت ملوك سيدي العيون بارويكي سكينة
+128AS26    | fr=DOHA BEKKAOUI                    | ar=بركان بكاوي ضحى
+129AS26    | fr=YOUSSRA ARRAHMANI                | ar=تازة طريبة الرحماني يسرى
+130AS26    | fr=Rania ZAOUI                      | ar=بركان أحفير الزاوي رانيا
+131AS26    | fr=YASMINE BEKHTI                   | ar=بركان أحفير بختي ياسمين
+132AS26    | fr=Maryem MEZIANI                   | ar=بركان الشويحية مزياني مريم
+133AS26    | fr=Meryem KADDOURI                  | ar=بركان الشويحية قدوري مريم
+135AS26    | fr=SABRINE OUFKIR                   | ar=بركان أحفير أوفقير صابرين
+136AS26    | fr=Siham BELKHER                    | ar=الناظور الماء رأس بلخير سهام
+137AS26    | fr=FATIMA ZAHRA MAAROUF             | ar=بركان معروف الزهراء فاطمة
+138AS26    | fr=                                 | ar=بولرحشا الزهراء فاطمة
+139AS26    | fr=Dounia LEHMER                    | ar=بركان لحمر دنيا
+141AS26    | fr=MANAL ZERIOUH                    | ar=مليلية زريوح منال
+142AS26    | fr=Widad ALLA                       | ar=بركان عال وداد
+143AS26    | fr=Ossama TSSOULI                   | ar=بركان تسولي أسامة
+144AS26    | fr=CHAHRA YOUSFI                    | ar=بركان يوسفي شهرة

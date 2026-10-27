@@ -29,16 +29,16 @@ $fieldsTechnicien = [
     ['key' => 'nationalite', 'x' => 0.362, 'y' => 0.541, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'numero_inscription', 'x' => 0.268, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'date_inscription', 'x' => 0.487, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'fr'],
-    ['key' => 'filiere', 'x' => 0.238, 'y' => 0.625, 'size' => 13, 'bold' => true, 'group' => 'fr'],
+    ['key' => 'filiere', 'x' => 0.223, 'y' => 0.621, 'size' => 16, 'bold' => true, 'group' => 'fr'],
     ['key' => 'promotion', 'x' => 0.488, 'y' => 0.647, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'date_delivrance', 'x' => 0.465, 'y' => 0.698, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'nom_ar', 'x' => 0.875, 'y' => 0.487, 'size' => 16, 'bold' => true, 'group' => 'ar'],
-    ['key' => 'date_naissance_ar', 'x' => 0.848, 'y' => 0.519, 'size' => 9, 'bold' => true, 'group' => 'ar'],
+    ['key' => 'date_naissance_ar', 'x' => 0.842, 'y' => 0.512, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'lieu_naissance_ar', 'x' => 0.716, 'y' => 0.516, 'size' => 12, 'bold' => true, 'group' => 'ar'],
     ['key' => 'cin_ar', 'x' => 0.802, 'y' => 0.540, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'nationalite_ar', 'x' => 0.656, 'y' => 0.543, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'numero_inscription_ar', 'x' => 0.774, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'ar'],
-    ['key' => 'filiere_ar', 'x' => 0.817, 'y' => 0.629, 'size' => 13, 'bold' => true, 'group' => 'ar'],
+    ['key' => 'filiere_ar', 'x' => 0.821, 'y' => 0.625, 'size' => 16, 'bold' => true, 'group' => 'ar'],
 ];
 
 $fieldsQualification = [
@@ -49,16 +49,16 @@ $fieldsQualification = [
     ['key' => 'nationalite', 'x' => 0.362, 'y' => 0.541, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'numero_inscription', 'x' => 0.268, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'date_inscription', 'x' => 0.487, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'fr'],
-    ['key' => 'filiere', 'x' => 0.335, 'y' => 0.625, 'size' => 13, 'bold' => true, 'group' => 'fr'],
+    ['key' => 'filiere', 'x' => 0.331, 'y' => 0.622, 'size' => 16, 'bold' => true, 'group' => 'fr'],
     ['key' => 'promotion', 'x' => 0.488, 'y' => 0.647, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'date_delivrance', 'x' => 0.465, 'y' => 0.698, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'nom_ar', 'x' => 0.875, 'y' => 0.487, 'size' => 16, 'bold' => true, 'group' => 'ar'],
-    ['key' => 'date_naissance_ar', 'x' => 0.848, 'y' => 0.519, 'size' => 9, 'bold' => true, 'group' => 'ar'],
+    ['key' => 'date_naissance_ar', 'x' => 0.842, 'y' => 0.512, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'lieu_naissance_ar', 'x' => 0.716, 'y' => 0.516, 'size' => 12, 'bold' => true, 'group' => 'ar'],
     ['key' => 'cin_ar', 'x' => 0.802, 'y' => 0.540, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'nationalite_ar', 'x' => 0.656, 'y' => 0.543, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'numero_inscription_ar', 'x' => 0.774, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'ar'],
-    ['key' => 'filiere_ar', 'x' => 0.799, 'y' => 0.627, 'size' => 13, 'bold' => true, 'group' => 'ar'],
+    ['key' => 'filiere_ar', 'x' => 0.799, 'y' => 0.627, 'size' => 16, 'bold' => true, 'group' => 'ar'],
 ];
 
 // Specialisation starts from the same values as Technicien but is its own list:
@@ -70,17 +70,17 @@ $fieldsSpecialisation = [
     ['key' => 'cin', 'x' => 0.189, 'y' => 0.540, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'nationalite', 'x' => 0.362, 'y' => 0.541, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'numero_inscription', 'x' => 0.268, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'fr'],
-    ['key' => 'date_inscription', 'x' => 0.487, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'fr'],
-    ['key' => 'filiere', 'x' => 0.292, 'y' => 0.624, 'size' => 13, 'bold' => true, 'group' => 'fr'],
-    ['key' => 'promotion', 'x' => 0.488, 'y' => 0.647, 'size' => 13, 'bold' => true, 'group' => 'fr'],
+    ['key' => 'date_inscription', 'x' => 0.485, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'fr'],
+    ['key' => 'filiere', 'x' => 0.282, 'y' => 0.621, 'size' => 16, 'bold' => true, 'group' => 'fr'],
+    ['key' => 'promotion', 'x' => 0.486, 'y' => 0.647, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'date_delivrance', 'x' => 0.465, 'y' => 0.698, 'size' => 13, 'bold' => true, 'group' => 'fr'],
     ['key' => 'nom_ar', 'x' => 0.875, 'y' => 0.487, 'size' => 16, 'bold' => true, 'group' => 'ar'],
-    ['key' => 'date_naissance_ar', 'x' => 0.848, 'y' => 0.519, 'size' => 9, 'bold' => true, 'group' => 'ar'],
+    ['key' => 'date_naissance_ar', 'x' => 0.842, 'y' => 0.512, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'lieu_naissance_ar', 'x' => 0.716, 'y' => 0.516, 'size' => 12, 'bold' => true, 'group' => 'ar'],
     ['key' => 'cin_ar', 'x' => 0.802, 'y' => 0.540, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'nationalite_ar', 'x' => 0.656, 'y' => 0.543, 'size' => 13, 'bold' => true, 'group' => 'ar'],
     ['key' => 'numero_inscription_ar', 'x' => 0.774, 'y' => 0.568, 'size' => 13, 'bold' => true, 'group' => 'ar'],
-    ['key' => 'filiere_ar', 'x' => 0.790, 'y' => 0.626, 'size' => 13, 'bold' => true, 'group' => 'ar', 'width' => 300],
+    ['key' => 'filiere_ar', 'x' => 0.786, 'y' => 0.613, 'size' => 15, 'bold' => true, 'group' => 'ar', 'width' => 300],
 ];
 
 return [
@@ -109,6 +109,18 @@ return [
     // Arabic.
     'font_fr' => 'Arial',
     'font_ar' => 'GE Elegant',
+    // The Arabic filière name alone is set in another face — and only for the
+    // filière codes listed here (today IP, the Infirmier Polyvalent), only in
+    // the diploma: the French filière and every other Arabic field keep the
+    // fonts above, and the size is untouched (same field size +
+    // ar_size_adjust).
+    'font_ar_filiere' => 'Simplified Arabic',
+    'font_ar_filiere_codes' => ['IP'],
+    // The dedicated face reads smaller than the shared Arabic one at the same
+    // point size, so the IP Arabic filière is nudged up by this many points —
+    // added on top of ar_size_adjust, only for that value, only in the diploma.
+    // (User request, 2026-10-19: « increase size for a bit ».)
+    'font_ar_filiere_size_adjust' => 2,
     'ar_size_adjust' => (int) env('ARABIC_FONT_SIZE_ADJUST', 1),
 
     // How many tatweels (kashida, ـ U+0640) to repeat in each joinable gap of
@@ -152,40 +164,46 @@ return [
      | that blank empty). They are edited from the
      | "Informations du diplôme" form, and the admin overrides their marker
      | coordinates from "Calibrer les templates"; the chosen positions are
-     | persisted in the diplome_parametres table.
+     | persisted in the diplome_parametres table. A fact may also declare an
+     | 'align' (today only 'center', e.g. the institute name) to center its
+     | value in its box instead of anchoring it to a side. The coordinates
+     | below are the defaults for the French and Arabic halves; each template
+     | type keeps its own calibrated set in the DB, so a type whose artwork
+     | places a blank elsewhere (Specialisation, since 2026-10-21) can hold its
+     | own values without moving the other two.
      */
     'infos' => [
         [
             'key'   => 'info_ouverture_date',
             'label' => "Date d'autorisation d'ouverture",
             'type'  => 'date',
-            'fr'    => ['x' => 0.3557, 'y' => 0.4124, 'size' => 10],
-            'ar'    => ['x' => 0.6517, 'y' => 0.4133, 'size' => 10],
+            'fr'    => ['x' => 0.3532, 'y' => 0.4113, 'size' => 10],
+            'ar'    => ['x' => 0.6503, 'y' => 0.4133, 'size' => 10],
         ],
         [
             'key'   => 'info_ouverture_no',
             'label' => "N° d'autorisation d'ouverture",
             'type'  => 'text',
-            'fr'    => ['x' => 0.478, 'y' => 0.4146, 'size' => 10],
+            'fr'    => ['x' => 0.4779, 'y' => 0.4133, 'size' => 10],
         ],
         [
             'key'   => 'info_accreditation_no',
             'label' => "N° de décision d'accréditation",
             'type'  => 'text',
             'fr'    => ['x' => 0.3063, 'y' => 0.429, 'size' => 10],
-            'ar'    => ['x' => 0.6354, 'y' => 0.4327, 'size' => 10],
+            'ar'    => ['x' => 0.6349, 'y' => 0.4291, 'size' => 10],
         ],
         [
             'key'   => 'info_sous_no',
             'label' => 'N',
             'type'  => 'text',
-            'fr'    => ['x' => 0.4961, 'y' => 0.2388, 'size' => 10],
+            'fr'    => ['x' => 0.4849, 'y' => 0.2392, 'size' => 10],
         ],
         [
             'key'   => 'info_accreditation_date',
             'label' => "Date de la décision d'accréditation",
             'type'  => 'date',
-            'fr'    => ['x' => 0.4667, 'y' => 0.4343, 'size' => 10],
+            'fr'    => ['x' => 0.4667, 'y' => 0.4311, 'size' => 10],
         ],
         [
             'key'   => 'info_pv_date',
@@ -197,7 +215,7 @@ return [
             'key'   => 'info_serie_no',
             'label' => 'N° du diplôme (série)',
             'type'  => 'text',
-            'fr'    => ['x' => 0.5186, 'y' => 0.9203, 'size' => 10],
+            'fr'    => ['x' => 0.5186, 'y' => 0.9187, 'size' => 10],
         ],
 
         // The establishment's own identity, also the same on every diploma:
@@ -208,25 +226,33 @@ return [
             'key'   => 'institut_fr',
             'label' => "Nom de l'institut (français)",
             'type'  => 'text',
-            'fr'    => ['x' => 0.2509, 'y' => 0.16, 'size' => 10],
+            // Centered in its box instead of aligned to the left (user request,
+            // 2026-10-19); the box anchor is unchanged.
+            'align' => 'center',
+            'fr'    => ['x' => 0.2397, 'y' => 0.16, 'size' => 10],
         ],
         [
             'key'   => 'institut_ar',
             'label' => "Nom de l'institut (arabe)",
             'type'  => 'text',
-            'ar'    => ['x' => 0.7484, 'y' => 0.16, 'size' => 10],
+            // Centered in its box instead of aligned to the right (user request,
+            // 2026-10-19); the box anchor is unchanged.
+            'align' => 'center',
+            'ar'    => ['x' => 0.7568, 'y' => 0.16, 'size' => 10],
         ],
         [
             'key'   => 'ville_fr',
             'label' => 'Ville (français)',
             'type'  => 'text',
-            'fr'    => ['x' => 0.3434, 'y' => 0.7054, 'size' => 10],
+            'fr'    => ['x' => 0.3406, 'y' => 0.7042, 'size' => 10],
         ],
         [
             'key'   => 'ville_ar',
             'label' => 'Ville (arabe)',
             'type'  => 'text',
-            'ar'    => ['x' => 0.6853, 'y' => 0.7105, 'size' => 10],
+            // Qualified/Technician move this one together (their own calibration,
+            // 2026-10-21); Specialisation keeps the 20/10 value for its artwork.
+            'ar'    => ['x' => 0.6825, 'y' => 0.7026, 'size' => 10],
         ],
     ],
 ];

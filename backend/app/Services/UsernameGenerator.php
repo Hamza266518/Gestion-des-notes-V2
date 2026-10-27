@@ -14,6 +14,28 @@ use Illuminate\Support\Str;
 class UsernameGenerator
 {
     public const MAX_LENGTH = 60;
+
+    /**
+     * Build a normalized key for duplicate name detection.
+     * Lowercase, strip accents/punctuation, sort words.
+     */
+    public static function nameKey(string $name): string
+    {
+        $ascii = Str::ascii(mb_strtolower(trim($name)));
+        $parts = preg_split('/[\s\-\']+/u', $ascii, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $parts = array_values(array_filter($parts, function (string $part) {
+            $part = trim($part, " \t\n\r\0\x0B.,-_");
+            if ($part === '') {
+                return false;
+            }
+            return preg_match('/[a-z0-9]/', $part) === 1;
+        }));
+        if ($parts === []) {
+            return '';
+        }
+        sort($parts);
+        return implode(' ', $parts);
+    }
     public const ADMIN_USERNAME = 'admin';
     public const FALLBACK = 'utilisateur';
 

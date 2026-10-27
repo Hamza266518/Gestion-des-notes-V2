@@ -1,0 +1,308 @@
+  total : 76 / 76
+
+=== ARABE DES 76 LAUREATS EN BASE ===
+
+96 AS26    id=550   Hamza EL ACHI                 
+     nom_ar=حمزة العاشي          cin_ar=FA211848       num_ar=96 AS26       
+     nat_ar=مغربية     lieu_ar=وجدة         dn_ar=5 أبريل 2006
+
+97 AS26    id=551   Anass ELAOUNI                 
+     nom_ar=أنس العوني            cin_ar=FA218540       num_ar=97 AS26       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=5 أكتوبر 2005
+
+99 AS26    id=552   Oussama OUAZZANI-CHAHDI       
+     nom_ar=أسامة الوزاني الشاهدي cin_ar=FA218060       num_ar=99 AS26       
+     nat_ar=مغربية     lieu_ar=بوغريبة بركان dn_ar=21 غشت 2005
+
+100 AS26   id=553   Oualid ELMAHI                 
+     nom_ar=وليد الماحي          cin_ar=FA203291       num_ar=100 AS26      
+     nat_ar=مغربية     lieu_ar=بوغريبة بركان dn_ar=25 أبريل 2004
+
+101 AS26   id=554   Abdelghafour HAJJI            
+     nom_ar=عبد الغفور حجي     cin_ar=U197938        num_ar=101 AS26      
+     nat_ar=مغربية     lieu_ar=الرشيدية dn_ar=25 ماي 2000
+
+102 AS26   id=555   Khawla DEKHISSI               
+     nom_ar=خولة الدخيسي        cin_ar=FA220275       num_ar=102 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=31 أكتوبر 2007
+
+103 AS26   id=556   Salima ARRAHMANI              
+     nom_ar=سليمة الرحماني    cin_ar=FA215759       num_ar=103 AS26      
+     nat_ar=مغربية     lieu_ar=طريبة تازة dn_ar=6 يانفبر 2007
+
+105 AS26   id=557   Douae MOUZOURI                
+     nom_ar=دعاء موزوري          cin_ar=FA216230       num_ar=105 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=16 دجنبر 2004
+
+106 AS26   id=558   Soukayna EL YOUBI             
+     nom_ar=سكينة اليوبي        cin_ar=FA207855       num_ar=106 AS26      
+     nat_ar=مغربية     lieu_ar=صفرو         dn_ar=10 يوليوز 2003
+
+109 AS26   id=559   Hanae MEHREZ                  
+     nom_ar=هناء مهرز              cin_ar=FA221066       num_ar=109 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=13 مارس 2007
+
+110 AS26   id=560   Boutaina AMERE                
+     nom_ar=بثينة أمير            cin_ar=FA154998       num_ar=110 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=28 نونبر 1993
+
+111 AS26   id=561   Ikram HABJAOUI                
+     nom_ar=إكرام حبجاوي        cin_ar=FA192207       num_ar=111 AS26      
+     nat_ar=مغربية     lieu_ar=زكزل بركان dn_ar=18 يانفبر 2000
+
+112 AS26   id=562   Bassma MOKHTARI               
+     nom_ar=بسمة مختاري          cin_ar=FA214854       num_ar=112 AS26      
+     nat_ar=مغربية     lieu_ar=أكليم بركان dn_ar=6 أكتوبر 2005
+
+113 AS26   id=563   AMAL ZAMZAM                   
+     nom_ar=أمل زمزم                cin_ar=FA206836       num_ar=113 AS26      
+     nat_ar=مغربية     lieu_ar=أرفود الرشيدية dn_ar=26 فبراير 2004
+
+114 AS26   id=564   Nouhayla DERFOUF              
+     nom_ar=نهيلة درفوف          cin_ar=FA221947       num_ar=114 AS26      
+     nat_ar=مغربية     lieu_ar=بوغريبة بركان dn_ar=29 يونيو 2006
+
+115 AS26   id=565   Zaineb DOUZI                  
+     nom_ar=زينب دوزي              cin_ar=FE21716        num_ar=115 AS26      
+     nat_ar=مغربية     lieu_ar=لعطامنة بركان dn_ar=9 يوليوز 2002
+
+116 AS26   id=566   ASMAE ARGHAL                  
+     nom_ar=أسماء أرغال          cin_ar=FJ23453        num_ar=116 AS26      
+     nat_ar=مغربية     lieu_ar=أغبال بركان dn_ar=15 شتنبر 1993
+
+117 AS26   id=567   IMANE EL-AMRAOUI              
+     nom_ar=إيمان العمراوي    cin_ar=FA214250       num_ar=117 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=2 يوليوز 2004
+
+119 AS26   id=568   WISSAL ICHAOUI                
+     nom_ar=وصال إيشاوي          cin_ar=FA186983       num_ar=119 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=4 يانفبر 2001
+
+121 AS26   id=569   Fatima zahra JELLOULI         
+     nom_ar=فاطمة الزهراء جلولي cin_ar=FA216419       num_ar=121 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=21 شتنبر 2005
+
+122 AS26   id=570   Manal BACHIRI                 
+     nom_ar=منال بشيري            cin_ar=FE17092        num_ar=122 AS26      
+     nat_ar=مغربية     lieu_ar=مداغ بركان dn_ar=26 يانفبر 1995
+
+123 AS26   id=571   Sabah EL BARKANI              
+     nom_ar=صباح البركاني      cin_ar=FA224146       num_ar=123 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=18 نونبر 2005
+
+124 AS26   id=572   Hajar MELLOUKI                
+     nom_ar=هاجر ملوكي            cin_ar=FA219933       num_ar=124 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=14 دجنبر 2006
+
+125 AS26   id=573   Oumaima EDAKAKI               
+     nom_ar=أميمة الدكاكي      cin_ar=FA220348       num_ar=125 AS26      
+     nat_ar=مغربية     lieu_ar=سيدي عثمان الدار البيضاء dn_ar=7 يوليوز 2007
+
+126 AS26   id=574   Houda HAJI                    
+     nom_ar=هدى حاجي                cin_ar=FE26115        num_ar=126 AS26      
+     nat_ar=مغربية     lieu_ar=مداغ بركان dn_ar=24 شتنبر 2007
+
+127 AS26   id=575   Soukayna BOROIGUI             
+     nom_ar=سكينة بارويكي      cin_ar=FJ6860         num_ar=127 AS26      
+     nat_ar=مغربية     lieu_ar=العيون سيدي ملوك تاوريرت dn_ar=26 غشت 2002
+
+128 AS26   id=576   Doha BEKKAOUI                 
+     nom_ar=ضحى بكاوي              cin_ar=FA198927       num_ar=128 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=24 أكتوبر 2001
+
+129 AS26   id=577   Youssra ARRAHMANI             
+     nom_ar=يسرى الرحماني      cin_ar=FA215758       num_ar=129 AS26      
+     nat_ar=مغربية     lieu_ar=طريبة تازة dn_ar=26 أكتوبر 2004
+
+130 AS26   id=578   Rania ZAOUI                   
+     nom_ar=رانيا الزاوي        cin_ar=FJ28951        num_ar=130 AS26      
+     nat_ar=مغربية     lieu_ar=أحفير بركان dn_ar=28 مارس 2000
+
+131 AS26   id=579   Yasmine BEKHTI                
+     nom_ar=ياسمين بختي          cin_ar=FJ26545        num_ar=131 AS26      
+     nat_ar=مغربية     lieu_ar=أحفير بركان dn_ar=12 ماي 2001
+
+132 AS26   id=580   Maryem MEZIANI                
+     nom_ar=مريم مزياني          cin_ar=FA220739       num_ar=132 AS26      
+     nat_ar=مغربية     lieu_ar=الشويحية بركان dn_ar=17 دجنبر 2006
+
+133 AS26   id=581   Meryem KADDOURI               
+     nom_ar=مريم قدوري            cin_ar=FA220779       num_ar=133 AS26      
+     nat_ar=مغربية     lieu_ar=الشويحية بركان dn_ar=17 مارس 2007
+
+135 AS26   id=582   Sabrine OUFKIR                
+     nom_ar=صابرين أوفقير      cin_ar=FJ28604        num_ar=135 AS26      
+     nat_ar=مغربية     lieu_ar=أحفير بركان dn_ar=8 شتنبر 2005
+
+136 AS26   id=583   Siham BELKHER                 
+     nom_ar=سهام بلخير            cin_ar=SZ19587        num_ar=136 AS26      
+     nat_ar=مغربية     lieu_ar=رأس الماء الناظور dn_ar=28 غشت 2000
+
+137 AS26   id=584   Fatima zahra MAAROUF          
+     nom_ar=فاطمة الزهراء معروف cin_ar=FA198890       num_ar=137 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=3 دجنبر 2005
+
+138 AS26   id=585   Fatima zahra BOULERHCHA       
+     nom_ar=فاطمة الزهراء بولرحشا cin_ar=FJ33117        num_ar=138 AS26      
+     nat_ar=مغربية     lieu_ar=أحفير بركان dn_ar=22 فبراير 2007
+
+139 AS26   id=586   Dounia LEHMER                 
+     nom_ar=دنيا لحمر              cin_ar=FA170734       num_ar=139 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=7 يونيو 1995
+
+141 AS26   id=587   Manal ZERIOUH                 
+     nom_ar=منال زريوح            cin_ar=SA35928        num_ar=141 AS26      
+     nat_ar=مغربية     lieu_ar=مليلية     dn_ar=21 مارس 2003
+
+142 AS26   id=588   Widad ALLA                    
+     nom_ar=وداد عال                cin_ar=FE24187        num_ar=142 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=31 غشت 2006
+
+143 AS26   id=589   Oussama TESSOULI              
+     nom_ar=أسامة تسولي          cin_ar=FA227526       num_ar=143 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=23 أبريل 2009
+
+144 AS26   id=590   Chahra YOUSFI                 
+     nom_ar=شهرة يوسفي            cin_ar=FA136693       num_ar=144 AS26      
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=13 ماي 1988
+
+10 IA25    id=591   Charaf ETTAHRI                
+     nom_ar=شرف الطاهري          cin_ar=FA204251       num_ar=10 IA25       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=23 أبريل 2003
+
+11 IA25    id=592   Sabrina ALLAOUI               
+     nom_ar=صابرينا عالوي      cin_ar=FA213200       num_ar=11 IA25       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=5 يونيو 2004
+
+12 IA25    id=593   Douae HDIDOUAN                
+     nom_ar=دعاء حديدوان        cin_ar=FA198203       num_ar=12 IA25       
+     nat_ar=مغربية     lieu_ar=أكليم بركان dn_ar=1 ماي 2005
+
+13 IA25    id=594   Khadija AKLACHE               
+     nom_ar=خديجة أقالش          cin_ar=FA198660       num_ar=13 IA25       
+     nat_ar=مغربية     lieu_ar=زكزل بركان dn_ar=4 أبريل 1999
+
+14 IA25    id=595   Douaa L'RHAYATI               
+     nom_ar=دعاء الرحياتي      cin_ar=FA212072       num_ar=14 IA25       
+     nat_ar=مغربية     lieu_ar=الشويحية بركان dn_ar=17 دجنبر 2005
+
+15 IA25    id=596   Kaouthar HAMEL                
+     nom_ar=كوثر هامل              cin_ar=F677491        num_ar=15 IA25       
+     nat_ar=مغربية     lieu_ar=وجدة         dn_ar=14 ماي 2001
+
+39 IP24    id=639   HAJI NABIL                    
+     nom_ar=نبيل حاجي              cin_ar=FE21753        num_ar=39 IP24       
+     nat_ar=مغربية     lieu_ar=مداغ بركان dn_ar=17 غشت 2002
+
+40 IP24    id=640   HADDOU HAYAT                  
+     nom_ar=حياة حدو                cin_ar=FA195431       num_ar=40 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=13 شتنبر 2003
+
+41 IP24    id=641   ELAISSAOUI MERYEM             
+     nom_ar=مريم العيساوي      cin_ar=F772567        num_ar=41 IP24       
+     nat_ar=مغربية     lieu_ar=بوعرفة فجيج dn_ar=1 يانفبر 2006
+
+42 IP24    id=642   MARGOUM OUMAIMA               
+     nom_ar=أميمة مرقوم          cin_ar=FA179792       num_ar=42 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=17 يوليوز 1998
+
+43 IP24    id=643   SAIDI MOUNA                   
+     nom_ar=منى السعيدي          cin_ar=FA195008       num_ar=43 IP24       
+     nat_ar=مغربية     lieu_ar=الرباط     dn_ar=26 مارس 2004
+
+44 IP24    id=644   BOUJNANE IBTISSAM             
+     nom_ar=ابتسام بوجنان      cin_ar=FA194156       num_ar=44 IP24       
+     nat_ar=مغربية     lieu_ar=سيدي سليمان الشراعة بركان dn_ar=18 فبراير 2004
+
+45 IP24    id=645   KADDOURI MAROUA               
+     nom_ar=مروى قدوري            cin_ar=FA214221       num_ar=45 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=5 يونيو 2005
+
+46 IP24    id=646   ELAISSAOUI AFRAE              
+     nom_ar=أفراء العيساوي    cin_ar=FJ32036        num_ar=46 IP24       
+     nat_ar=مغربية     lieu_ar=تافوغالت بركان dn_ar=17 فبراير 2006
+
+47 IP24    id=647   RAHMANI CHAHRAZAD             
+     nom_ar=شهرزاد رحماني      cin_ar=FJ31373        num_ar=47 IP24       
+     nat_ar=مغربية     lieu_ar=أغبال بركان dn_ar=17 ماي 2003
+
+48 IP24    id=648   BERRAYEH HAJAR                
+     nom_ar=هجر برياح              cin_ar=FA203858       num_ar=48 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=11 ماي 2003
+
+49 IP24    id=649   BALI HAJAR                    
+     nom_ar=هاجر بالي              cin_ar=FA207226       num_ar=49 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=29 يانفبر 2005
+
+50 IP24    id=650   CHAHLAOUI FAYZA               
+     nom_ar=فايزة الشالوي      cin_ar=FA215560       num_ar=50 IP24       
+     nat_ar=مغربية     lieu_ar=أكليم بركان dn_ar=5 يونيو 2005
+
+51 IP24    id=651   Nassi WIAM                    
+     nom_ar=ناسي وئام              cin_ar=FA194287       num_ar=51 IP24       
+     nat_ar=مغربية     lieu_ar=فاس           dn_ar=19 مارس 2004
+
+52 IP24    id=652   BERHAB AYA                    
+     nom_ar=آية برحاب              cin_ar=FA216560       num_ar=52 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=26 أبريل 2004
+
+53 IP24    id=653   FARSSI SALMA                  
+     nom_ar=سلمى فارسي            cin_ar=FA210858       num_ar=53 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=17 يوليوز 2004
+
+54 IP24    id=654   MAAMRI IMANE                  
+     nom_ar=إيمان معمري          cin_ar=FA202081       num_ar=54 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=20 أكتوبر 2002
+
+55 IP24    id=655   JELLOULI SALMA                
+     nom_ar=سلمى جلولي            cin_ar=FA209282       num_ar=55 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=29 يوليوز 2003
+
+56 IP24    id=656   BEN ALLAH CHAHRAZAD           
+     nom_ar=شهرزاد بن هللا     cin_ar=FA211287       num_ar=56 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=17 أكتوبر 2004
+
+57 IP24    id=657   TAHRI KAOUTAR                 
+     nom_ar=كوثر طاهري            cin_ar=FE22034        num_ar=57 IP24       
+     nat_ar=مغربية     lieu_ar=السعيدية بركان dn_ar=7 يونيو 2005
+
+59 IP24    id=658   MEHDAOUI FATINE               
+     nom_ar=فاتن مهداوي          cin_ar=FA210326       num_ar=59 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=5 يوليوز 2003
+
+60 IP24    id=659   AMARA SAMIRA                  
+     nom_ar=سميرة عمارة          cin_ar=FA214456       num_ar=60 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=21 يانفبر 2006
+
+61 IP24    id=660   BOUTAYEB SAFAE                
+     nom_ar=بوطايب صفاء          cin_ar=FA206866       num_ar=61 IP24       
+     nat_ar=مغربية     lieu_ar=أكليم بركان dn_ar=14 يوليوز 2004
+
+62 IP24    id=661   MAHROUG HIND                  
+     nom_ar=هند محروق              cin_ar=FA189325       num_ar=62 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=12 يوليوز 2000
+
+63 IP24    id=662   CHAHBOUN HADIL                
+     nom_ar=شحبون هديل            cin_ar=FA210392       num_ar=63 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=10 يوليوز 2003
+
+65 IP24    id=663   EL KADIRI BOUTCHICH KHAWLA    
+     nom_ar=خولة القادري بوتشيش cin_ar=FE22917        num_ar=65 IP24       
+     nat_ar=مغربية     lieu_ar=مداغ بركان dn_ar=4 نونبر 2004
+
+68 IP24    id=664   HICHOUR ROMAISSAE             
+     nom_ar=رميساء هيشور        cin_ar=FA208412       num_ar=68 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=17 أبريل 2004
+
+73 IP24    id=665   EL GHOMARI OULLA              
+     nom_ar=عال الغماري          cin_ar=FE22075        num_ar=73 IP24       
+     nat_ar=مغربية     lieu_ar=لعطامنة بركان dn_ar=3 شتنبر 2003
+
+74 IP24    id=666   ELHADDADI DOHA                
+     nom_ar=ضحى الحدادي          cin_ar=FA212315       num_ar=74 IP24       
+     nat_ar=مغربية     lieu_ar=بركان       dn_ar=29 فبراير 2004
+
+75 IP24    id=667   MEDDAH ZAINEB                 
+     nom_ar=زينب مداح              cin_ar=SJ36005        num_ar=75 IP24       
+     nat_ar=مغربية     lieu_ar=وجدة         dn_ar=8 ماي 2001
+

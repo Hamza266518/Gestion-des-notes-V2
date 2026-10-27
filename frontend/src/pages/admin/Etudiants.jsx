@@ -815,7 +815,7 @@ function ScanModal({ open, onClose, filieres, scanResults, extracting, scanSavin
         disabled={!scanFiliere || !scanNiveau || !scanGroupe || scanImages.length === 0 || extracting}
         style={{ marginBottom: 16 }}
       >
-        {extracting ? 'Extraction en cours...' : 'Scanner les photos'}
+        {extracting ? 'Extraction en cours...' : 'Scanner'}
       </button>
 
       {!extracting && scanAttempted && scanResults.length === 0 && (
@@ -1226,21 +1226,9 @@ function EditModal({ open, onClose, editData, filieres, onSave, saving, onUpdate
 
           <div className="form-group">
             <label className="form-label">N° inscription</label>
-            {editData.is_final_year ? (
-              <input
-                className="form-input"
-                value={editData.numero_inscription || ''}
-                onChange={e => onUpdate({ ...editData, numero_inscription: e.target.value })}
-                placeholder="Ex : 2025/2620"
-              />
-            ) : (
-              <div style={{ padding: '8px 12px', background: 'var(--gray-50)', borderRadius: 6, fontSize: 14, color: 'var(--gray-700)', fontWeight: 500 }}>
-                {editData.numero_inscription || '—'}
-                <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: 'var(--gray-500)', marginTop: 2 }}>
-                  Modifiable uniquement en année diplômante (dernière année de la filière)
-                </span>
-              </div>
-            )}
+            <div style={{ padding: '8px 12px', background: 'var(--gray-50)', borderRadius: 6, fontSize: 14, color: 'var(--gray-700)', fontWeight: 500 }}>
+              {editData.numero_inscription || '—'}
+            </div>
           </div>
         </div>
       </div>

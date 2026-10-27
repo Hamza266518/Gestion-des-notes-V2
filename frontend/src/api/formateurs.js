@@ -23,8 +23,8 @@ export const formateursApi = {
     apiClient.post(`/admin/formateurs/${id}/scan-sequences`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  updatePassword: (id, password) =>
-    apiClient.post(`/admin/formateurs/${id}/update-password`, { password }),
+  updatePassword: (id, password, extra = {}) =>
+    apiClient.post(`/admin/formateurs/${id}/update-password`, { password, ...extra }),
   getMySequences: () =>
     apiClient.get('/formateur/sequences'),
   getScanData: () =>

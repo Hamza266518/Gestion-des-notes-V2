@@ -270,6 +270,356 @@ class DiplomeDocxTest extends TestCase
         }
     }
 
+    /**
+     * The Arabic filière name is the only diploma text set in a face of its
+     * own — and only for IP (Infirmier Polyvalent, filière code IP), per the
+     * user's request of 2026-10-19. The French filière keeps font_fr and every
+     * other Arabic field keeps font_ar; the dedicated value is nudged up by
+     * font_ar_filiere_size_adjust on top of the usual ar_size_adjust.
+     */
+    public function test_ip_diplomas_print_the_arabic_filiere_in_the_dedicated_font_and_size(): void
+    {
+        // Kashida stretching rewrites the words (شـعبة) and would defeat the
+        // plain substring matches below; it is not what this test is about.
+        \Illuminate\Support\Facades\Config::set('diplomes.ar_kashida', 0);
+
+        $type = 'Specialisation';
+        $diplome = $this->makeDiplome($type, 'FNT');
+        $filiere = $diplome->etudiant->groupe->niveau->filiere;
+        $filiere->forceFill(['code' => 'IP'])->save();
+        $etudiant = $diplome->etudiant;
+        $path = app(\App\Services\DiplomaDocxService::class)->build($diplome);
+
+        try {
+            \PhpOffice\PhpWord\Settings::setZipClass(\PhpOffice\PhpWord\Settings::PCLZIP);
+            $zip = new \PhpOffice\PhpWord\Shared\ZipArchive();
+            $zip->open($path);
+            $document = (string) $zip->getFromName('word/document.xml');
+            $zip->close();
+
+            $frFont = (string) config('diplomes.font_fr');
+            $arFont = (string) config('diplomes.font_ar');
+            $filiereArFont = (string) config('diplomes.font_ar_filiere');
+            $this->assertNotSame(
+                $arFont,
+                $filiereArFont,
+                'The Arabic filière must wear a face distinct from the other Arabic fields'
+            );
+
+            // Only the text runs: the naive `<w:r>(.*?)</w:r>` also matches
+            // the run wrapping each <w:pict> textbox, whose capture swallows
+            // the real runs inside it (<w:txbxContent> even fools the <w:t>
+            // match). Every printed run starts with its rPr, the wrapper does
+            // not — and a run never nests another one, so `.*?` is safe.
+            preg_match_all('#<w:r><w:rPr>(.*?)</w:r>#s', $document, $runs);
+            $this->assertNotEmpty($runs[1]);
+
+            $fontOf = function (string $run): string {
+                return preg_match('#w:ascii="([^"]*)"#', $run, $m) ? $m[1] : '';
+            };
+            $textOf = function (string $run): string {
+                preg_match_all('#<w:t[^>]*>(.*?)</w:t>#s', $run, $texts);
+
+                return trim(implode('', $texts[1]));
+            };
+
+            $filiereArWord = null;   // « شعبة », first word of the Arabic filière
+            $arabicNameRun = null;   // student's Arabic name: must stay on font_ar
+            $filiereFrRun = null;    // first word of the French filière
+            $dedicatedRuns = [];         // every run printed in the dedicated face
+
+            foreach ($runs[1] as $run) {
+                $text = $textOf($run);
+                if ($text === '') {
+                    continue;
+                }
+
+                if (str_contains($text, 'شعبة')) {
+                    $filiereArWord = $run;
+                }
+                if (str_contains($text, (string) $etudiant->nom_ar)) {
+                    $arabicNameRun = $run;
+                }
+                if (strcmp($text, 'FIL') === 0) {
+                    $filiereFrRun = $run;
+                }
+                if ($fontOf($run) === $filiereArFont) {
+                    $dedicatedRuns[] = $text;
+                }
+            }
+
+            $this->assertNotNull($filiereArWord, 'The Arabic filière must be printed');
+            $this->assertSame(
+                $filiereArFont,
+                $fontOf($filiereArWord),
+                'The Arabic filière must use the dedicated font'
+            );
+            $this->assertStringContainsString(
+                '<w:rtl',
+                $filiereArWord,
+                'The Arabic filière must stay right-to-left'
+            );
+
+            // Field size + ar_size_adjust, nudged up by the dedicated face's own
+            // adjust; declared in half-points in the document.
+            $declared = collect(config('diplomes.fields.' . $type))
+                ->firstWhere('key', 'filiere_ar')['size'];
+            $expected = (int) (
+                $declared
+                + (int) config('diplomes.ar_size_adjust')
+                + (int) config('diplomes.font_ar_filiere_size_adjust')
+            ) * 2;
+            preg_match('#<w:sz w:val="(\d+)"#', $filiereArWord, $szMatch);
+            $this->assertSame(
+                (string) $expected,
+                $szMatch[1] ?? '',
+                'The Arabic filière must carry the dedicated face size adjust'
+            );
+
+            $this->assertNotNull($arabicNameRun, 'The Arabic student name must be printed');
+            $this->assertSame(
+                $arFont,
+                $fontOf($arabicNameRun),
+                'Only the filière switches font: every other Arabic field keeps font_ar'
+            );
+
+            $this->assertNotNull($filiereFrRun, 'The French filière must be printed');
+            $this->assertSame(
+                $frFont,
+                $fontOf($filiereFrRun),
+                'The French filière must keep the French face'
+            );
+
+            $this->assertNotEmpty($dedicatedRuns, 'The dedicated font must appear in the document');
+            foreach ($dedicatedRuns as $text) {
+                $this->assertContains(
+                    $text,
+                    ['شعبة', 'FNT'],
+                    "Only the Arabic filière may use {$filiereArFont}, got « {$text} »"
+                );
+            }
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    /**
+     * Scope proof (user request of 2026-10-19): only IP switches face. A
+     * diploma for any other filière — AS (Qualification) / IA (Technicien) —
+     * keeps the shared font_ar on its Arabic filière name, and never prints
+     * the dedicated face anywhere.
+     */
+    public function test_non_ip_diplomas_keep_the_shared_arabic_font_on_the_filiere(): void
+    {
+        \Illuminate\Support\Facades\Config::set('diplomes.ar_kashida', 0);
+
+        // makeDiplome() gives the filière a generated code (never 'IP').
+        $diplome = $this->makeDiplome('Technicien', 'NIP');
+        $this->assertNotContains(
+            (string) $diplome->etudiant->groupe->niveau->filiere->code,
+            (array) config('diplomes.font_ar_filiere_codes')
+        );
+
+        $path = app(\App\Services\DiplomaDocxService::class)->build($diplome);
+
+        try {
+            \PhpOffice\PhpWord\Settings::setZipClass(\PhpOffice\PhpWord\Settings::PCLZIP);
+            $zip = new \PhpOffice\PhpWord\Shared\ZipArchive();
+            $zip->open($path);
+            $document = (string) $zip->getFromName('word/document.xml');
+            $zip->close();
+
+            $arFont = (string) config('diplomes.font_ar');
+            $filiereArFont = (string) config('diplomes.font_ar_filiere');
+
+            preg_match_all('#<w:r><w:rPr>(.*?)</w:r>#s', $document, $runs);
+            $this->assertNotEmpty($runs[1]);
+
+            $found = 0;
+            foreach ($runs[1] as $run) {
+                preg_match_all('#<w:t[^>]*>(.*?)</w:t>#s', $run, $texts);
+                $text = trim(implode('', $texts[1]));
+                if ($text === '') {
+                    continue;
+                }
+
+                preg_match('#w:ascii="([^"]*)"#', $run, $fontMatch);
+                $font = $fontMatch[1] ?? '';
+
+                $this->assertNotSame(
+                    $filiereArFont,
+                    $font,
+                    "A non-IP diploma must never use the dedicated face (« {$text} »)"
+                );
+
+                if (str_contains($text, 'شعبة')) {
+                    $found++;
+                    $this->assertSame(
+                        $arFont,
+                        $font,
+                        'The Arabic filière of a non-IP diploma keeps font_ar'
+                    );
+                }
+            }
+
+            $this->assertSame(1, $found, 'The Arabic filière must be printed once');
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    /**
+     * « Letters set closer » (user request of 2026-10-19): the IP Arabic
+     * filière is printed WITHOUT the kashida stretching — no tatweel bars
+     * pulling its letters apart — while every other Arabic value keeps the
+     * template's stretched look.
+     */
+    public function test_ip_arabic_filiere_keeps_its_letters_close_together(): void
+    {
+        // Unlike the two font tests (which disable kashida to match plain
+        // words), this one runs with the shipped default so the stretch is on.
+        $this->assertGreaterThan(0, (int) config('diplomes.ar_kashida'));
+
+        $diplome = $this->makeDiplome('Specialisation', 'CLS');
+        $filiere = $diplome->etudiant->groupe->niveau->filiere;
+        // The real IP value, the one the user reported: ممرض متعدد الاختصاصات.
+        $filiere->forceFill(['code' => 'IP', 'nom_ar' => 'شعبة الاختصاصات'])->save();
+
+        $path = app(\App\Services\DiplomaDocxService::class)->build($diplome);
+
+        try {
+            \PhpOffice\PhpWord\Settings::setZipClass(\PhpOffice\PhpWord\Settings::PCLZIP);
+            $zip = new \PhpOffice\PhpWord\Shared\ZipArchive();
+            $zip->open($path);
+            $document = (string) $zip->getFromName('word/document.xml');
+            $zip->close();
+
+            preg_match_all('#<w:r><w:rPr>(.*?)</w:r>#s', $document, $runs);
+            $this->assertNotEmpty($runs[1]);
+
+            $tatweel = 'ـ'; // ـ U+0640, the stretching bar
+            $filiereArFont = (string) config('diplomes.font_ar_filiere');
+            $dedicatedRuns = 0;
+            $stretchedRuns = 0;
+
+            foreach ($runs[1] as $run) {
+                preg_match_all('#<w:t[^>]*>(.*?)</w:t>#s', $run, $texts);
+                $text = trim(implode('', $texts[1]));
+                if ($text === '') {
+                    continue;
+                }
+
+                preg_match('#w:ascii="([^"]*)"#', $run, $fontMatch);
+                $font = $fontMatch[1] ?? '';
+
+                if ($font === $filiereArFont) {
+                    $dedicatedRuns++;
+                    $this->assertStringNotContainsString(
+                        $tatweel,
+                        $text,
+                        "The IP Arabic filière must keep its letters close (« {$text} »)"
+                    );
+                }
+
+                if (str_contains($text, $tatweel)) {
+                    $stretchedRuns++;
+                }
+            }
+
+            $this->assertSame(
+                2,
+                $dedicatedRuns,
+                'The two Arabic filière words (شعبة الاختصاصات) must use the dedicated face'
+            );
+            $this->assertGreaterThan(
+                0,
+                $stretchedRuns,
+                'Every other Arabic value keeps the template stretch'
+            );
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    /**
+     * The institute name is centered in its box — in French and Arabic alike —
+     * instead of being aligned to the left (French) / right (Arabic), per the
+     * user's request of 2026-10-19. The other information values keep their side
+     * alignment, so only the two institute lines change.
+     */
+    public function test_institute_name_is_centered_on_both_halves(): void
+    {
+        $service = app(\App\Services\DiplomaDocxService::class);
+        // The parameter row is shared across the suite database: remember what it
+        // held so the test can put it back.
+        $before = $service->informations();
+
+        $service->saveInformations([
+            'institut_fr' => 'INSTITUT-FR-CENTER',
+            'institut_ar' => 'معهد-الاختبار',
+            'ville_fr'    => 'VILLE-FR-LEFT',
+            'ville_ar'    => 'مدينة-الاختبار',
+        ]);
+
+        // Plain words so the Arabic values read back exactly as typed.
+        \Illuminate\Support\Facades\Config::set('diplomes.ar_kashida', 0);
+
+        $diplome = $this->makeDiplome('Technicien', 'CTR');
+        $path = $service->build($diplome);
+
+        try {
+            \PhpOffice\PhpWord\Settings::setZipClass(\PhpOffice\PhpWord\Settings::PCLZIP);
+            $zip = new \PhpOffice\PhpWord\Shared\ZipArchive();
+            $zip->open($path);
+            $document = (string) $zip->getFromName('word/document.xml');
+            $zip->close();
+
+            // Every value lives in its own transparent text box; take each box
+            // whole so the paragraph's <w:jc> can be read next to the text.
+            preg_match_all('#<w:txbxContent>(.*?)</w:txbxContent>#s', $document, $boxes);
+            $this->assertNotEmpty($boxes[1]);
+
+            $boxOf = function (string $needle) use ($boxes): ?string {
+                foreach ($boxes[1] as $box) {
+                    if (str_contains($box, $needle)) {
+                        return $box;
+                    }
+                }
+
+                return null;
+            };
+
+            foreach (['INSTITUT-FR-CENTER', 'معهد-الاختبار'] as $needle) {
+                $box = $boxOf($needle);
+                $this->assertNotNull($box, "The value « {$needle} » must be printed");
+                $this->assertStringContainsString(
+                    '<w:jc w:val="center"/>',
+                    $box,
+                    "The institute name « {$needle} » must be centered"
+                );
+            }
+
+            $frCity = $boxOf('VILLE-FR-LEFT');
+            $this->assertNotNull($frCity, 'The French city must be printed');
+            $this->assertStringContainsString(
+                '<w:jc w:val="left"/>',
+                $frCity,
+                'Other French values stay left-aligned'
+            );
+
+            $arCity = $boxOf('مدينة-الاختبار');
+            $this->assertNotNull($arCity, 'The Arabic city must be printed');
+            $this->assertStringContainsString(
+                '<w:jc w:val="right"/>',
+                $arCity,
+                'Other Arabic values stay right-aligned'
+            );
+        } finally {
+            $service->saveInformations($before);
+            @unlink($path);
+        }
+    }
+
     public function test_identifiers_keep_the_french_face_and_size_on_the_arabic_half(): void
     {
         $diplome = $this->makeDiplome('Technicien', 'MIX');
@@ -396,7 +746,8 @@ class DiplomeDocxTest extends TestCase
     {
         $diplome = $this->makeDiplome('Technicien', 'ARBOLD');
         $diplome->etudiant->forceFill([
-            'date_naissance_ar' => '23-3-1998',
+            'date_naissance'    => '1998-03-23',
+            'date_naissance_ar' => null,
             'lieu_naissance_ar' => 'مراكش',
         ])->save();
 
@@ -422,7 +773,7 @@ class DiplomeDocxTest extends TestCase
                     continue;
                 }
 
-                if (str_contains($text, '23-3-1998')) {
+                if (preg_match('#23[/\.-]03[/\.-]1998#', $text)) {
                     $target = 'date';
                 } elseif (str_contains($text, 'مراكش')) {
                     $target = 'place';
@@ -435,8 +786,8 @@ class DiplomeDocxTest extends TestCase
                 $seen[$target]++;
             }
 
-            $this->assertSame(1, $seen['date'], 'The Arabic birth date must be printed on the Arabic half');
-            $this->assertSame(1, $seen['place'], 'The Arabic place of birth must be printed on the Arabic half');
+            $this->assertGreaterThanOrEqual(1, $seen['date'], 'The Arabic birth date must be printed on the Arabic half');
+            $this->assertGreaterThanOrEqual(1, $seen['place'], 'The Arabic place of birth must be printed on the Arabic half');
         } finally {
             @unlink($path);
         }

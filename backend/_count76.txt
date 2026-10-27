@@ -1,0 +1,26 @@
+=== DECOMPTE DE TOUS LES CHIFFRES POSSIBLES ===
+
+  Infirmier Auxiliaire   2ème année   | lignes brutes: 9   | noms non vides: 9   | avec numero: 9  
+  Infirmier Polyvalent   2ème Année   | lignes brutes: 20  | noms non vides: 20  | avec numero: 20 
+  Infirmier Polyvalent   3ème année   | lignes brutes: 18  | noms non vides: 18  | avec numero: 18 
+  Aide-Soignant          1ère année   | lignes brutes: 36  | noms non vides: 35  | avec numero: 36 
+  Infirmier Auxiliaire   1ère année   | lignes brutes: 14  | noms non vides: 14  | avec numero: 14 
+  Infirmier Polyvalent   1ère Année   | lignes brutes: 23  | noms non vides: 15  | avec numero: 15 
+
+  TOTAUX : brutes=120  nonVides=111  avecNumero=112
+
+=== PAR FILIERE (toutes annees) ===
+  Infirmier Auxiliaire     23
+  Infirmier Polyvalent     53
+  Aide-Soignant            35
+
+=== PAR SECTION ===
+  Technicien               23
+  Technicien spécialisé  53
+  Qualification            35
+
+=== RECHERCHE DE '76' ===
+  Aide-Soignant 1ere ........ 35
+  AS + IA (Qualification+Tech) ?
+  Section Qualification (AS) ... 35
+  Section Technicien (IA+IP) .. 76

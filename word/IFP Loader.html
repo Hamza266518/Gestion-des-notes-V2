@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IFP Loader</title>
+<style>
+:root{--bg:#fff;--fg:#2b3035;--btn:#2b3035;--btn-fg:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171a;--fg:#e8eaec;--btn:#e8eaec;--btn-fg:#14171a}}
+:root[data-theme="dark"]{--bg:#14171a;--fg:#e8eaec;--btn:#e8eaec;--btn-fg:#14171a}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px}
+
+/* ---------- IFP loader (drop-in) ---------- */
+.ifp-loader{display:block;width:clamp(96px,22vw,200px);aspect-ratio:430/272;height:auto;overflow:hidden}
+.ifp-loader svg{display:block;width:100%;height:100%;overflow:hidden}
+.ifp-loader .dr{stroke-dasharray:1 1;stroke-dashoffset:1}
+.ifp-loader .dot{transform-box:fill-box;transform-origin:50% 100%;opacity:0;transform:translateY(-130px)}
+.ifp-loader .shine{opacity:0}
+.ifp-loader[data-loading="true"] .dr,.ifp-loader[data-loading="true"] .dot,.ifp-loader[data-loading="true"] .shine{animation:4.8s linear infinite both}
+.ifp-loader[data-loading="true"] .d-i{animation-name:d-i}
+.ifp-loader[data-loading="true"] .d-b{animation-name:d-b}
+.ifp-loader[data-loading="true"] .d-f{animation-name:d-f}
+.ifp-loader[data-loading="true"] .d-p{animation-name:d-p}
+.ifp-loader[data-loading="true"] .dot{animation-name:drop}
+.ifp-loader[data-loading="true"] .shine{animation-name:shine}
+.ifp-loader[data-loading="false"] .dr{stroke-dashoffset:0}
+.ifp-loader[data-loading="false"] .dot{transform:none;opacity:1}
+
+/* Constant-speed line, no pauses:
+   i: dot drops in with a small bounce, stem rises, arm "-" sweeps right and carries
+      on into the p's bowl
+   f: starts at its top where the bowl ends, then runs hook -> down to the base
+   p: one stroke, bottom -> top, meeting the bowl
+   Then shine L>R, hold, fade, repeat. */
+@keyframes d-i{
+  0%,0.0%{stroke-dashoffset:1;opacity:1}
+  10.925%,87.5%{stroke-dashoffset:0;opacity:1}
+  95.833%{stroke-dashoffset:0;opacity:0}100%{stroke-dashoffset:1;opacity:0}}
+@keyframes d-b{
+  0%,10.925%{stroke-dashoffset:1;opacity:1}
+  29.295%,87.5%{stroke-dashoffset:0;opacity:1}
+  95.833%{stroke-dashoffset:0;opacity:0}100%{stroke-dashoffset:1;opacity:0}}
+@keyframes d-f{
+  0%,27.212%{stroke-dashoffset:1;opacity:1}
+  40.569%,87.5%{stroke-dashoffset:0;opacity:1}
+  95.833%{stroke-dashoffset:0;opacity:0}100%{stroke-dashoffset:1;opacity:0}}
+@keyframes d-p{
+  0%,37.444%{stroke-dashoffset:1;opacity:1}
+  48.341%,87.5%{stroke-dashoffset:0;opacity:1}
+  95.833%{stroke-dashoffset:0;opacity:0}100%{stroke-dashoffset:1;opacity:0}}
+@keyframes drop{
+  0%,2.5%{transform:translateY(-130px);opacity:0;animation-timing-function:cubic-bezier(.55,0,.9,.55)}
+  3.125%{transform:translateY(-120px);opacity:1;animation-timing-function:cubic-bezier(.55,0,.9,.55)}
+  8.75%{transform:translateY(0) scale(1.14,.86);opacity:1;animation-timing-function:cubic-bezier(.2,.6,.4,1)}
+  11.458%{transform:translateY(-9px) scale(.96,1.05);opacity:1;animation-timing-function:cubic-bezier(.5,0,.8,.6)}
+  14.167%,87.5%{transform:translateY(0) scale(1);opacity:1}
+  95.833%{transform:translateY(0);opacity:0}100%{transform:translateY(-130px);opacity:0}}
+@keyframes shine{
+  0%,48.331%{transform:translateX(-120px);opacity:0}
+  48.341%{transform:translateX(-120px);opacity:1;animation-timing-function:cubic-bezier(.4,0,.3,1)}
+  65.008%{transform:translateX(540px);opacity:1}
+  65.018%,100%{transform:translateX(540px);opacity:0}}
+
+@media (prefers-reduced-motion:reduce){
+  .ifp-loader .dr,.ifp-loader[data-loading="true"] .dr{animation:none;stroke-dashoffset:0;opacity:1}
+  .ifp-loader .dot,.ifp-loader[data-loading="true"] .dot{animation:none;transform:none;opacity:1}
+  .ifp-loader .shine,.ifp-loader[data-loading="true"] .shine{animation:none;opacity:0}
+}
+/* ---------- demo only ---------- */
+button{font:inherit;border:0;border-radius:999px;padding:9px 20px;background:var(--btn);color:var(--btn-fg);cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="ifp-loader" id="ifpLoader" data-loading="true" role="status" aria-live="polite" aria-label="Loading">
+  <svg viewBox="0 0 430 272" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="gTeal" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="190" y2="0">
+        <stop offset="0" stop-color="#1BAAD0"/><stop offset="1" stop-color="#0A7DB3"/>
+      </linearGradient>
+      <linearGradient id="gDark" gradientUnits="userSpaceOnUse" x1="185" y1="0" x2="390" y2="0">
+        <stop offset="0" stop-color="#2A2F34"/><stop offset=".55" stop-color="#66767F"/><stop offset="1" stop-color="#30363B"/>
+      </linearGradient>
+      <linearGradient id="gStem" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="272">
+        <stop offset="0" stop-color="#3A4047"/><stop offset="1" stop-color="#2B3035"/>
+      </linearGradient>
+      <linearGradient id="gShine" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <!-- full logo silhouette, used only to confine the shine -->
+      <mask id="logoMask" maskUnits="userSpaceOnUse" x="0" y="0" width="430" height="272">
+        <g fill="none" stroke="#fff" stroke-width="50">
+          <path d="M25 272V190A45 45 0 0 1 70 145H190"/><path d="M105 272V80A55 55 0 0 1 160 25H215"/><path d="M185 145H335A60 60 0 0 0 335 25H215"/>
+          <path d="M237.5 0V272" stroke-width="45"/>
+        </g>
+        <circle cx="28" cy="78" r="17" fill="#fff"/>
+      </mask>
+    </defs>
+
+    <g fill="none" stroke-width="50">
+      <path class="dr d-f" pathLength="1" stroke="url(#gStem)" d="M215 25H160A55 55 0 0 0 105 80V272"/>
+      <path class="dr d-p" pathLength="1" stroke="url(#gStem)" stroke-width="45" d="M237.5 272V0"/>
+      <path class="dr d-b" pathLength="1" stroke="url(#gDark)" d="M185 145H335A60 60 0 0 0 335 25H215"/>
+      <path class="dr d-i" pathLength="1" stroke="url(#gTeal)" d="M25 272V190A45 45 0 0 1 70 145H190"/>
+    </g>
+    <circle class="dot" cx="28" cy="78" r="17" fill="#1BAAD0"/>
+
+    <g mask="url(#logoMask)">
+      <polygon class="shine" points="0,0 70,0 10,272 -60,272" fill="url(#gShine)"/>
+    </g>
+  </svg>
+</div>
+
+<button id="toggle" type="button">Finish loading</button>
+
+<script>
+  // Usage: loader.dataset.loading = "true" | "false"
+  const loader = document.getElementById('ifpLoader');
+  const btn = document.getElementById('toggle');
+  btn.addEventListener('click', () => {
+    const on = loader.dataset.loading === 'true';
+    loader.dataset.loading = on ? 'false' : 'true';
+    loader.setAttribute('aria-busy', String(!on));
+    btn.textContent = on ? 'Start loading' : 'Finish loading';
+  });
+</script>
+</body>
+</html>

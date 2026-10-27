@@ -1,0 +1,5 @@
+=== ARABE, RECHECK FINAL ===
+
+  identiques : 76 / 76
+  ecarts     : 0
+

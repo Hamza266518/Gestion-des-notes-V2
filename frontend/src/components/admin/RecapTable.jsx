@@ -164,11 +164,11 @@ export default function RecapTable({ recapData, tableType, anneeLabel, groupeId,
                 <th>{obsLabel}</th>
               </tr>
               <tr className="coeff-row">
-                <td></td>
-                <td></td>
-                {subjects?.map(s => <td key={s.id} style={{ textAlign: 'center' }}>Coef. {formatCoef(s.coefficient)}</td>)}
-                {showAverage && <td></td>}
-                <td></td>
+                <th></th>
+                <th style={{ textAlign: 'center', fontWeight: 600 }}>COEFFICIENT</th>
+                {subjects?.map(s => <th key={s.id} style={{ textAlign: 'center' }}>{formatCoef(s.coefficient)}</th>)}
+                {showAverage && <th></th>}
+                <th></th>
               </tr>
             </thead>
             <tbody>

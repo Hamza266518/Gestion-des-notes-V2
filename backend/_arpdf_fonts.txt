@@ -1,0 +1,7 @@
+fonts:
+  ABCDEE+Century Gothic,Bold | F1
+  ABCDEE+Century Gothic,Bold | F2
+  Arial | F6
+  Times New Roman | F5
+  Times New Roman,Bold | F3
+  Times New Roman,Bold | F4

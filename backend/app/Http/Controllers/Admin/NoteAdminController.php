@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Controle;
 use App\Models\Etudiant;
 use App\Models\Examen;
@@ -14,6 +15,7 @@ use App\Services\PublicationLockService;
 use App\Services\SoutenanceService;
 use App\Support\Curriculum\OfficialCurriculum;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class NoteAdminController extends Controller
@@ -127,6 +129,13 @@ class NoteAdminController extends Controller
                 ]
             );
 
+            $this->logNoteChange(
+                $etudiant,
+                $controle,
+                $estAbsent ? 'absent' : (string) $request->valeur,
+                'a enregistré une note'
+            );
+
             return response()->json([
                 'success' => true,
                 'data'    => $note,
@@ -160,15 +169,77 @@ class NoteAdminController extends Controller
         ]);
 
         try {
+            $ancienne = $note->est_absent ? 'absent' : (string) $note->valeur;
+
             $note->update([
                 'valeur'     => $estAbsent ? 0 : $request->valeur,
                 'est_absent' => $estAbsent,
             ]);
+
+            $this->logNoteChange(
+                $note->etudiant,
+                $note->controle,
+                $estAbsent ? 'absent' : (string) $request->valeur,
+                'a modifié une note',
+                $ancienne
+            );
+
             return response()->json(['success' => true, 'data' => $note, 'message' => $estAbsent ? 'Marqué absent' : 'Note mise à jour']);
         } catch (\Exception $e) {
             \Log::error('NoteAdminController::update error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Erreur lors de la mise à jour de la note'], 500);
         }
+    }
+
+    /**
+     * Journal entry for a single grade: who the student is, which control and
+     * unit, and the old → new value. The name-less grouping in the UI already
+     * prefixes the admin's name, so the description starts with the verb.
+     */
+    private function logNoteChange(
+        ?Etudiant $etudiant,
+        ?Controle $controle,
+        string $nouvelle,
+        string $verbe,
+        ?string $ancienne = null
+    ): void {
+        if (! $etudiant || ! $controle) {
+            return;
+        }
+
+        $admin = Auth::user();
+        if (! $admin) {
+            return;
+        }
+
+        $unite = $controle->sequence?->unite ?? $controle->unite;
+
+        $description = "{$verbe} — {$etudiant->nom_prenom}" . ($etudiant->numero_inscription ? " ({$etudiant->numero_inscription})" : "");
+        $description .= ' — Contrôle « ' . ($controle->nom ?: ('C' . $controle->numero)) . ' »';
+        if ($unite?->nom) {
+            $description .= " — Unité « {$unite->nom} »";
+            if ($unite->coefficient) {
+                $description .= " (coef. {$unite->coefficient})";
+            }
+        }
+        if ($controle->sequence?->nom) {
+            $description .= " — Séquence « {$controle->sequence->nom} »";
+        }
+        if ($controle->note_max) {
+            $description .= " /{$controle->note_max}";
+        }
+        $description .= $ancienne !== null
+            ? " : {$ancienne} → {$nouvelle}"
+            : " : {$nouvelle}";
+
+        ActivityLog::create([
+            'admin_id'    => $admin->id,
+            'admin_name'  => $admin->name,
+            'action_type' => 'update',
+            'description' => $description,
+            'model_type'  => 'App\Models\Note',
+            'model_id'    => $etudiant->id,
+        ]);
     }
 
     public function recapNotes(Request $request)
@@ -613,7 +684,15 @@ class NoteAdminController extends Controller
 
             $semesters = [1 => ['unites' => []], 2 => ['unites' => []]];
             foreach ($bulletin['unites'] as $u) {
-                $semesters[$u['semestre']]['unites'][] = $u;
+                $semestre = (int) ($u['semestre'] ?? 0);
+                if ($semestre === 0) {
+                    $semesters[1]['unites'][] = $u;
+                    $semesters[2]['unites'][] = $u;
+                    continue;
+                }
+                if (isset($semesters[$semestre])) {
+                    $semesters[$semestre]['unites'][] = $u;
+                }
             }
 
             return response()->json(['success' => true, 'data' => [

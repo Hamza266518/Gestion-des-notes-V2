@@ -1,0 +1,39 @@
+=== NOTES PAR ID, POUR LES 31 ===
+
+  id=680   FATIMA ZAHRA IDRISSI           num=01 AS26        cin=AB123456     notes=22
+  id=681   SALIMA BENALI                  num=02 AS26        cin=CD789012     notes=22
+  id=682   HANAE TAZI                     num=03 AS26        cin=EF345678     notes=22
+  id=683   MERYEM ALAOUI                  num=04 AS26        cin=GH901234     notes=22
+  id=684   NOUR CHRAIBI                   num=05 AS26        cin=IJ567890     notes=22
+  id=685   ZINEB MANSOURI                 num=06 AS26        cin=KL234567     notes=22
+  id=686   ASMAE BERRADA                  num=07 AS26        cin=MN890123     notes=22
+  id=687   SOUKAINA KETTANI               num=08 AS26        cin=OP456789     notes=22
+  id=688   HAJAR FILALI                   num=09 AS26        cin=QR012345     notes=22
+  id=689   IMANE TAHIRI                   num=10 AS26        cin=ST678901     notes=22
+  id=690   FATIMA ZAHRA IDRISSI           num=AB100001       cin=AB100001     notes=0
+  id=691   SALIMA BENALI                  num=AB100002       cin=AB100002     notes=0
+  id=692   HANAE TAZI                     num=AB100003       cin=AB100003     notes=0
+  id=693   MERYEM ALAOUI                  num=AB100004       cin=AB100004     notes=0
+  id=694   NOUR CHRAIBI                   num=AB100005       cin=AB100005     notes=0
+  id=695   ZINEB MANSOURI                 num=AB100006       cin=AB100006     notes=0
+  id=696   ASMAE BERRADA                  num=AB100007       cin=AB100007     notes=0
+  id=697   SOUKAINA KETTANI               num=AB100008       cin=AB100008     notes=0
+  id=698   HAJAR FILALI                   num=AB100009       cin=AB100009     notes=0
+  id=699   IMANE TAHIRI                   num=AB100010       cin=AB100010     notes=0
+  id=700   KHADIJA OUALI                  num=AB100011       cin=AB100011     notes=0
+  id=701   SAMIRA BENSAID                 num=AB100012       cin=AB100012     notes=0
+  id=702   WIDAD AMRANI                   num=AB100013       cin=AB100013     notes=0
+  id=703   NAWAL HAJJI                    num=AB100014       cin=AB100014     notes=0
+  id=704   LOUBNA SENHAJI                 num=AB100015       cin=AB100015     notes=0
+  id=705   CHAIMAE LAHLOU                 num=AB100016       cin=AB100016     notes=0
+  id=706   HIND KARIMI                    num=AB100017       cin=AB100017     notes=0
+  id=707   RANIA ZIANI                    num=AB100018       cin=AB100018     notes=0
+  id=708   DOUNIA BELKADI                 num=AB100019       cin=AB100019     notes=0
+  id=709   SAFAE RHAZI                    num=AB100020       cin=AB100020     notes=0
+  id=710   HOUDA BAHRAOUI                 num=AB100021       cin=AB100021     notes=0
+
+=== AUTRES REFERENCES ===
+  diplomes             0 lignes
+  stage_evaluations    0 lignes
+  stage_notes          0 lignes
+  examens              100 lignes

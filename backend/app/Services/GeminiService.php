@@ -21,7 +21,7 @@ class GeminiService
     private const RETRYABLE_STATUSES = [429, 500, 502, 503, 504];
 
     /** Total attempts per key: 1 + this many retries after a transient status. */
-    private const MAX_ATTEMPTS = 2;
+    private const MAX_ATTEMPTS = 1;
 
     /** Last retryable status observed during the current tryKeys() run. */
     private int $lastTransientStatus = 0;
@@ -104,9 +104,11 @@ class GeminiService
                 } catch (GeminiTransientException $e) {
                     $this->lastTransientStatus = $e->getCode();
                     if ($attempt < self::MAX_ATTEMPTS) {
-                        $backoff = 2 * $attempt;
-                        \Log::warning("Gemini {$op} transient failure (status {$e->getCode()}) with key: {$name}, retrying in {$backoff}s...");
-                        sleep($backoff);
+                        $backoff = (int) env('GEMINI_RETRY_BACKOFF', 0);
+                        if ($backoff > 0) {
+                            \Log::warning("Gemini {$op} transient failure (status {$e->getCode()}) with key: {$name}, retrying in {$backoff}s...");
+                            sleep($backoff);
+                        }
                         continue;
                     }
                     \Log::warning("Gemini {$op} key {$name} still transient-failing after retries, trying next key...");
@@ -134,7 +136,8 @@ class GeminiService
      */
     private function http(?int $timeout = null): PendingRequest
     {
-        $request = Http::timeout($timeout ?? $this->timeout);
+        $request = Http::timeout($timeout ?? $this->timeout)
+            ->connectTimeout((int) env('GEMINI_CONNECT_TIMEOUT', 10));
 
         $bundle = (string) config('services.gemini.ca_bundle', '');
         if ($bundle !== '' && file_exists($bundle)) {
@@ -232,7 +235,7 @@ class GeminiService
         \Log::info('Calling Gemini API for CIN scan', ['mime_type' => $mimeType]);
 
         try {
-            $response = $this->http(120)->post($this->baseUrl . '?key=' . $apiKey, [
+            $response = $this->http((int) env('GEMINI_CIN_TIMEOUT', 60))->post($this->baseUrl . '?key=' . $apiKey, [
                 'contents' => [[
                     'parts' => [
                         [

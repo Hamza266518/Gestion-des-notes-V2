@@ -323,6 +323,40 @@ class DiplomeInformationsTest extends TestCase
         );
     }
 
+    public function test_saving_one_type_leaves_the_other_templates_positions_alone(): void
+    {
+        // Each template keeps its own information markers (user decision,
+        // 2026-10-21: Specialisation sits on different artwork), so calibrating
+        // one tab must not move the others.
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson('/api/admin/diplomes/informations/positions', ['positions' => [
+                'Qualification' => [
+                    'info_pv_date' => ['fr' => ['x' => 0.1111, 'y' => 0.2222]],
+                ],
+            ]])
+            ->assertOk();
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson('/api/admin/diplomes/informations/positions', ['positions' => [
+                'Specialisation' => [
+                    'info_pv_date' => ['fr' => ['x' => 0.3333, 'y' => 0.4444]],
+                ],
+            ]])
+            ->assertOk();
+
+        $res = $this->actingAs($this->admin, 'sanctum')
+            ->getJson('/api/admin/diplomes/templates-meta')
+            ->assertOk();
+
+        $this->assertEquals(0.1111, $res->json('data.info_positions.Qualification.info_pv_date.fr.x'));
+        $this->assertEquals(0.3333, $res->json('data.info_positions.Specialisation.info_pv_date.fr.x'));
+
+        // The type that was never calibrated still holds the config default.
+        $default = collect(config('diplomes.infos'))
+            ->firstWhere('key', 'info_pv_date')['fr']['x'];
+        $this->assertEquals($default, $res->json('data.info_positions.Technicien.info_pv_date.fr.x'));
+    }
+
     public function test_saving_informations_requires_a_valeurs_array(): void
     {
         $this->actingAs($this->admin, 'sanctum')

@@ -54,7 +54,7 @@ const DEFAULT_FIELDS_QUALIFICATION = [
   { key: 'nationalite', x: 0.362, y: 0.541, size: 13, bold: true, group: 'fr' },
   { key: 'numero_inscription', x: 0.268, y: 0.568, size: 13, bold: true, group: 'fr' },
   { key: 'date_inscription', x: 0.487, y: 0.568, size: 13, bold: true, group: 'fr' },
-  { key: 'filiere', x: 0.335, y: 0.625, size: 13, bold: true, group: 'fr' },
+  { key: 'filiere', x: 0.331, y: 0.622, size: 16, bold: true, group: 'fr' },
   { key: 'promotion', x: 0.488, y: 0.647, size: 13, bold: true, group: 'fr' },
   { key: 'date_delivrance', x: 0.465, y: 0.698, size: 13, bold: true, group: 'fr' },
   { key: 'nom_ar', x: 0.875, y: 0.487, size: 16, bold: true, group: 'ar' },
@@ -63,7 +63,7 @@ const DEFAULT_FIELDS_QUALIFICATION = [
   { key: 'cin_ar', x: 0.802, y: 0.540, size: 13, bold: true, group: 'ar' },
   { key: 'nationalite_ar', x: 0.656, y: 0.543, size: 13, bold: true, group: 'ar' },
   { key: 'numero_inscription_ar', x: 0.774, y: 0.568, size: 13, bold: true, group: 'ar' },
-  { key: 'filiere_ar', x: 0.799, y: 0.627, size: 13, bold: true, group: 'ar' },
+  { key: 'filiere_ar', x: 0.799, y: 0.627, size: 16, bold: true, group: 'ar' },
 ];
 
 const DEFAULT_FIELDS_TECHNICIEN = [
@@ -74,7 +74,7 @@ const DEFAULT_FIELDS_TECHNICIEN = [
   { key: 'nationalite', x: 0.362, y: 0.541, size: 13, bold: true, group: 'fr' },
   { key: 'numero_inscription', x: 0.268, y: 0.568, size: 13, bold: true, group: 'fr' },
   { key: 'date_inscription', x: 0.487, y: 0.568, size: 13, bold: true, group: 'fr' },
-  { key: 'filiere', x: 0.238, y: 0.625, size: 13, bold: true, group: 'fr' },
+  { key: 'filiere', x: 0.223, y: 0.621, size: 16, bold: true, group: 'fr' },
   { key: 'promotion', x: 0.488, y: 0.647, size: 13, bold: true, group: 'fr' },
   { key: 'date_delivrance', x: 0.465, y: 0.698, size: 13, bold: true, group: 'fr' },
   { key: 'nom_ar', x: 0.875, y: 0.487, size: 16, bold: true, group: 'ar' },
@@ -83,7 +83,7 @@ const DEFAULT_FIELDS_TECHNICIEN = [
   { key: 'cin_ar', x: 0.802, y: 0.540, size: 13, bold: true, group: 'ar' },
   { key: 'nationalite_ar', x: 0.656, y: 0.543, size: 13, bold: true, group: 'ar' },
   { key: 'numero_inscription_ar', x: 0.774, y: 0.568, size: 13, bold: true, group: 'ar' },
-  { key: 'filiere_ar', x: 0.817, y: 0.629, size: 13, bold: true, group: 'ar' },
+  { key: 'filiere_ar', x: 0.821, y: 0.625, size: 16, bold: true, group: 'ar' },
 ];
 
 const DEFAULT_FIELDS_SPECIALISATION = [
@@ -93,9 +93,9 @@ const DEFAULT_FIELDS_SPECIALISATION = [
   { key: 'cin', x: 0.189, y: 0.540, size: 13, bold: true, group: 'fr' },
   { key: 'nationalite', x: 0.362, y: 0.541, size: 13, bold: true, group: 'fr' },
   { key: 'numero_inscription', x: 0.268, y: 0.568, size: 13, bold: true, group: 'fr' },
-  { key: 'date_inscription', x: 0.487, y: 0.568, size: 13, bold: true, group: 'fr' },
-  { key: 'filiere', x: 0.292, y: 0.624, size: 13, bold: true, group: 'fr' },
-  { key: 'promotion', x: 0.488, y: 0.647, size: 13, bold: true, group: 'fr' },
+  { key: 'date_inscription', x: 0.485, y: 0.568, size: 13, bold: true, group: 'fr' },
+  { key: 'filiere', x: 0.282, y: 0.621, size: 16, bold: true, group: 'fr' },
+  { key: 'promotion', x: 0.486, y: 0.647, size: 13, bold: true, group: 'fr' },
   { key: 'date_delivrance', x: 0.465, y: 0.698, size: 13, bold: true, group: 'fr' },
   { key: 'nom_ar', x: 0.875, y: 0.487, size: 16, bold: true, group: 'ar' },
   { key: 'date_naissance_ar', x: 0.848, y: 0.519, size: 9, bold: true, group: 'ar' },
@@ -103,9 +103,10 @@ const DEFAULT_FIELDS_SPECIALISATION = [
   { key: 'cin_ar', x: 0.802, y: 0.540, size: 13, bold: true, group: 'ar' },
   { key: 'nationalite_ar', x: 0.656, y: 0.543, size: 13, bold: true, group: 'ar' },
   { key: 'numero_inscription_ar', x: 0.774, y: 0.568, size: 13, bold: true, group: 'ar' },
-  // The Arabic filière is far longer than the other two types', so it gets a
-  // wider box and stays one point below them to fit on a single line.
-  { key: 'filiere_ar', x: 0.790, y: 0.626, size: 13, bold: true, group: 'ar', width: 300 },
+  // The Arabic filière is far longer than the other two types', so it keeps a
+  // wider box to stay on a single line; x/y are the calibration saved for the
+  // Specialisation (TS) template.
+  { key: 'filiere_ar', x: 0.786, y: 0.613, size: 15, bold: true, group: 'ar', width: 300 },
 ];
 
 const DEFAULT_FIELDS_BY_TYPE = {
@@ -353,8 +354,9 @@ function nestInfoPositions(infoByType) {
   return out;
 }
 
-// The information markers live in the database (not in config/diplomes.php),
-// so the copyable dump mirrors the exact payload of saveInformationsPositions.
+// The copyable dump mirrors the exact payload of saveInformationsPositions:
+// every template's own list, as stored, so the snippets for a type whose
+// markers were calibrated separately (Specialisation) stay distinguishable.
 function buildInfoSnippet(infoByType) {
   return JSON.stringify(nestInfoPositions(infoByType), null, 2);
 }
@@ -431,10 +433,20 @@ function CalibrationModal({ meta, onClose }) {
       return [t, base.map(f => ({ ...f }))];
     }))
   );
-  // The establishment-level markers, calibratable per type and saved
-  // straight to the database (unlike the config fields above, which are copied
-  // into config/diplomes.php).
-  const [infoByType, setInfoByType] = useState(() => flattenInfoPositions(meta?.info_positions || {}));
+  // Each template type carries its own information positions. They started as
+  // one shared set (user decision, 2026-10-20) but TS keeps its own values for
+  // the markers that sit on different artwork (user decision, 2026-10-21), so
+  // the tab you are on is the set you edit and save.
+  const infoDefaultsByType = useMemo(
+    () => flattenInfoPositions(meta?.info_positions || {}),
+    [meta]
+  );
+  const [infoByType, setInfoByType] = useState(() =>
+    Object.fromEntries(types.map(t => [t, (infoDefaultsByType[t] || []).map(f => ({ ...f }))]))
+  );
+  const infoFields = infoByType[selectedType] || [];
+  const setInfoFields = (next) =>
+    setInfoByType(prev => ({ ...prev, [selectedType]: typeof next === 'function' ? next(prev[selectedType] || []) : next }));
   const [savingPositions, setSavingPositions] = useState(false);
 
   const templateUrl = meta?.templates?.find(t => t.type === selectedType)?.template_url || '';
@@ -453,8 +465,10 @@ function CalibrationModal({ meta, onClose }) {
   const savePositions = async () => {
     setSavingPositions(true);
     try {
-      await diplomesApi.saveInformationsPositions({ positions: nestInfoPositions(infoByType) });
-      toast.success('Positions des informations enregistrées');
+      // Only the type being edited is saved, so each template keeps its own set.
+      const positions = nestInfoPositions({ [selectedType]: infoFields });
+      await diplomesApi.saveInformationsPositions({ positions });
+      toast.success(`Positions des informations enregistrées (${selectedType})`);
     } catch {
       toast.error("Erreur lors de l'enregistrement des positions");
     } finally {
@@ -463,11 +477,8 @@ function CalibrationModal({ meta, onClose }) {
   };
 
   const resetInfos = () => {
-    const defaults = flattenInfoPositions(meta?.info_positions || {});
-    setInfoByType(prev => ({
-      ...prev,
-      [selectedType]: (defaults[selectedType] || []).map(f => ({ ...f })),
-    }));
+    const defaults = infoDefaultsByType[selectedType] || infoDefaultsByType[types[0]] || [];
+    setInfoFields(defaults.map(f => ({ ...f })));
   };
 
   return (
@@ -499,13 +510,11 @@ function CalibrationModal({ meta, onClose }) {
           key={selectedType}
           templateSrc={backendOrigin + templateUrl}
           initialFields={fieldsByType[selectedType]}
-          initialInfoFields={infoByType[selectedType]}
+          initialInfoFields={infoFields}
           onFieldsChange={(next) =>
             setFieldsByType(prev => ({ ...prev, [selectedType]: next.map(f => ({ ...f })) }))
           }
-          onInfoChange={(next) =>
-            setInfoByType(prev => ({ ...prev, [selectedType]: next.map(f => ({ ...f })) }))
-          }
+          onInfoChange={(next) => setInfoFields(next.map(f => ({ ...f })))}
         />
 
         <div style={{ background: '#f0f9ff', border: '1px solid #3b82f6', borderRadius: 6, padding: 12 }}>
@@ -544,7 +553,8 @@ function CalibrationModal({ meta, onClose }) {
           <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>
             Informations du diplôme
             <span style={{ fontWeight: 400, fontSize: 12, color: '#6b7280', marginLeft: 8 }}>
-              Repères verts — les valeurs se saisissent via « Informations du diplôme »
+              Repères verts — chaque template garde ses propres positions ; les valeurs se saisissent via
+              «&nbsp;Informations du diplôme&nbsp;»
             </span>
           </div>
           <button
@@ -553,7 +563,7 @@ function CalibrationModal({ meta, onClose }) {
             onClick={savePositions}
             disabled={savingPositions}
           >
-            {savingPositions ? 'Enregistrement...' : 'Enregistrer les positions (tous les templates)'}
+            {savingPositions ? 'Enregistrement...' : `Enregistrer les positions (${TYPE_LABELS[selectedType] || selectedType})`}
           </button>
           <button
             className="btn btn-sm btn-outline"
@@ -574,8 +584,8 @@ function CalibrationModal({ meta, onClose }) {
             Copier les coordonnées des informations
           </button>
           <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>
-            Positionnez les repères verts (français à gauche, arabe à droite) puis enregistrez. Ils sont ensuite
-            imprimés sur tous les diplômes, manuels comme générés.
+            Positionnez les repères verts (français à gauche, arabe à droite) puis enregistrez : la liste est
+            écrite pour le template affiché. Ils sont ensuite imprimés sur tous les diplômes, manuels comme générés.
           </div>
         </div>
       </div>

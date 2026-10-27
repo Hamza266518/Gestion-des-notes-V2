@@ -110,6 +110,7 @@ Route::get('/annees-academiques/{id}/stats', [AnneeAcademiqueController::class, 
         Route::delete('/formateurs/{id}', [FormateurController::class, 'destroy']);
         Route::get('/formateurs/{id}/sequences', [FormateurController::class, 'getSequences']);
         Route::post('/formateurs/{id}/assign-sequence', [FormateurController::class, 'assignSequence']);
+        Route::put('/formateurs/{id}/sequences/{sequence_id}/masse-horaire', [FormateurController::class, 'updateMasseHoraire']);
         Route::delete('/formateurs/{id}/remove-sequence', [FormateurController::class, 'removeSequence']);
         Route::post('/formateurs/{id}/import-sequences', [FormateurController::class, 'importSequences']);
         Route::post('/formateurs/{id}/scan-sequences', [FormateurController::class, 'scanSequences']);
@@ -189,10 +190,13 @@ Route::put('/notes/{id}', [NoteAdminController::class, 'update']);
         // Stage evaluations
         Route::get('/stage/search-students', [StageController::class, 'searchStudents']);
         Route::get('/stage/services', [StageController::class, 'stageServices']);
+        Route::get('/stage/saved-services', [StageController::class, 'savedServices']);
         Route::post('/stage/save', [StageController::class, 'save']);
         Route::get('/stage/load', [StageController::class, 'load']);
         Route::get('/stage/notes', [StageController::class, 'notes']);
         Route::post('/stage/notes', [StageController::class, 'saveNote']);
+        Route::get('/stage/grille/download', [StageController::class, 'downloadGrille']);
+        Route::get('/stage/grille/groupe/download', [StageController::class, 'downloadGroupe']);
 
         // Soutenance (NSTI): the jury criteria are Note rows on the Soutenance
         // unit's controls, scanned from the jury sheet.
@@ -202,6 +206,8 @@ Route::put('/notes/{id}', [NoteAdminController::class, 'update']);
         Route::post('/soutenance/confirm', [\App\Http\Controllers\Admin\SoutenanceController::class, 'confirm']);
 
         // Activity logs
+        Route::get('/activity-logs/unseen', [ActivityLogController::class, 'unseen']);
+        Route::post('/activity-logs/seen', [ActivityLogController::class, 'seen']);
         Route::get('/activity-logs', [ActivityLogController::class, 'index']);
 
         // Dashboard stats

@@ -49,6 +49,8 @@ export const adminApi = {
         apiClient.get(`/admin/formateurs/${id}/sequences`),
     assignFormateurSequence: (id, data) =>
         apiClient.post(`/admin/formateurs/${id}/assign-sequence`, data),
+    updateFormateurMasseHoraire: (formateurId, sequenceId, data) =>
+        apiClient.put(`/admin/formateurs/${formateurId}/sequences/${sequenceId}/masse-horaire`, data),
     removeFormateurSequence: (id, sequence_id) =>
         apiClient.delete(`/admin/formateurs/${id}/remove-sequence`, {
             data: { sequence_id },
@@ -67,6 +69,10 @@ export const adminApi = {
 
     getActivityLogs: (params) =>
         apiClient.get('/admin/activity-logs', { params }),
+    getActivityUnseen: () =>
+        apiClient.get('/admin/activity-logs/unseen'),
+    markActivitySeen: () =>
+        apiClient.post('/admin/activity-logs/seen'),
 
     confirmScanCin: (data) =>
         apiClient.post('/admin/scan-cin/confirm', data),

@@ -15,24 +15,45 @@ class Filiere extends Model
         'nombre_annees',
     ];
 
-    protected $appends = ['type_formation_ar', 'type_formation_fr'];
+    protected $appends = ['type_formation_ar', 'type_formation_fr', 'type_formation_effective'];
+
+    public function getTypeFormationEffectiveAttribute()
+    {
+        $section = strtoupper(trim((string) $this->section));
+        if (in_array($section, ['Q', 'QUALIFICATION'], true)) {
+            return 'Qualification';
+        }
+        if (in_array($section, ['T', 'TECHNICIEN'], true)) {
+            return 'Technicien';
+        }
+        if (in_array($section, ['TS', 'SPECIALISATION', 'TECHNICIEN SPECIALISE'], true)) {
+            return 'Specialisation';
+        }
+        $type = $this->type_formation;
+        if ($type) {
+            return $type;
+        }
+        return null;
+    }
 
     public function getTypeFormationFrAttribute()
     {
+        $type = $this->type_formation_effective;
         return [
             'Qualification' => 'Qualification',
             'Technicien'    => 'Technicien',
             'Specialisation'=> 'Technicien Spécialisé',
-        ][$this->type_formation] ?? '';
+        ][$type] ?? '';
     }
 
     public function getTypeFormationArAttribute()
     {
+        $type = $this->type_formation_effective;
         return [
             'Qualification' => 'تأهيل',
             'Technicien'    => 'تقني',
             'Specialisation'=> 'تقني متخصص',
-        ][$this->type_formation] ?? '';
+        ][$type] ?? '';
     }
 
     public function niveaux()

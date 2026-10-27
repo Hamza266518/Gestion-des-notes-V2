@@ -118,7 +118,9 @@ class BulletinService
         // only erased the grades of anyone who had since been promoted.
         $unites = Unite::where('filiere_id', $filiereId)
             ->where('numero_annee', $niveauNumero)
-            ->when($semestre !== null, fn($q) => $q->where('semestre', $semestre))
+            ->when($semestre !== null, fn($q) => $q->where(function ($qq) use ($semestre) {
+                $qq->where('semestre', $semestre)->orWhere('semestre', 0);
+            }))
             ->where('is_active', true)
             ->where('nom', '!=', SoutenanceService::UNITE_NOM)
             ->with('sequences.controles.notes', 'controles.notes')

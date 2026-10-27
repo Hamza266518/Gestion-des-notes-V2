@@ -1,0 +1,42 @@
+R00 | Service                  | Médecine=Médecine                      | PF=PF                 | CS=CS
+R01 | 05/10/2026 14/10/2026    | Médecine=G:A + G: Hibno roched+mooulouy | PF=G:E                | CS=G:G
+R02 |                          | Médecine=                               | PF=                   | CS=
+R03 | 15/10/2026 22/10/2026    | Médecine=                               | PF=G:D                | CS=
+R04 |                          | Médecine=                               | PF=                   | CS=
+R05 | 23/10/2026 03/11/2026    | Médecine=G:GEdderrak                    | PF=G:F                | CS=G:E
+R06 |                          | Médecine=                               | PF=                   | CS=
+R07 | 04/11/2026 19/11/2026    | Médecine=                               | PF=G:C + G:J          | CS=
+R08 |                          | Médecine=                               | PF=                   | CS=
+R09 | 20/11/2026 27/11/2026    | Médecine=G:E + G:IEdderrak+ mooulouya   | PF=G:G                | CS=G:D
+R10 |                          | Médecine=                               | PF=                   | CS=
+R11 | 30/11/2026 15/12/2026    | Médecine=                               | PF=G:B                | CS=
+R12 |                          | Médecine=                               | PF=                   | CS=
+R13 | 16/12/2026 23/12/2026    | Médecine=G:DEdderrak                    | PF=G:H                | CS=G:C + G:J
+R14 |                          | Médecine=                               | PF=                   | CS=
+R15 | 24/12/2026 04/01/2027    | Médecine=                               | PF=G:A                | CS=
+R16 |                          | Médecine=                               | PF=                   | CS=
+R17 | 05/01/2027 18/01/2027    | Médecine=G:F + G:C + G:Jmooulouya+ ibno | PF=—                | CS=G:B + G:I
+R18 | 19/01/2027 03/02/2027    | Médecine=                               | PF=                   | CS=
+R19 | 04/02/2027 11/02/2027    | Médecine=G:BEdderrak                    | PF=—                | CS=G:H + G:A + G:F
+R20 |                          | Médecine=                               | PF=                   | CS=
+R21 | 12/02/2027 18/02/2027    | Médecine=                               | PF=G:I                | CS=
+R22 | 19/02/2027 25/02/2027    | Médecine=—                            | PF=G:E+ G:FG:G+ G:H   | CS=G:I+ G:J
+R23 |                          | Médecine=                               | PF=                   | CS=
+R24 | 26/02/2027 13/03/2027    | Médecine=                               | PF=G:I+ G:J           | CS=G:A+ G:B G:G+ G:H
+R25 |                          | Médecine=                               | PF=                   | CS=
+R26 | 22/03/2027 30/03/2027    | Médecine=—                            | PF=G:A+ G:B           | CS=G:C+ G:D
+R27 |                          | Médecine=                               | PF=                   | CS=
+R28 | 31/03/2027 06/04/2027    | Médecine=                               | PF=G:C+ G:D           | CS=G:E+ G:F
+R29 |                          | Médecine=                               | PF=                   | CS=
+R30 | 07/04/2027 14/04/2027    | Médecine=G:A+ G:B                       | PF=G:G+ G:H           | CS=G:I+ G:J
+R31 |                          | Médecine=Edderrak+ ibno roched          | PF=                   | CS=
+R32 | 15/04/2027 22/04/2027    | Médecine=G:E+ G:F                       | PF=G:A+ G:B           | CS=G:C+ G:D
+R33 |                          | Médecine=ibno roched + Edderrak         | PF=                   | CS=
+R34 | 23/04/2027 29/04/2027    | Médecine=G:I+ G:J                       | PF=G:C+ G:D           | CS=G:G+ G:H
+R35 |                          | Médecine=Edderrak+ ibno roched          | PF=                   | CS=
+R36 | 10/05/2027 20/05/2027    | Médecine=G:C+ G:D                       | PF=G:E+ G:F           | CS=G:A+ G:B
+R37 |                          | Médecine=Edderrak+ibno roched           | PF=                   | CS=
+R38 | 21/05/2027 01/06/2027    | Médecine=G:G+ G:H                       | PF=G:I+ G:J           | CS=G:E+ G:F
+R39 |                          | Médecine=ibno roched + Edderrak         | PF=                   | CS=
+R40 | 02/06/2027 09/06/2027    | Médecine=—                            | PF=G:A+ G:B G:G+ G:H  | CS=G:C+ G:D G:E+ G:F 
+R41 | 10/06/2027 17/06/2027    | Médecine=                               | PF=                   | CS=

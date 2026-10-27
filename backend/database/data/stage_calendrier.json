@@ -1,0 +1,114 @@
+{
+    "sections": [
+        {
+            "filiere": "Infirmier Polyvalent",
+            "niveau": 3,
+            "groupes": {
+                "A": {
+                    "lieu": "Edderrak",
+                    "service": "Médecine"
+                },
+                "B": {
+                    "lieu": "Edderrak",
+                    "service": "Chirurgie"
+                },
+                "C": {
+                    "lieu": "ibno roched",
+                    "service": "Réanimation médicale"
+                },
+                "D": {
+                    "lieu": "mooulouya",
+                    "service": "Réanimation chirurgicale"
+                },
+                "E": {
+                    "lieu": "Edderrak",
+                    "service": "Pédiatrie"
+                },
+                "F": {
+                    "lieu": "Edderrak",
+                    "service": "Urgence"
+                },
+                "G": {
+                    "lieu": "Edderrak",
+                    "service": "Gynécologie"
+                },
+                "H": {
+                    "lieu": "ibno roched",
+                    "service": "Obstétrique"
+                },
+                "I": {
+                    "lieu": "Edderrak",
+                    "service": "Médecine (Derma)"
+                }
+            }
+        },
+        {
+            "filiere": "Infirmier Polyvalent",
+            "niveau": 2,
+            "groupes": {
+                "A": {
+                    "lieu": "ibno roched",
+                    "service": "Médecine"
+                },
+                "H": {
+                    "lieu": "mooulouya",
+                    "service": "Médecine"
+                },
+                "B": {
+                    "lieu": "mooulouya",
+                    "service": "Chirurgie"
+                },
+                "I": {
+                    "lieu": "Edderrak",
+                    "service": "Chirurgie"
+                },
+                "C": {
+                    "lieu": "Edderrak",
+                    "service": "Pédiatrie"
+                },
+                "J": {
+                    "lieu": "Edderrak",
+                    "service": "Pédiatrie"
+                },
+                "F": {
+                    "lieu": "Moulouya",
+                    "service": "BlOC"
+                },
+                "D": {
+                    "lieu": "mooulouya",
+                    "service": "Obstétrique"
+                },
+                "E": {
+                    "lieu": "mooulouya",
+                    "service": "Obstétrique"
+                },
+                "G": {
+                    "lieu": "Edderrak",
+                    "service": "Médecine"
+                }
+            }
+        },
+        {
+            "filiere": "Infirmier Auxiliaire",
+            "niveau": 2,
+            "groupes": {
+                "A": {
+                    "lieu": "Edderrak",
+                    "service": "Médecine"
+                },
+                "B": {
+                    "lieu": "Edderrak",
+                    "service": "Chirurgie"
+                },
+                "C": {
+                    "lieu": "Edderrak",
+                    "service": "Pédiatrie"
+                },
+                "D": {
+                    "lieu": "Edderrak",
+                    "service": "Urgences"
+                }
+            }
+        }
+    ]
+}

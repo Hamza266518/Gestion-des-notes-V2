@@ -340,9 +340,17 @@ class ScanExamenController extends Controller
             $saved = 0;
             $skipped = [];
 
+            // Resolved before the transaction so the journal entry can name the
+            // unit and the groups it touched.
+            $unite = Unite::find($request->unite_id);
+            $groupesScan = Etudiant::with('groupe.niveau.filiere')
+                ->whereIn('id', $etudiantIds->unique()->all())
+                ->get()
+                ->pluck('groupe');
+
             // All-or-nothing: a row raising a duplicate-key error used to abort
             // the loop after some rows were already committed.
-            DB::transaction(function () use ($request, $admin, &$saved, &$skipped) {
+            DB::transaction(function () use ($request, $admin, $unite, $groupesScan, &$saved, &$skipped) {
                 foreach ($request->resultats as $item) {
                     $parsed = $this->parser->parseValue($item['note'] ?? null);
                     // An "AB" read next to a numeric field is still an absence:
@@ -385,12 +393,23 @@ class ScanExamenController extends Controller
                     $saved++;
                 }
 
+                $type = $request->type === 'theorique' ? 'théorique' : 'pratique';
+                $description = "a scanné {$saved} note(s) d'examen {$type} — Bloc {$request->bloc}, semestre {$request->semestre}";
+                if ($unite) {
+                    $description .= " — Unité « {$unite->nom} »";
+                }
+                $groupesLabel = ActivityLog::groupesLabel($groupesScan);
+                if ($groupesLabel !== '') {
+                    $description .= " — {$groupesLabel}";
+                }
+
                 ActivityLog::create([
                     'admin_id'    => $admin->id,
                     'admin_name'  => $admin->name,
                     'action_type' => 'update',
-                    'description' => "{$admin->name} a scanne {$saved} note(s) d'examen {$request->type} bloc {$request->bloc}",
+                    'description' => $description,
                     'model_type'  => 'App\Models\Examen',
+                    'model_id'    => $request->unite_id,
                 ]);
             });
 

@@ -1,0 +1,197 @@
+===== Liste des stagiaires AS-IA-IP1-IP2-IP3 2025-2026.docx =====
+  P: Cachet et Signature :
+  P: Cachet et Signature :
+  P: Cachet et Signature :
+  P: Cachet et Signature :
+  P: Cachet et Signature :
+  P: Cachet et Signature :
+  -- Table 0 : 4 lignes --
+    r0   Liste stagiaire
+    r1   Filière : Infirmier Auxiliaire | Année Scolaire :2026/2027
+    r2   Section :Technicien | Année de formation :2ème année
+    r3   Promotion : 2025/2027
+  -- Table 1 : 10 lignes --
+    r0   Nom et Prénom | CIN | N° D’inscription
+    r1   Fadoua KISSI | F692546 | 24 IA26
+    r2   Mohammed MAAROUF | FA188940 | 26 IA26
+    r3   Rihab EL HASSOUNI | CD934851 | 20 IA26
+    r4   Safae GUAADAOUI | FA197032 | 19 IA26
+    r5   Salma BAADDI | FA216589 | 29 IA29
+    r6   Salma Charai | FA213582 | 22 IA26
+    r7   Douae SNOUBRI | FA214035 | 21 IA26
+    r8   Malika BOUTA | FE23299 | 25 IA26
+    r9   Siham DERAOUI | FA211967 | 23 IA26
+  -- Table 2 : 4 lignes --
+    r0   Liste stagiaire
+    r1   Filière : Infirmier Polyvalent | Année Scolaire :2026/2027
+    r2   Section :Technicien spécialisé | Année de formation :2ème Année
+    r3   Promotion : 2025/2028
+  -- Table 3 : 21 lignes --
+    r0   Nom et Prénom | CIN | N° D’inscription
+    r1   Aya CHENOUF | FA199176 | 104 IP26
+    r2   Aymen GUECHCHATI | FA215308 | 101 IP26
+    r3   Ayoub SETTI | FA199498 | 102 IP26
+    r4   Chaymae Asaidi | FA219548 | 115 IP26
+    r5   Fathi ELABDI | FA215494 | 100 IP26
+    r6   Fatima-Ez-Zahra AHADRI | FA224017 | 111 IP26
+    r7   Fatima-Zahra LATRECH | FA222362 | 109 IP26
+    r8   Ikram ELYAMANI | FA212075 | 114 IP26
+    r9   IMANE BOUSETTA | FA218117 | 125 IP26
+    r10  Kaoutar MAAROUFI | FE23382 | 106 IP26
+    r11  Meryame BERKANI | FA222942 | 110 IP26
+    r12  Mohammed RAHHAOUI | FA217279 | 99 IP26
+    r13  Rofayda EL HADAD | FA212266 | 107 IP26
+    r14  Salima BELMUSTAPHA | FE22336 | 112 IP26
+    r15  Salma BINDECHE | FA213293 | 103 IP26
+    r16  Salma BOURHALEB | FA203432 | 123 IP26
+    r17  Salma MAKHLOUFI | FA222082 | 126 IP26
+    r18  Samiha EL JAIMI | FA220894 | 108 IP26
+    r19  Sanae RABHI | FA210581 | 124 IP26
+    r20  Souad MOUADDAH | FA221114 | 119 IP26
+  -- Table 4 : 4 lignes --
+    r0   Liste stagiaire
+    r1   Filière : Infirmier Polyvalent | Année Scolaire :2026/2027
+    r2   Section :Technicien spécialisé | Année de formation :3ème année
+    r3   Promotion : 2024/2027
+  -- Table 5 : 19 lignes --
+    r0   Nom et Prénom | CIN | N° D’inscription
+    r1   Abdessamie BOUAYYADY | FA197691 | 76 IP25
+    r2   Aya KIRAT | SZ19639 | 95 IP25
+    r3   Aymane BEKKAOUI | FA199586 | 77 IP25
+    r4   Fatima Zahra El Gasmi | FE18212 | 86 IP25
+    r5   Ghariba LAARAJ | FA205216 | 88 IP25
+    r6   Imane AARAB | SZ24926 | 87 IP25
+    r7   Khaoula BOUMEDIENE | FE23304 | 92 IP25
+    r8   Lamiae DRIOUACH | FA175500 | 98 IP25
+    r9   Lamyaae MARGOUM | FA207232 | 89 IP25
+    r10  Maissae AFKIR | FE23649 | 90 IP25
+    r11  Manal BOUARFA | FA212913 | 96 IP25
+    r12  Marieme EL-AOUNI | FE24384 | 93 IP25
+    r13  Marwa MOURAD | FE24520 | 91 IP25
+    r14  Othmane BENSALAH | FA205314 | 84 IP25
+    r15  Oussama MESSAOUDI | FA208269 | 82 IP25
+    r16  Romayssae EL-FILALI | FA207066 | 94 IP25
+    r17  Smail JBARA | FJ27172 | 85 IP25
+    r18  Youssef BOUMAAZA | FA181588 | 81 IP25
+  -- Table 6 : 4 lignes --
+    r0   Liste stagiaire
+    r1   Filière : Aide-Soignant | Année Scolaire :2026/2027
+    r2   Section :Qualification | Année de formation :1ère année
+    r3   Promotion : 2026/2027
+  -- Table 7 : 37 lignes --
+    r0   Nom et Prénom | CIN | N° D’inscription
+    r1   AHMED NASRI | FJ20116 | 145 AS27
+    r2   AHLAM TAMIMI | FA222232 | 146 AS27
+    r3   AMINA HOURMI | FA219038 | 147 AS27
+    r4   ASSYA RABHI | FA214154 | 148 AS27
+    r5   AYA BELHAJ | FA229262 | 149 AS27
+    r6   AYA BERKANI | FA227424 | 150 AS27
+    r7   AYA EL HENDOUZ | FA221727 | 151 AS27
+    r8   AYA OUSAID | FA205809 | 152 AS27
+    r9   AYA RABHI | FA219518 | 153 AS27
+    r10  BADR EDDINE HOR | FA217385 | 154 AS27
+    r11  CHAHRAZAD BERRAHAB | FA216558 | 155 AS27
+    r12  CHAYMAA SMAILI | FA208402 | 156 AS27
+    r13  Douae bouchakara | FA211854 | 157 AS27
+    r14  DOUAE BOULGHALEGH | Fa217825 | 158 AS27
+    r15  DOUAE JALYL | FB1345829 | 159 AS27
+    r16  FARAH ZEROUALI | FA223388 | 160 AS27
+    r17  Fatima zahra lgharbi | FA210157 | 161 AS27
+    r18  HAFSSA MOUMEN | FA220644 | 162 AS27
+    r19  HAMZA CHERRAT | Z684341 | 163 AS27
+    r20  HANANE MERZOUKI | FA189596 | 164 AS27
+    r21  HIBA ASADI | FE25627 | 165 AS27
+    r22  IMANE MEJJATI | FJ29830 | 166 AS27
+    r23  MAHDI EL AJI | FA217299 | 167 AS27
+    r24  MERYEM bouchakara | FA184445 | 168 AS27
+    r25  Mohammed errahali | FA200055 | 169 AS27
+    r26  MOHAMMED MOUMEN | FA225863 | 170 AS27
+    r27  NAWAL OUALI | FA179119 | 171 AS27
+    r28  OUMAIMA BELHOUARI | FE21493 | 172 AS27
+    r29  OUMAIMA IRAMDANE | FA194846 | 173 AS27
+    r30  OUMAYMA DRIOUECH | FA214547 | 174 AS27
+    r31  OUSSAMA ZERROUK | FA21499 | 175 AS27
+    r32  SAMIHA EL AHMADI | FA158664 | 176 AS27
+    r33  YASMINA ZOIOUI | FA216051 | 177 AS27
+    r34  YOUNES EL AZZAOUI | FE26458 | 178 AS27
+    r35  YOUSRA NEJJARI | FA219727 | 179 AS27
+    r36   |  | 180 AS27
+  -- Table 8 : 4 lignes --
+    r0   Liste stagiaire
+    r1   Filière : Infirmier Auxiliaire | Année Scolaire :2026/2027
+    r2   Section :Technicien | Année de formation :1ère année
+    r3   Promotion : 2026/2028
+  -- Table 9 : 15 lignes --
+    r0   Nom et Prénom | CIN | N° D’inscription
+    r1   AYA MEHSANI | FA226513 | 31 IA27
+    r2   AYA ZIANI | FA213810 | 32 IA27
+    r3   CHAIMAE SALEH | FA179007 | 33 IA27
+    r4   FIRDAWSS CHBABI | FA211600 | 34 IA27
+    r5   GHIZLANE AZIZ | FA224816 | 35 IA27
+    r6   KHAWLA GHALMI | FA224059 | 36 IA27
+    r7   MOHAMED EL OUNI | FA220260 | 37 IA27
+    r8   OMAR NASRI | FA221214 | 38 IA27
+    r9   OSSAMA TSOULI | FA227526 | 39 IA27
+    r10  OUMAIMA OUFKIR | FE23650 | 40 IA27
+    r11  ROUMAISAE SENHAJI | FA218045 | 41 IA27
+    r12  SALMA SERGHINI | FA210828 | 42 IA27
+    r13  YAMINA BOUSHABA | FJ22131 | 43 IA27
+    r14  ZINEB AFKIR |  | 44 IA27
+  -- Table 10 : 4 lignes --
+    r0   Liste stagiaire
+    r1   Filière : Infirmier Polyvalent | Année Scolaire :2026/2027
+    r2   Section :Technicien spécialisé | Année de formation :1ère Année
+    r3   Promotion : 2026/2029
+  -- Table 11 : 24 lignes --
+    r0   Nom et Prénom | CIN | N° D’inscription
+    r1   AYA RIADI | FA227778 | 127 IP27
+    r2   HAMZA SAIDI | FA220722 | 128 IP27
+    r3   HANIFA JELLOULI | FA211867 | 129 IP27
+    r4   HIBA ZIANI | FA224292 | 130 IP27
+    r5   IMANE MEZIANI | FA225899 | 131 IP27
+    r6   KARIMA BEN AMERE | FE24606 | 132 IP27
+    r7   KHADIJA AZHAR | SZ12353 | 133 IP27
+    r8   KHAWLA SAHRAOUI | FA218431 | 134 IP27
+    r9   NOUHAILA JBIRA | FA222648 | 135 IP27
+    r10  OUIAM BOUJIDA | F791298 | 136 IP27
+    r11  OUSSAMA BETTICHE | FA224123 | 137 IP27
+    r12  SARA ZRIOUIL | FA219884 | 138 IP27
+    r13  SOUHAILA TIHRI | FA209050 | 139 IP27
+    r14  YASMINA AJJOURI | FJ34019 | 140 IP27
+    r15  YOUNESS LAKHAL | FA225826 | 141 IP27
+    r16   |  | 
+    r17   |  | 
+    r18   |  | 
+    r19   |  | 
+    r20   |  | 
+    r21   |  | 
+    r22   |  | 
+    r23   |  | 
+
+===== Liste des stagiaires IP 2 2025-2026.docx =====
+  -- Table 0 : 4 lignes --
+    r0   Liste stagiaire
+    r1   Filière : Infirmier Polyvalent | Année Scolaire :2025/2026
+    r2   Section :Technicien spécialisé | Année de formation :2éme année
+    r3   Promotion : 2024/2027
+  -- Table 1 : 19 lignes --
+    r0   Nom et Prénom | CIN | N° D’inscription
+    r1   Abdessamie BOUAYYADY | FA197691 | 76 IP25
+    r2   Aymane BEKKAOUI | FA199586 | 77 IP25
+    r3   Youssef BOUMAAZA | FA181588 | 81 IP25
+    r4   Oussama MESSAOUDI | FA208269 | 82 IP25
+    r5   Othmane BENSALAH | FA205314 | 84 IP25
+    r6   Smail JBARA | FJ27172 | 85 IP25
+    r7   Fatima Zahra El Gasmi | FE18212 | 86 IP25
+    r8   Imane AARAB | SZ24926 | 87 IP25
+    r9   Ghariba LAARAJ | FA205216 | 88 IP25
+    r10  Lamyaae MARGOUM | FA207232 | 89 IP25
+    r11  Maissae AFKIR | FE23649 | 90 IP25
+    r12  Marwa MOURAD | FE24520 | 91 IP25
+    r13  Khaoula BOUMEDIENE | FE23304 | 92 IP25
+    r14  Marieme EL-AOUNI | FE24384 | 93 IP25
+    r15  Romayssae EL-FILALI | FA207066 | 94 IP25
+    r16  Aya KIRAT | SZ19639 | 95 IP25
+    r17  Manal BOUARFA | FA212913 | 96 IP25
+    r18  Lamiae DRIOUACH | FA175500 | 98 IP25
+

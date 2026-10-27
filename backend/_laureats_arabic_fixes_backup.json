@@ -1,0 +1,11 @@
+[
+    {
+        "id": 592,
+        "cin": "FA213200",
+        "numero_inscription": "11 IA25",
+        "nom_ar_old": "صابرينا عالوي",
+        "nom_ar_new": "صابرينا العلوي",
+        "applied_at": "2026-10-22 15:46:09",
+        "reason": "Added definite article ال to match Arabic transliteration convention"
+    }
+]

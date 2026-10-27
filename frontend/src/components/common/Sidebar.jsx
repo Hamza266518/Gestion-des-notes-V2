@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { 
+import {
   FiGrid, 
   FiCalendar, 
   FiHome, 
@@ -19,10 +19,12 @@ import {
   FiChevronDown,
   FiX,
   FiClock,
+  FiBell,
   FiBriefcase,
   FiUsers
 } from 'react-icons/fi';
 import logoMenu from '../../image/logo-menu.png';
+import { adminApi } from '../../api/admin';
 import { startPrefetch, cancelPrefetch } from '../../api/prefetch';
 import '../../css/sidebar.css';
 
@@ -80,25 +82,28 @@ const etudiantLinks = [
   { to: '/etudiant/mon-bulletin', label: 'Mon Bulletin', icon: FiAward },
 ];
 
-function SidebarGroup({ group, collapsed, mobileOpen, onCloseMobile }) {
+function SidebarGroup({ group, collapsed, mobileOpen, onCloseMobile, unseen = 0 }) {
   const [open, setOpen] = useState(true);
 
   if (collapsed) {
     return (
       <div className="sidebar-group-collapsed">
         {group.items.map(item => {
-          const Icon = item.icon;
+          const isJournal = item.to === '/admin/journal';
+          const hasNew = isJournal && unseen > 0;
+          const Icon = hasNew ? FiBell : item.icon;
           return (
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
+              className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}${hasNew ? ' sidebar-link--new' : ''}`}
               onClick={mobileOpen ? onCloseMobile : undefined}
               onMouseEnter={() => startPrefetch(item.to)}
               onMouseLeave={() => cancelPrefetch(item.to)}
-              title={item.label}
+              title={hasNew ? `${item.label} — ${unseen} nouvelle(s) activité(s)` : item.label}
             >
               <span className="sidebar-link-icon"><Icon size={20} /></span>
+              {hasNew && <span className="sidebar-link-dot" />}
             </NavLink>
           );
         })}
@@ -113,18 +118,24 @@ function SidebarGroup({ group, collapsed, mobileOpen, onCloseMobile }) {
         <FiChevronDown size={14} className={`sidebar-group-arrow${open ? ' open' : ''}`} />
       </button>
       {open && group.items.map(item => {
-        const Icon = item.icon;
+        const isJournal = item.to === '/admin/journal';
+        const hasNew = isJournal && unseen > 0;
+        const Icon = hasNew ? FiBell : item.icon;
         return (
           <NavLink
             key={item.to}
             to={item.to}
-            className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
+            className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}${hasNew ? ' sidebar-link--new' : ''}`}
             onClick={mobileOpen ? onCloseMobile : undefined}
             onMouseEnter={() => startPrefetch(item.to)}
             onMouseLeave={() => cancelPrefetch(item.to)}
+            title={hasNew ? `${item.label} — ${unseen} nouvelle(s) activité(s)` : undefined}
           >
             <span className="sidebar-link-icon"><Icon size={20} /></span>
             <span>{item.label}</span>
+            {hasNew && (
+              <span className="sidebar-link-badge">{unseen > 99 ? '99+' : unseen}</span>
+            )}
           </NavLink>
         );
       })}
@@ -134,6 +145,42 @@ function SidebarGroup({ group, collapsed, mobileOpen, onCloseMobile }) {
 
 export default function Sidebar({ collapsed, mobileOpen, onToggle, onCloseMobile }) {
   const { role, logout } = useAuth();
+  const [unseen, setUnseen] = useState(0);
+
+  // Another admin's change should show up without a reload: poll the journal's
+  // unseen count and expose it on the Journal item (bell icon + badge).
+  useEffect(() => {
+    if (role !== 'admin') {
+      setUnseen(0);
+      return;
+    }
+
+    let alive = true;
+
+    const load = async () => {
+      if (document.visibilityState === 'hidden') return;
+      try {
+        const res = await adminApi.getActivityUnseen();
+        if (alive) setUnseen(res.data?.data?.count ?? 0);
+      } catch {
+        // A failed poll must never break the sidebar.
+      }
+    };
+
+    const onSeen = () => setUnseen(0);
+
+    load();
+    const timer = setInterval(load, 30000);
+    window.addEventListener('activity-seen', onSeen);
+    document.addEventListener('visibilitychange', load);
+
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      window.removeEventListener('activity-seen', onSeen);
+      document.removeEventListener('visibilitychange', load);
+    };
+  }, [role]);
 
   return (
     <>
@@ -167,6 +214,7 @@ export default function Sidebar({ collapsed, mobileOpen, onToggle, onCloseMobile
                 collapsed={collapsed}
                 mobileOpen={mobileOpen}
                 onCloseMobile={onCloseMobile}
+                unseen={unseen}
               />
             ))
           ) : (

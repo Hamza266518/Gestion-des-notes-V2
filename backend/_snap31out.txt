@@ -1,0 +1,2 @@
+﻿snapshot : C:\Users\pc\Desktop\Gestion des notes V2\backend/../sauvegardes/31-AS-hors-laureats-20261021-030139.json
+etudiants=31 notes=220 examens=100

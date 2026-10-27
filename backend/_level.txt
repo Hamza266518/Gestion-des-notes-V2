@@ -1,0 +1,23 @@
+DB de l'application : Gestion_des_notes_V2
+
+== NIVEAUX existants (par filiere) ==
+  niveau 1     numero=1   Aide-Soignant            (2 groupes)
+  niveau 2     numero=1   Infirmier Auxiliaire     (1 groupes)
+  niveau 3     numero=2   Infirmier Auxiliaire     (1 groupes)
+  niveau 4     numero=1   Infirmier Polyvalent     (1 groupes)
+  niveau 5     numero=2   Infirmier Polyvalent     (1 groupes)
+  niveau 6     numero=3   Infirmier Polyvalent     (1 groupes)
+
+== ETUDIANTS (filiere / niveau / promo) ==
+  Aide-Soignant            niv1   g8     Groupe A   promo=2025/2026  52 etu
+  Aide-Soignant            niv1   g9     Groupe B   promo=2025/2026  20 etu
+  Infirmier Auxiliaire     niv1   g10    Groupe A   promo=2025/2027  12 etu
+  Infirmier Auxiliaire     niv2   g11    Groupe A   promo=2025/2026  6 etu
+  Infirmier Polyvalent     niv1   g12    Groupe A   promo=2025/2028  24 etu
+  Infirmier Polyvalent     niv2   g13    Groupe A   promo=2024/2027  18 etu
+  Infirmier Polyvalent     niv3   g14    Groupe A   promo=2023/2026  29 etu
+
+== DERNIER niveau par filiere (= diplomes potentiels) ==
+  Aide-Soignant            derniere annee = 1  ->  72 etudiants
+  Infirmier Auxiliaire     derniere annee = 2  ->  6 etudiants
+  Infirmier Polyvalent     derniere annee = 3  ->  29 etudiants

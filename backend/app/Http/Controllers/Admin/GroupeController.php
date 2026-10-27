@@ -29,12 +29,26 @@ class GroupeController extends Controller
         $request->validate([
             'niveau_id'           => 'required|exists:niveaux,id',
             'annee_academique_id' => 'required|exists:annees_academiques,id',
-            'nom'                 => 'required|string',
-            'promotion'           => 'required|string',
+            'nom'                 => 'required|string|max:50',
+            'promotion'           => 'required|string|max:20',
         ]);
 
+        $exists = Groupe::where('niveau_id', $request->niveau_id)
+            ->where('annee_academique_id', $request->annee_academique_id)
+            ->whereRaw('LOWER(nom) = ?', [mb_strtolower(trim($request->nom))])
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['success' => false, 'message' => 'Ce groupe existe déjà pour ce niveau et cette année'], 422);
+        }
+
         try {
-            $groupe = Groupe::create($request->all());
+            $groupe = Groupe::create([
+                'niveau_id' => $request->niveau_id,
+                'annee_academique_id' => $request->annee_academique_id,
+                'nom' => trim($request->nom),
+                'promotion' => trim($request->promotion),
+            ]);
             return response()->json(['success' => true, 'data' => $groupe, 'message' => 'Groupe créé']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Erreur lors de la création du groupe'], 500);

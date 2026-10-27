@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FiSearch, FiX } from 'react-icons/fi';
+import { FiSearch, FiX, FiDownload } from 'react-icons/fi';
 import { adminApi } from '../../api/admin';
 import { etudiantsApi } from '../../api/etudiants';
 import { stagesApi } from '../../api/stages';
@@ -11,6 +11,8 @@ import GardeDeNuit from '../../components/stage/GardeDeNuit';
 import GrilleEvaluationStage from '../../components/stage/GrilleEvaluationStage';
 import GrilleExamenStage from '../../components/stage/GrilleExamenStage';
 import Spinner from '../../components/common/Spinner';
+import Modal from '../../components/common/Modal';
+import { DOCX_MIME, saveBlob, filenameFromDisposition } from '../../components/admin/RecapTable';
 import FilterBar from '../../components/common/FilterBar';
 import FilterSelect from '../../components/common/FilterSelect';
 import usePersistedState from '../../hooks/usePersistedState';
@@ -78,6 +80,83 @@ export default function Stage() {
     })
       .then(res => setMoyennes(res.data.moyennes || {}))
       .catch(() => setMoyennes({}));
+  };
+
+  // Word download of the grids: a dialog picks the document, who it is for, the
+  // content (blank sheet / saved marks), the Durée and, for the exam sheet, the
+  // technique being examined. The stage place and service come from the calendar,
+  // so there is nothing to choose there.
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [savedServices, setSavedServices] = useState([]);
+  const [dl, setDl] = useState({ type: 'grille_evaluation', scope: 'etudiant', mode: 'filled', service: '', duree: '', pratique_executee: '', dureeDebut: '', dureeFin: '' });
+
+  const openDownload = async () => {
+    const baseType = activeTab === 'grille_examen' ? 'grille_examen' : 'grille_evaluation';
+    const scope = selectedStudent ? 'etudiant' : 'groupe';
+    setDl({ type: baseType, scope, mode: 'filled', service: '', duree: '', pratique_executee: '', dureeDebut: '', dureeFin: '' });
+    setSavedServices([]);
+    setDownloadOpen(true);
+    if (selectedStudent?.id) {
+      try {
+        const res = await stagesApi.getSavedServices({ etudiant_id: selectedStudent.id, type: baseType });
+        setSavedServices(res.data?.data || []);
+      } catch {
+        setSavedServices([]);
+      }
+    }
+  };
+
+  const formatDateFR = (value) => {
+    if (!value) return '';
+    const parts = value.split('-');
+    if (parts.length !== 3) return value;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  };
+
+  const buildDuree = (d) => {
+    const debut = formatDateFR(d.dureeDebut);
+    const fin = formatDateFR(d.dureeFin);
+    if (debut && fin) {
+      return `du ${debut} au ${fin}`;
+    }
+    if (debut) {
+      return `du ${debut}`;
+    }
+    if (fin) {
+      return `au ${fin}`;
+    }
+    return (d.duree || '').toString().trim();
+  };
+
+  const runDownload = async () => {
+    setDownloading(true);
+    try {
+      const base = {
+        type: dl.type,
+        mode: dl.mode,
+        duree: buildDuree(dl) || undefined,
+        pratique_executee: dl.pratique_executee || undefined,
+        service: dl.service || undefined,
+      };
+      const isGroup = dl.scope === 'groupe';
+      const res = isGroup
+        ? await stagesApi.downloadGrilleGroupe({ ...base, groupe_id: groupeId })
+        : await stagesApi.downloadGrille({ ...base, etudiant_id: selectedStudent?.id });
+
+      const blob = new Blob([res.data], {
+        type: isGroup ? 'application/zip' : DOCX_MIME,
+      });
+      saveBlob(blob, filenameFromDisposition(
+        res.headers?.['content-disposition'],
+        isGroup ? 'Grilles.zip' : 'Grille.docx'
+      ));
+      setDownloadOpen(false);
+    } catch (err) {
+      handleApiError(err, toast);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   // Text search fallback
@@ -212,7 +291,7 @@ export default function Stage() {
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap'}}>
         {selectedStudent ? (
           <div style={{display:'flex', alignItems:'center', gap:12, flexWrap:'wrap'}}>
             <div style={{padding:'4px 12px', background:'#e0f2fe', borderRadius:6, fontSize:13}}>
@@ -223,6 +302,11 @@ export default function Stage() {
             <button className="btn btn-sm btn-outline" onClick={clearStudent}><FiX style={{marginRight:4}}/>Changer</button>
           </div>
         ) : null}
+        {(selectedStudent || groupeId) && (
+          <button className="btn btn-primary" onClick={openDownload}>
+            <FiDownload style={{marginRight:6}} />Télécharger la grille
+          </button>
+        )}
       </div>
 
       {selectedStudent && (
@@ -375,6 +459,114 @@ export default function Stage() {
       </div>
 
       {renderForm()}
+
+      <Modal open={downloadOpen} onClose={() => setDownloadOpen(false)} title="Télécharger la grille">
+        <div style={{ display: 'grid', gap: 16 }}>
+          <div>
+            <label className="form-label">Document</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[
+                { key: 'grille_evaluation', label: "Grille d'évaluation" },
+                { key: 'grille_examen', label: "Grille d'examen final" },
+              ].map(o => (
+                <button key={o.key} type="button"
+                  className={`btn ${dl.type === o.key ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => setDl(d => ({ ...d, type: o.key }))}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {selectedStudent && groupeId && (
+            <div>
+              <label className="form-label">Concerne</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button"
+                  className={`btn ${dl.scope === 'etudiant' ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => setDl(d => ({ ...d, scope: 'etudiant' }))}>
+                  Cet étudiant
+                </button>
+                <button type="button"
+                  className={`btn ${dl.scope === 'groupe' ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => setDl(d => ({ ...d, scope: 'groupe' }))}>
+                  Tout le groupe ({groupes.find(g => String(g.id) === String(groupeId))?.nom ?? ''})
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="form-label">Contenu</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button"
+                className={`btn ${dl.mode === 'filled' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setDl(d => ({ ...d, mode: 'filled' }))}>
+                Rempli (notes enregistrées)
+              </button>
+              <button type="button"
+                className={`btn ${dl.mode === 'blank' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => setDl(d => ({ ...d, mode: 'blank' }))}>
+                Vide (à remplir à la main)
+              </button>
+            </div>
+          </div>
+
+          {dl.mode === 'filled' && selectedStudent && savedServices.length > 0 && (
+            <div>
+              <label className="form-label">Service</label>
+              <select className="form-input" value={dl.service} onChange={e => setDl(d => ({ ...d, service: e.target.value }))}>
+                <option value="">Tous les services avec grille</option>
+                {savedServices.map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <small style={{ color: 'var(--gray-600)' }}>{dl.type === 'grille_evaluation' ? 'Services pour lesquels une grille d\'évaluation a été enregistrée.' : "Services pour lesquels une grille d'examen a été enregistrée."}</small>
+            </div>
+          )}
+
+          {dl.type === 'grille_evaluation' && (
+            <div>
+              <label className="form-label">Période du stage</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 150px', minWidth: 140 }}>
+                  <label className="form-label" style={{ fontSize: 12 }}>Date de début</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={dl.dureeDebut || ''}
+                    onChange={e => setDl(d => ({ ...d, dureeDebut: e.target.value }))}
+                  />
+                </div>
+                <div style={{ flex: '1 1 150px', minWidth: 140 }}>
+                  <label className="form-label" style={{ fontSize: 12 }}>Date de fin</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={dl.dureeFin || ''}
+                    onChange={e => setDl(d => ({ ...d, dureeFin: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <small style={{ color: 'var(--gray-600)' }}>Imprimé sous forme : du JJ/MM/AAAA au JJ/MM/AAAA</small>
+            </div>
+          )}
+
+          <div>
+            <label className="form-label">Pratique exécutée {dl.mode === 'filled' ? '(facultatif)' : ''}</label>
+            <input className="form-input" value={dl.pratique_executee}
+              placeholder="ex : Pose de perfusion (laisse vide pour utiliser celle enregistrée)"
+              onChange={e => setDl(d => ({ ...d, pratique_executee: e.target.value }))} />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <button className="btn btn-outline" onClick={() => setDownloadOpen(false)}>Annuler</button>
+            <button className="btn btn-primary" onClick={runDownload} disabled={downloading}>
+              <FiDownload style={{marginRight:6}} />{downloading ? 'Génération...' : 'Télécharger'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

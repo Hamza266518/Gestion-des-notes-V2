@@ -1,0 +1,18 @@
+=== SUPPRESSION DES 31 AS HORS LAUREATS ===
+
+base : Gestion_des_notes_V2
+
+  examens supprimes           : 100
+  notes supprimees            : 220
+  stage_evaluations supprimees: 0
+  stage_notes supprimees      : 0
+  diplomes supprimes          : 0
+  etudiants supprimes         : 31
+
+=== APRES ===
+  etudiants en base           : 130
+  notes en base               : 226
+  des 31 encore presents      : 0
+  pool annee diplomante       : 76
+  laureats officiels presents : 76 / 76
+  notes des laureats          : 135

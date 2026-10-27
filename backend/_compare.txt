@@ -1,0 +1,198 @@
+=== FICHIER : 111 stagiaires ===
+  Infirmier Auxiliaire   2 annee  promo 2025/2027  9
+  Infirmier Polyvalent   2 annee  promo 2025/2028  20
+  Infirmier Polyvalent   3 annee  promo 2024/2027  18
+  Aide-Soignant          1 annee  promo 2026/2027  35
+  Infirmier Auxiliaire   1 annee  promo 2026/2028  14
+  Infirmier Polyvalent   1 annee  promo 2026/2029  15
+
+=== BASE (application) : 161 etudiants ===
+  Infirmier Polyvalent   3 annee  promo 2023/2026  [2025/2026] 29
+  Infirmier Polyvalent   2 annee  promo 2024/2027  [2025/2026] 18
+  Infirmier Polyvalent   1 annee  promo 2025/2028  [2025/2026] 24
+  Infirmier Auxiliaire   2 annee  promo 2025/2026  [2025/2026] 6
+  Infirmier Auxiliaire   1 annee  promo 2025/2027  [2025/2026] 12
+  Aide-Soignant          1 annee  promo 2025/2026  [2025/2026] 72
+
+=== COMPARAISON (par numero d'inscription) ===
+Dans le fichier mais PAS dans la base : 64
+   AHMED NASRI                    FJ20116        145 AS27   Aide-Soignant annee promo 1
+   AHLAM TAMIMI                   FA222232       146 AS27   Aide-Soignant annee promo 1
+   AMINA HOURMI                   FA219038       147 AS27   Aide-Soignant annee promo 1
+   ASSYA RABHI                    FA214154       148 AS27   Aide-Soignant annee promo 1
+   AYA BELHAJ                     FA229262       149 AS27   Aide-Soignant annee promo 1
+   AYA BERKANI                    FA227424       150 AS27   Aide-Soignant annee promo 1
+   AYA EL HENDOUZ                 FA221727       151 AS27   Aide-Soignant annee promo 1
+   AYA OUSAID                     FA205809       152 AS27   Aide-Soignant annee promo 1
+   AYA RABHI                      FA219518       153 AS27   Aide-Soignant annee promo 1
+   BADR EDDINE HOR                FA217385       154 AS27   Aide-Soignant annee promo 1
+   CHAHRAZAD BERRAHAB             FA216558       155 AS27   Aide-Soignant annee promo 1
+   CHAYMAA SMAILI                 FA208402       156 AS27   Aide-Soignant annee promo 1
+   Douae bouchakara               FA211854       157 AS27   Aide-Soignant annee promo 1
+   DOUAE BOULGHALEGH              Fa217825       158 AS27   Aide-Soignant annee promo 1
+   DOUAE JALYL                    FB1345829      159 AS27   Aide-Soignant annee promo 1
+   FARAH ZEROUALI                 FA223388       160 AS27   Aide-Soignant annee promo 1
+   Fatima zahra lgharbi           FA210157       161 AS27   Aide-Soignant annee promo 1
+   HAFSSA MOUMEN                  FA220644       162 AS27   Aide-Soignant annee promo 1
+   HAMZA CHERRAT                  Z684341        163 AS27   Aide-Soignant annee promo 1
+   HANANE MERZOUKI                FA189596       164 AS27   Aide-Soignant annee promo 1
+   HIBA ASADI                     FE25627        165 AS27   Aide-Soignant annee promo 1
+   IMANE MEJJATI                  FJ29830        166 AS27   Aide-Soignant annee promo 1
+   MAHDI EL AJI                   FA217299       167 AS27   Aide-Soignant annee promo 1
+   MERYEM bouchakara              FA184445       168 AS27   Aide-Soignant annee promo 1
+   Mohammed errahali              FA200055       169 AS27   Aide-Soignant annee promo 1
+   MOHAMMED MOUMEN                FA225863       170 AS27   Aide-Soignant annee promo 1
+   NAWAL OUALI                    FA179119       171 AS27   Aide-Soignant annee promo 1
+   OUMAIMA BELHOUARI              FE21493        172 AS27   Aide-Soignant annee promo 1
+   OUMAIMA IRAMDANE               FA194846       173 AS27   Aide-Soignant annee promo 1
+   OUMAYMA DRIOUECH               FA214547       174 AS27   Aide-Soignant annee promo 1
+   OUSSAMA ZERROUK                FA21499        175 AS27   Aide-Soignant annee promo 1
+   SAMIHA EL AHMADI               FA158664       176 AS27   Aide-Soignant annee promo 1
+   YASMINA ZOIOUI                 FA216051       177 AS27   Aide-Soignant annee promo 1
+   YOUNES EL AZZAOUI              FE26458        178 AS27   Aide-Soignant annee promo 1
+   YOUSRA NEJJARI                 FA219727       179 AS27   Aide-Soignant annee promo 1
+   AYA MEHSANI                    FA226513       31 IA27    Infirmier Auxiliaire annee promo 1
+   AYA ZIANI                      FA213810       32 IA27    Infirmier Auxiliaire annee promo 1
+   CHAIMAE SALEH                  FA179007       33 IA27    Infirmier Auxiliaire annee promo 1
+   FIRDAWSS CHBABI                FA211600       34 IA27    Infirmier Auxiliaire annee promo 1
+   GHIZLANE AZIZ                  FA224816       35 IA27    Infirmier Auxiliaire annee promo 1
+   KHAWLA GHALMI                  FA224059       36 IA27    Infirmier Auxiliaire annee promo 1
+   MOHAMED EL OUNI                FA220260       37 IA27    Infirmier Auxiliaire annee promo 1
+   OMAR NASRI                     FA221214       38 IA27    Infirmier Auxiliaire annee promo 1
+   OSSAMA TSOULI                  FA227526       39 IA27    Infirmier Auxiliaire annee promo 1
+   OUMAIMA OUFKIR                 FE23650        40 IA27    Infirmier Auxiliaire annee promo 1
+   ROUMAISAE SENHAJI              FA218045       41 IA27    Infirmier Auxiliaire annee promo 1
+   SALMA SERGHINI                 FA210828       42 IA27    Infirmier Auxiliaire annee promo 1
+   YAMINA BOUSHABA                FJ22131        43 IA27    Infirmier Auxiliaire annee promo 1
+   ZINEB AFKIR                                   44 IA27    Infirmier Auxiliaire annee promo 1
+   AYA RIADI                      FA227778       127 IP27   Infirmier Polyvalent annee promo 1
+   HAMZA SAIDI                    FA220722       128 IP27   Infirmier Polyvalent annee promo 1
+   HANIFA JELLOULI                FA211867       129 IP27   Infirmier Polyvalent annee promo 1
+   HIBA ZIANI                     FA224292       130 IP27   Infirmier Polyvalent annee promo 1
+   IMANE MEZIANI                  FA225899       131 IP27   Infirmier Polyvalent annee promo 1
+   KARIMA BEN AMERE               FE24606        132 IP27   Infirmier Polyvalent annee promo 1
+   KHADIJA AZHAR                  SZ12353        133 IP27   Infirmier Polyvalent annee promo 1
+   KHAWLA SAHRAOUI                FA218431       134 IP27   Infirmier Polyvalent annee promo 1
+   NOUHAILA JBIRA                 FA222648       135 IP27   Infirmier Polyvalent annee promo 1
+   OUIAM BOUJIDA                  F791298        136 IP27   Infirmier Polyvalent annee promo 1
+   OUSSAMA BETTICHE               FA224123       137 IP27   Infirmier Polyvalent annee promo 1
+   SARA ZRIOUIL                   FA219884       138 IP27   Infirmier Polyvalent annee promo 1
+   SOUHAILA TIHRI                 FA209050       139 IP27   Infirmier Polyvalent annee promo 1
+   YASMINA AJJOURI                FJ34019        140 IP27   Infirmier Polyvalent annee promo 1
+   YOUNESS LAKHAL                 FA225826       141 IP27   Infirmier Polyvalent annee promo 1
+
+Dans la base mais PAS dans le fichier : 114
+   MEDDAH ZAINEB                  SJ36005        75 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   ELHADDADI DOHA                 FA212315       74 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   EL GHOMARI OULLA               FE22075        73 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   HICHOUR ROMAISSAE              FA208412       68 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   EL KADIRI BOUTCHICH KHAWLA     FE22917        65 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   CHAHBOUN HADIL                 FA210392       63 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   MAHROUG HIND                   FA189325       62 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   BOUTAYEB SAFAE                 FA206866       61 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   AMARA SAMIRA                   FA214456       60 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   MEHDAOUI FATINE                FA210326       59 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   TAHRI KAOUTAR                  FE22034        57 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   BEN ALLAH CHAHRAZAD            FA211287       56 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   JELLOULI SALMA                 FA209282       55 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   MAAMRI IMANE                   FA202081       54 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   FARSSI SALMA                   FA210858       53 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   BERHAB AYA                     FA216560       52 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   Nassi WIAM                     FA194287       51 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   CHAHLAOUI FAYZA                FA215560       50 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   BALI HAJAR                     FA207226       49 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   BERRAYEH HAJAR                 FA203858       48 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   RAHMANI CHAHRAZAD              FJ31373        47 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   ELAISSAOUI AFRAE               FJ32036        46 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   KADDOURI MAROUA                FA214221       45 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   BOUJNANE IBTISSAM              FA194156       44 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   SAIDI MOUNA                    FA195008       43 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   MARGOUM OUMAIMA                FA179792       42 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   ELAISSAOUI MERYEM              F772567        41 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   HADDOU HAYAT                   FA195431       40 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   HAJI NABIL                     FE21753        39 IP24      Infirmier Polyvalent annee 3  [2025/2026]
+   Dounia EL MAHBOUB              FA221049       121 IP26     Infirmier Polyvalent annee 1  [2025/2026]
+   Fatima zahra BENALLAH          FA219368       120 IP26     Infirmier Polyvalent annee 1  [2025/2026]
+   Manal TEMIMI                   FA222306       117 IP26     Infirmier Polyvalent annee 1  [2025/2026]
+   Sara AKACHAR                   FA219260       113 IP26     Infirmier Polyvalent annee 1  [2025/2026]
+   Kaouthar HAMEL                 F677491        15 IA25      Infirmier Auxiliaire annee 2  [2025/2026]
+   Douaa L'RHAYATI                FA212072       14 IA25      Infirmier Auxiliaire annee 2  [2025/2026]
+   Khadija AKLACHE                FA198660       13 IA25      Infirmier Auxiliaire annee 2  [2025/2026]
+   Douae HDIDOUAN                 FA198203       12 IA25      Infirmier Auxiliaire annee 2  [2025/2026]
+   Sabrina ALLAOUI                FA213200       11 IA25      Infirmier Auxiliaire annee 2  [2025/2026]
+   Charaf ETTAHRI                 FA204251       10 IA25      Infirmier Auxiliaire annee 2  [2025/2026]
+   Imane BELHAJ                   FA215753       30 IA30      Infirmier Auxiliaire annee 1  [2025/2026]
+   Kamal HAMZA                    FA131267       28 IA28      Infirmier Auxiliaire annee 1  [2025/2026]
+   Beddouri OUSSAMA               FA208328       27 IA27      Infirmier Auxiliaire annee 1  [2025/2026]
+   Chahra YOUSFI                  FA136693       144 AS26     Aide-Soignant annee 1  [2025/2026]
+   Oussama TESSOULI               FA227526       143 AS26     Aide-Soignant annee 1  [2025/2026]
+   Widad ALLA                     FE24187        142 AS26     Aide-Soignant annee 1  [2025/2026]
+   Manal ZERIOUH                  SA35928        141 AS26     Aide-Soignant annee 1  [2025/2026]
+   Dounia LEHMER                  FA170734       139 AS26     Aide-Soignant annee 1  [2025/2026]
+   Fatima zahra BOULERHCHA        FJ33117        138 AS26     Aide-Soignant annee 1  [2025/2026]
+   Fatima zahra MAAROUF           FA198890       137 AS26     Aide-Soignant annee 1  [2025/2026]
+   Siham BELKHER                  SZ19587        136 AS26     Aide-Soignant annee 1  [2025/2026]
+   Sabrine OUFKIR                 FJ28604        135 AS26     Aide-Soignant annee 1  [2025/2026]
+   Meryem KADDOURI                FA220779       133 AS26     Aide-Soignant annee 1  [2025/2026]
+   Maryem MEZIANI                 FA220739       132 AS26     Aide-Soignant annee 1  [2025/2026]
+   Yasmine BEKHTI                 FJ26545        131 AS26     Aide-Soignant annee 1  [2025/2026]
+   Rania ZAOUI                    FJ28951        130 AS26     Aide-Soignant annee 1  [2025/2026]
+   Youssra ARRAHMANI              FA215758       129 AS26     Aide-Soignant annee 1  [2025/2026]
+   Doha BEKKAOUI                  FA198927       128 AS26     Aide-Soignant annee 1  [2025/2026]
+   Soukayna BOROIGUI              FJ6860         127 AS26     Aide-Soignant annee 1  [2025/2026]
+   Houda HAJI                     FE26115        126 AS26     Aide-Soignant annee 1  [2025/2026]
+   Oumaima EDAKAKI                FA220348       125 AS26     Aide-Soignant annee 1  [2025/2026]
+   Hajar MELLOUKI                 FA219933       124 AS26     Aide-Soignant annee 1  [2025/2026]
+   Sabah EL BARKANI               FA224146       123 AS26     Aide-Soignant annee 1  [2025/2026]
+   HOUDA BAHRAOUI                 AB100021       AB100021     Aide-Soignant annee 1  [2025/2026]
+   SAFAE RHAZI                    AB100020       AB100020     Aide-Soignant annee 1  [2025/2026]
+   DOUNIA BELKADI                 AB100019       AB100019     Aide-Soignant annee 1  [2025/2026]
+   RANIA ZIANI                    AB100018       AB100018     Aide-Soignant annee 1  [2025/2026]
+   HIND KARIMI                    AB100017       AB100017     Aide-Soignant annee 1  [2025/2026]
+   CHAIMAE LAHLOU                 AB100016       AB100016     Aide-Soignant annee 1  [2025/2026]
+   LOUBNA SENHAJI                 AB100015       AB100015     Aide-Soignant annee 1  [2025/2026]
+   NAWAL HAJJI                    AB100014       AB100014     Aide-Soignant annee 1  [2025/2026]
+   WIDAD AMRANI                   AB100013       AB100013     Aide-Soignant annee 1  [2025/2026]
+   SAMIRA BENSAID                 AB100012       AB100012     Aide-Soignant annee 1  [2025/2026]
+   KHADIJA OUALI                  AB100011       AB100011     Aide-Soignant annee 1  [2025/2026]
+   IMANE TAHIRI                   AB100010       AB100010     Aide-Soignant annee 1  [2025/2026]
+   HAJAR FILALI                   AB100009       AB100009     Aide-Soignant annee 1  [2025/2026]
+   SOUKAINA KETTANI               AB100008       AB100008     Aide-Soignant annee 1  [2025/2026]
+   ASMAE BERRADA                  AB100007       AB100007     Aide-Soignant annee 1  [2025/2026]
+   ZINEB MANSOURI                 AB100006       AB100006     Aide-Soignant annee 1  [2025/2026]
+   NOUR CHRAIBI                   AB100005       AB100005     Aide-Soignant annee 1  [2025/2026]
+   MERYEM ALAOUI                  AB100004       AB100004     Aide-Soignant annee 1  [2025/2026]
+   HANAE TAZI                     AB100003       AB100003     Aide-Soignant annee 1  [2025/2026]
+   SALIMA BENALI                  AB100002       AB100002     Aide-Soignant annee 1  [2025/2026]
+   FATIMA ZAHRA IDRISSI           AB100001       AB100001     Aide-Soignant annee 1  [2025/2026]
+   IMANE TAHIRI                   ST678901       10 AS26      Aide-Soignant annee 1  [2025/2026]
+   HAJAR FILALI                   QR012345       09 AS26      Aide-Soignant annee 1  [2025/2026]
+   SOUKAINA KETTANI               OP456789       08 AS26      Aide-Soignant annee 1  [2025/2026]
+   ASMAE BERRADA                  MN890123       07 AS26      Aide-Soignant annee 1  [2025/2026]
+   ZINEB MANSOURI                 KL234567       06 AS26      Aide-Soignant annee 1  [2025/2026]
+   NOUR CHRAIBI                   IJ567890       05 AS26      Aide-Soignant annee 1  [2025/2026]
+   MERYEM ALAOUI                  GH901234       04 AS26      Aide-Soignant annee 1  [2025/2026]
+   HANAE TAZI                     EF345678       03 AS26      Aide-Soignant annee 1  [2025/2026]
+   SALIMA BENALI                  CD789012       02 AS26      Aide-Soignant annee 1  [2025/2026]
+   FATIMA ZAHRA IDRISSI           AB123456       01 AS26      Aide-Soignant annee 1  [2025/2026]
+   Manal BACHIRI                  FE17092        122 AS26     Aide-Soignant annee 1  [2025/2026]
+   Fatima zahra JELLOULI          FA216419       121 AS26     Aide-Soignant annee 1  [2025/2026]
+   WISSAL ICHAOUI                 FA186983       119 AS26     Aide-Soignant annee 1  [2025/2026]
+   IMANE EL-AMRAOUI               FA214250       117 AS26     Aide-Soignant annee 1  [2025/2026]
+   ASMAE ARGHAL                   FJ23453        116 AS26     Aide-Soignant annee 1  [2025/2026]
+   Zaineb DOUZI                   FE21716        115 AS26     Aide-Soignant annee 1  [2025/2026]
+   Nouhayla DERFOUF               FA221947       114 AS26     Aide-Soignant annee 1  [2025/2026]
+   AMAL ZAMZAM                    FA206836       113 AS26     Aide-Soignant annee 1  [2025/2026]
+   Bassma MOKHTARI                FA214854       112 AS26     Aide-Soignant annee 1  [2025/2026]
+   Ikram HABJAOUI                 FA192207       111 AS26     Aide-Soignant annee 1  [2025/2026]
+   Boutaina AMERE                 FA154998       110 AS26     Aide-Soignant annee 1  [2025/2026]
+   Hanae MEHREZ                   FA221066       109 AS26     Aide-Soignant annee 1  [2025/2026]
+   Soukayna EL YOUBI              FA207855       106 AS26     Aide-Soignant annee 1  [2025/2026]
+   Douae MOUZOURI                 FA216230       105 AS26     Aide-Soignant annee 1  [2025/2026]
+   Salima ARRAHMANI               FA215759       103 AS26     Aide-Soignant annee 1  [2025/2026]
+   Khawla DEKHISSI                FA220275       102 AS26     Aide-Soignant annee 1  [2025/2026]
+   Abdelghafour HAJJI             U197938        101 AS26     Aide-Soignant annee 1  [2025/2026]
+   Oualid ELMAHI                  FA203291       100 AS26     Aide-Soignant annee 1  [2025/2026]
+   Oussama OUAZZANI-CHAHDI        FA218060       99 AS26      Aide-Soignant annee 1  [2025/2026]
+   Anass ELAOUNI                  FA218540       97 AS26      Aide-Soignant annee 1  [2025/2026]
+   Hamza EL ACHI                  FA211848       96 AS26      Aide-Soignant annee 1  [2025/2026]

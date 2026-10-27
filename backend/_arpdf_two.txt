@@ -1,0 +1,6 @@
+page2 y=294.0 : visuel=  logique=
+page2 y=295.2 : visuel=  logique=
+page2 y=294.1 : visuel=ناكربيلوستةماسأ  logique=أسامةتسوليبركان
+page3 y=415.3 : visuel=  logique=
+page3 y=416.5 : visuel=  logique=
+page3 y=415.3 : visuel=ناكربةيديعسلايرهاطرثوك  logique=كوثرطاهريالسعيديةبركان

@@ -1,0 +1,15 @@
+﻿written 6381 bytes, pages=4
+python : Traceback (most recent call last):
+At line:1 char:1
++ python _pdf.py 2>&1 | Out-File -Encoding utf8 _pdfout.txt; Get-Conten ...
++ ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\Users\pc\Desktop\Gestion des notes V2\backend\_pdf.py", line 18, in <module>
+    print(text[:3000])
+    ~~~~~^^^^^^^^^^^^^
+  File "C:\Users\pc\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 67-71: character maps to <undefined>

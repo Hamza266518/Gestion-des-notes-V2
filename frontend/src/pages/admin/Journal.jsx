@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { adminApi } from '../../api/admin';
 import { useToast } from '../../context/ToastContext';
 import handleApiError from '../../utils/errorHandler';
@@ -6,7 +6,7 @@ import ActivityLog from '../../components/common/ActivityLog';
 import Spinner from '../../components/common/Spinner';
 import FilterBar from '../../components/common/FilterBar';
 import FilterSelect from '../../components/common/FilterSelect';
-import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiRefreshCw } from 'react-icons/fi';
 import usePersistedState from '../../hooks/usePersistedState';
 import '../../css/components.css';
 import '../../css/layout.css';
@@ -32,6 +32,9 @@ export default function Journal() {
   });
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [newSince, setNewSince] = useState(null);
+  const [unreadOnLoad, setUnreadOnLoad] = useState(0);
+  const metaCaptured = useRef(false);
   const toast = useToast();
 
   const fetchLogs = async (p = page) => {
@@ -50,6 +53,18 @@ export default function Journal() {
 
       const res = await adminApi.getActivityLogs(params);
       const data = res.data.data;
+
+      // Capture the marker of the previous visit once, before marking the
+      // journal as read: these entries stay highlighted for this session.
+      if (!metaCaptured.current) {
+        metaCaptured.current = true;
+        setNewSince(res.data.meta?.last_seen_at ?? null);
+        setUnreadOnLoad(res.data.meta?.unseen_count ?? 0);
+        adminApi.markActivitySeen()
+          .then(() => window.dispatchEvent(new Event('activity-seen')))
+          .catch(() => {});
+      }
+
       if (Array.isArray(data)) {
         setEntries(data);
         setLastPage(1);
@@ -76,9 +91,28 @@ export default function Journal() {
 
   return (
     <div className="page">
-      <div style={{ marginBottom: 16 }}>
-        <h2 className="page-title" style={{ margin: 0 }}>Journal d'activité</h2>
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h2 className="page-title" style={{ margin: 0 }}>Journal d'activité</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--gray-500)' }}>
+            Tout ce que les administrateurs ont modifié, du plus récent au plus ancien.
+          </p>
+        </div>
+        <button
+          className="btn btn-sm btn-outline"
+          onClick={() => fetchLogs(page)}
+          disabled={loading}
+          title="Actualiser le journal"
+        >
+          <FiRefreshCw size={14} style={{ marginRight: 5 }} /> Actualiser
+        </button>
       </div>
+
+      {unreadOnLoad > 0 && (
+        <div className="alert alert-info" style={{ marginBottom: 16 }}>
+          <strong>{unreadOnLoad}</strong> nouvelle{unreadOnLoad > 1 ? 's' : ''} activité{unreadOnLoad > 1 ? 's' : ''} depuis votre dernière visite.
+        </div>
+      )}
 
       <FilterBar
         value={filters}
@@ -141,7 +175,7 @@ export default function Journal() {
         <>
           <div className="card">
             <div className="card-body">
-              <ActivityLog entries={entries} limit={entries.length} />
+              <ActivityLog entries={entries} limit={entries.length} newSince={newSince} />
             </div>
           </div>
 

@@ -1,0 +1,2965 @@
+[
+    {
+        "filiere": "Infirmier Polyvalent",
+        "niveau": 3,
+        "annee": "2026/2027",
+        "groupes": {
+            "A": [
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "mooulouya",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation médicale",
+                    "lieu": "ibno roched",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation chirurgicale",
+                    "lieu": "mooulouya",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgence",
+                    "lieu": "Edderrak",
+                    "debut": "2027-01-19",
+                    "fin": "2027-02-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Gynécologie",
+                    "lieu": "mooulouya",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-12",
+                    "fin": "2027-02-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine (Derma)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (Ophta)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (ORL)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": false,
+                    "note": "un seul lieu pour 3 groupes"
+                },
+                {
+                    "service": "Hemodialysis",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                }
+            ],
+            "B": [
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation médicale",
+                    "lieu": "ibno roched",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation chirurgicale",
+                    "lieu": "ibno roched",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgence",
+                    "lieu": "ibno roched",
+                    "debut": "2026-12-24",
+                    "fin": "2027-01-04",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Gynécologie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "mooulouya",
+                    "debut": "2027-01-19",
+                    "fin": "2027-02-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine (Derma)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (Ophta)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-12",
+                    "fin": "2027-02-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (ORL)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": false,
+                    "note": "un seul lieu pour 3 groupes"
+                },
+                {
+                    "service": "Hemodialysis",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                }
+            ],
+            "C": [
+                {
+                    "service": "Réanimation médicale",
+                    "lieu": "ibno roched",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation chirurgicale",
+                    "lieu": "ibno roched",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgence",
+                    "lieu": "mooulouya",
+                    "debut": "2026-11-30",
+                    "fin": "2026-12-15",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Gynécologie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "mooulouya",
+                    "debut": "2026-12-24",
+                    "fin": "2027-01-04",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine (Derma)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (Ophta)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-01-19",
+                    "fin": "2027-02-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "mooulouya",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (ORL)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": false,
+                    "note": "un seul lieu pour 3 groupes"
+                },
+                {
+                    "service": "Hemodialysis",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                }
+            ],
+            "D": [
+                {
+                    "service": "Réanimation chirurgicale",
+                    "lieu": "mooulouya",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgence",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-04",
+                    "fin": "2026-11-19",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Gynécologie",
+                    "lieu": "ibno roched",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-30",
+                    "fin": "2026-12-15",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine (Derma)",
+                    "lieu": "Edderrak",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (Ophta)",
+                    "lieu": "Edderrak",
+                    "debut": "2026-12-24",
+                    "fin": "2027-01-04",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "mooulouya",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "ibno roched",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation médicale",
+                    "lieu": "ibno roched",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (ORL)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Hemodialysis",
+                    "lieu": "",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "E": [
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgence",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-15",
+                    "fin": "2026-10-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Gynécologie",
+                    "lieu": "mooulouya",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2026-11-04",
+                    "fin": "2026-11-19",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine (Derma)",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (Ophta)",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-30",
+                    "fin": "2026-12-15",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "mooulouya",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "ibno roched",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation médicale",
+                    "lieu": "mooulouya",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation chirurgicale",
+                    "lieu": "ibno roched",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (ORL)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Hemodialysis",
+                    "lieu": "",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "F": [
+                {
+                    "service": "Urgence",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-15",
+                    "fin": "2026-10-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Gynécologie",
+                    "lieu": "mooulouya",
+                    "debut": "2026-11-04",
+                    "fin": "2026-11-19",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (Ophta)",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine (Derma)",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-30",
+                    "fin": "2026-12-15",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "ibno roched",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation médicale",
+                    "lieu": "mooulouya",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation chirurgicale",
+                    "lieu": "mooulouya",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "mooulouya",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (ORL)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Hemodialysis",
+                    "lieu": "",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "G": [
+                {
+                    "service": "Gynécologie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2026-10-15",
+                    "fin": "2026-10-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine (Derma)",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (Ophta)",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-04",
+                    "fin": "2026-11-19",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "mooulouya",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation médicale",
+                    "lieu": "ibno roched",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation chirurgicale",
+                    "lieu": "mooulouya",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "ibno roched",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgence",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (ORL)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Hemodialysis",
+                    "lieu": "",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "H": [
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Gynécologie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-15",
+                    "fin": "2026-10-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (Ophta)",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine (Derma)",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-04",
+                    "fin": "2026-11-19",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "mooulouya",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgence",
+                    "lieu": "ibno roched",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-12-24",
+                    "fin": "2027-01-04",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation médicale",
+                    "lieu": "mooulouya",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (ORL)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Hemodialysis",
+                    "lieu": "",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation chirurgicale",
+                    "lieu": "ibno roched",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "I": [
+                {
+                    "service": "Médecine (Derma)",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (Ophta)",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-15",
+                    "fin": "2026-10-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgence",
+                    "lieu": "mooulouya",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-30",
+                    "fin": "2026-12-15",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "mooulouya",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Gynécologie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-12-24",
+                    "fin": "2027-01-04",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation chirurgicale",
+                    "lieu": "mooulouya",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "mooulouya",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation médicale",
+                    "lieu": "mooulouya",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "C.S",
+                    "lieu": "",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie (ORL)",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Hemodialysis",
+                    "lieu": "",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                }
+            ]
+        }
+    },
+    {
+        "filiere": "Infirmier Polyvalent",
+        "niveau": 2,
+        "annee": "2026/2027",
+        "groupes": {
+            "A": [
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "mooulouya",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "Edderrak",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2026-12-24",
+                    "fin": "2027-01-04",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "ibno roched",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "mooulouya",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                }
+            ],
+            "B": [
+                {
+                    "service": "Chirurgie",
+                    "lieu": "mooulouya",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2026-11-30",
+                    "fin": "2026-12-15",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "ibno roched",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "mooulouya",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                }
+            ],
+            "C": [
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "mooulouya",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2026-11-04",
+                    "fin": "2026-11-19",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "ibno roched",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "D": [
+                {
+                    "service": "Obstétrique",
+                    "lieu": "mooulouya",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2026-10-15",
+                    "fin": "2026-10-22",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "mooulouya",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "ibno roched",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "E": [
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "mooulouya",
+                    "debut": "2026-10-15",
+                    "fin": "2026-10-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "ibno roched",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "ibno roched",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": false,
+                    "note": "4 groupes mais 2 lieux"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "F": [
+                {
+                    "service": "BlOC",
+                    "lieu": "Moulouya",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-04",
+                    "fin": "2026-11-19",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "mooulouya",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "mooulouya",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": false,
+                    "note": "4 groupes mais 2 lieux"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "mooulouya",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "G": [
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2026-11-30",
+                    "fin": "2026-12-15",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "mooulouya",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "mooulouya",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                }
+            ],
+            "H": [
+                {
+                    "service": "Médecine",
+                    "lieu": "mooulouya",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "Edderrak",
+                    "debut": "2026-12-24",
+                    "fin": "2027-01-04",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "Edderrak",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "mooulouya",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "ibno roched",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "mooulouya",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                }
+            ],
+            "I": [
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "mooulouya",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "Edderrak",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-02-12",
+                    "fin": "2027-02-18",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": false,
+                    "note": "4 groupes mais 2 lieux"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "mooulouya",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "mooulouya",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "mooulouya",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "J": [
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "ibno roched",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2026-11-04",
+                    "fin": "2026-11-19",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "Edderrak",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "ibno roched",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "BlOC",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": false,
+                    "note": "4 groupes mais 2 lieux"
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Obstétrique",
+                    "lieu": "mooulouya",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": false,
+                    "note": "un seul lieu pour 2 groupes"
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "PF",
+                    "lieu": "",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": "aucun lieu dans le calendrier"
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": null
+                }
+            ]
+        }
+    },
+    {
+        "filiere": "Infirmier Auxiliaire",
+        "niveau": 2,
+        "annee": "2026/2027",
+        "groupes": {
+            "A": [
+                {
+                    "service": "Dispensaire",
+                    "lieu": "",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Référence",
+                    "lieu": "",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgences",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation",
+                    "lieu": "mooulouya",
+                    "debut": "2027-03-31",
+                    "fin": "2027-04-06",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Maternité",
+                    "lieu": "mooulouya",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "mooulouya",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-06-10",
+                    "fin": "2027-06-17",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "B": [
+                {
+                    "service": "Référence",
+                    "lieu": "",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Dispensaire",
+                    "lieu": "",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgences",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation",
+                    "lieu": "ibno roched",
+                    "debut": "2027-02-26",
+                    "fin": "2027-03-13",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "mooulouya",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Maternité",
+                    "lieu": "ibno roched",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-05-10",
+                    "fin": "2027-05-20",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "ibno roched",
+                    "debut": "2027-06-10",
+                    "fin": "2027-06-17",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "C": [
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Dispensaire",
+                    "lieu": "",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Référence",
+                    "lieu": "",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgences",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation",
+                    "lieu": "mooulouya",
+                    "debut": "2027-02-12",
+                    "fin": "2027-02-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "ibno roched",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Maternité",
+                    "lieu": "mooulouya",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-06-02",
+                    "fin": "2027-06-09",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2027-06-10",
+                    "fin": "2027-06-17",
+                    "verifie": true,
+                    "note": null
+                }
+            ],
+            "D": [
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2026-10-05",
+                    "fin": "2026-10-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Dispensaire",
+                    "lieu": "",
+                    "debut": "2026-10-23",
+                    "fin": "2026-11-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Référence",
+                    "lieu": "",
+                    "debut": "2026-11-20",
+                    "fin": "2026-11-27",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Rural",
+                    "lieu": "",
+                    "debut": "2026-12-16",
+                    "fin": "2026-12-23",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgences",
+                    "lieu": "Edderrak",
+                    "debut": "2027-01-05",
+                    "fin": "2027-01-18",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation",
+                    "lieu": "ibno roched",
+                    "debut": "2027-01-19",
+                    "fin": "2027-02-03",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-04",
+                    "fin": "2027-02-11",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-02-19",
+                    "fin": "2027-02-25",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Pédiatrie",
+                    "lieu": "Edderrak",
+                    "debut": "2027-03-22",
+                    "fin": "2027-03-30",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Urgences",
+                    "lieu": "Edderrak",
+                    "debut": "2027-04-07",
+                    "fin": "2027-04-14",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Réanimation",
+                    "lieu": "mooulouya",
+                    "debut": "2027-04-15",
+                    "fin": "2027-04-22",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Chirurgie",
+                    "lieu": "mooulouya",
+                    "debut": "2027-04-23",
+                    "fin": "2027-04-29",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Médecine",
+                    "lieu": "ibno roched",
+                    "debut": "2027-05-21",
+                    "fin": "2027-06-01",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "Maternité",
+                    "lieu": "ibno roched",
+                    "debut": "2027-06-10",
+                    "fin": "2027-06-17",
+                    "verifie": true,
+                    "note": null
+                },
+                {
+                    "service": "CS",
+                    "lieu": "",
+                    "debut": "2027-06-18",
+                    "fin": "2027-06-25",
+                    "verifie": true,
+                    "note": null
+                }
+            ]
+        }
+    }
+]
